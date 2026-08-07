@@ -52,14 +52,7 @@ def classify_rate_limits(
     *,
     now_epoch: float | None = None,
 ) -> tuple[bool, int | None]:
-    """Return provider availability and the next known recovery epoch.
-
-    ``False`` is returned only for a live snapshot that explicitly reports a
-    reached limit or a still-active 100% window.  The expected recovery time is
-    the latest future reset among currently blocking windows.  If the provider
-    reports a reached type without identifying a 100% bucket, the latest future
-    reset from the returned windows is used as the best available recovery hint.
-    """
+    """Return provider availability and the next known recovery epoch."""
 
     if not isinstance(snapshot, Mapping):
         raise CodexAvailabilityError("Codex rate-limit snapshot имеет неверный формат")
@@ -119,9 +112,9 @@ def parse_until(value: str, *, now_epoch: float | None = None) -> int:
 class CodexAvailabilityGate:
     """Persistent dynamic gate shared by coder and GPT Image 2 routes.
 
-    The state file is deliberately authoritative instead of an environment
-    variable: a separate operator process can change it atomically and the
-    already-running coder observes the new value on its next routing decision.
+    The state file is authoritative instead of an environment variable: a
+    separate operator process can change it atomically and the already-running
+    coder observes the new value on its next routing decision.
     """
 
     def __init__(
@@ -147,7 +140,7 @@ class CodexAvailabilityGate:
                 configured = int(raw)
             except ValueError:
                 configured = DEFAULT_REFRESH_SECONDS
-        # Production contract is five hours.  Tests may inject a shorter value.
+        # Production contract is five hours. Tests may inject a shorter value.
         self.refresh_seconds = max(1, int(configured))
         self.clock = clock
         self._background_lock = threading.Lock()
@@ -229,7 +222,9 @@ class CodexAvailabilityGate:
             result["reason"] = "available"
         elif result.get("provider_available") is False:
             result["codex_available"] = False
-            result["reason"] = str(result.get("provider_reason") or "subscription_unavailable")
+            result["reason"] = str(
+                result.get("provider_reason") or "subscription_unavailable"
+            )
         else:
             result["codex_available"] = False
             result["reason"] = "unknown"
@@ -262,7 +257,6 @@ class CodexAvailabilityGate:
         *,
         source: str,
         periodic: bool = False,
-        clear_expired_manual_hold: bool = False,
     ) -> dict[str, Any]:
         now = int(self.clock())
         try:
@@ -276,13 +270,15 @@ class CodexAvailabilityGate:
                 if periodic:
                     state["last_periodic_check_at"] = now
                     state["next_periodic_check_at"] = now + self.refresh_seconds
-                # Unknown startup remains false.  A transient probe error never
-                # invents a new true/false value over an already-known provider state.
+                # Unknown startup remains false. A transient probe error does not
+                # invent a different value over an already-known provider state.
             return self._update(failed)
 
         def observed(state: dict[str, Any]) -> None:
             state["provider_available"] = available
-            state["provider_reason"] = "available" if available else "subscription_limit"
+            state["provider_reason"] = (
+                "available" if available else "subscription_limit"
+            )
             state["codex_available_at"] = available_at
             state["rate_limits"] = snapshot
             state["last_checked_at"] = now
@@ -291,14 +287,19 @@ class CodexAvailabilityGate:
             if periodic:
                 state["last_periodic_check_at"] = now
                 state["next_periodic_check_at"] = now + self.refresh_seconds
-            if clear_expired_manual_hold and bool(state.get("manual_hold")):
+            # Expired manual holds disappear only after a successful live probe.
+            # Time passing alone never turns Codex back on.
+            if bool(state.get("manual_hold")):
                 hold_until = _epoch(state.get("manual_hold_until"))
                 if hold_until is not None and hold_until <= now:
                     state["manual_hold"] = False
                     state["manual_hold_until"] = None
         return self._update(observed)
 
-    def note_subscription_failure(self, reason: str = "subscription_limit") -> dict[str, Any]:
+    def note_subscription_failure(
+        self,
+        reason: str = "subscription_limit",
+    ) -> dict[str, Any]:
         now = int(self.clock())
 
         def blocked(state: dict[str, Any]) -> None:
@@ -308,7 +309,7 @@ class CodexAvailabilityGate:
             state["last_check_source"] = "execution_failure"
             state["last_error"] = None
         self._update(blocked)
-        # Best effort live read obtains the provider's real resets_at.  The flag
+        # Best effort live read obtains the provider's real resets_at. The flag
         # is already false before this potentially failing diagnostic call.
         return self.refresh(source="execution_failure_refresh")
 
@@ -346,6 +347,7 @@ class CodexAvailabilityGate:
 
     def _next_due(self, state: Mapping[str, object], now: float) -> float:
         candidates: list[float] = []
+        last_checked = _epoch(state.get("last_checked_at")) or 0
         periodic = _epoch(state.get("next_periodic_check_at"))
         if periodic is not None:
             candidates.append(float(periodic))
@@ -353,17 +355,17 @@ class CodexAvailabilityGate:
             candidates.append(now)
         if state.get("provider_available") is False:
             recovery = _epoch(state.get("codex_available_at"))
-            if recovery is not None:
+            if recovery is not None and last_checked < recovery:
                 candidates.append(float(recovery))
         if bool(state.get("manual_hold")):
             hold_until = _epoch(state.get("manual_hold_until"))
-            if hold_until is not None:
+            if hold_until is not None and last_checked < hold_until:
                 candidates.append(float(hold_until))
         return min(candidates) if candidates else now + self.refresh_seconds
 
     def _background_loop(self) -> None:
-        # Startup probe establishes the first real dynamic value and also starts
-        # the independent five-hour cadence.
+        # Startup probe establishes the first real dynamic value and starts the
+        # independent five-hour cadence.
         self.refresh(source="startup", periodic=True)
         while True:
             self._wake.clear()
@@ -377,12 +379,15 @@ class CodexAvailabilityGate:
                 state = self.status()
                 now = self.clock()
 
+            last_checked = _epoch(state.get("last_checked_at")) or 0
             hold_until = _epoch(state.get("manual_hold_until"))
-            if bool(state.get("manual_hold")) and hold_until is not None and hold_until <= now:
-                self.refresh(
-                    source="manual_hold_expiry",
-                    clear_expired_manual_hold=True,
-                )
+            if (
+                bool(state.get("manual_hold"))
+                and hold_until is not None
+                and hold_until <= now
+                and last_checked < hold_until
+            ):
+                self.refresh(source="manual_hold_expiry")
                 continue
 
             recovery = _epoch(state.get("codex_available_at"))
@@ -390,6 +395,7 @@ class CodexAvailabilityGate:
                 state.get("provider_available") is False
                 and recovery is not None
                 and recovery <= now
+                and last_checked < recovery
             ):
                 self.refresh(source="provider_reset_at")
                 continue
