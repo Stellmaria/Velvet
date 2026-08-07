@@ -398,3 +398,15 @@ Durable media delivery PR #488 остаётся единственным product
 
 Repository implementation #457 завершена этим срезом, но live provider/Telegram acceptance остаётся #410/#412. Зелёный CI не подтверждает production restart, CDN/expired URL или no-double-charge matrix.
 <!-- /issue-457-legacy-delivery-retirement -->
+
+<!-- pr-663-byesu-image-quality-architecture-slice -->
+## Срез Byesu GPT Image quality PR #663 от 7 августа 2026 года
+
+Текущий воспроизводимый архитектурный срез после синхронизации с retirement #457:
+
+- package production modules: **656**;
+- inventoried functions: **3830**;
+- registered transitional private accesses: **180**;
+- blocking known contracts: **0**;
+- #457 уже объединён в `main`; live provider и Telegram acceptance для нового GPT Image маршрута остаются отдельными эксплуатационными проверками.
+<!-- /pr-663-byesu-image-quality-architecture-slice -->
