@@ -51,6 +51,26 @@ def decode_json_object(value: Any) -> dict[str, Any]:
 class TelegramStorageRepository(BaseTelegramStorageRepository):
     """Storage repository with codec-independent backup metadata decoding."""
 
+    async def latest_object_id_by_logical_key(
+        self,
+        kind: str,
+        logical_key: str,
+    ) -> int | None:
+        async with self._database.acquire() as connection:
+            value = await connection.fetchval(
+                """
+                SELECT id
+                FROM telegram_storage_objects
+                WHERE storage_kind = $1::VARCHAR
+                  AND logical_key = $2::TEXT
+                ORDER BY migrated_at DESC, id DESC
+                LIMIT 1
+                """,
+                kind,
+                logical_key,
+            )
+        return int(value) if value is not None else None
+
     async def list_backup_backfill(
         self,
         backup_dir: Path,
