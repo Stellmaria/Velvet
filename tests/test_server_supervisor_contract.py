@@ -154,6 +154,21 @@ class ServerSupervisorContractTests(unittest.TestCase):
         self.assertNotIn('docker pull "$rollback_bot_image"', self.deploy)
         self.assertNotIn('docker pull "$previous_bot_image" >&2 || true', self.deploy)
 
+    def test_local_build_overrides_digest_config_with_buildable_tag(self) -> None:
+        fallback = self.deploy.split('if [[ -n "$IMAGE_OVERRIDE" ]]', 2)[2]
+        self.assertIn(
+            'local_build_image="velvet-bot:deploy-${target_sha:0:12}"', fallback
+        )
+        self.assertIn('export VELVET_IMAGE="$local_build_image"', fallback)
+        self.assertLess(
+            fallback.index('export VELVET_IMAGE="$local_build_image"'),
+            fallback.index('"${compose[@]}" build --pull bot'),
+        )
+        self.assertIn(
+            "Docker Compose cannot use a digest\n  # reference as a build output tag",
+            fallback,
+        )
+
     def test_deploy_rollback_requires_health_and_smoke(self) -> None:
         rollback = self.deploy.split("rollback_code() {", 1)[1].split(
             "trap rollback_code", 1
