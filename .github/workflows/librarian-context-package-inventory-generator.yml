@@ -1,0 +1,51 @@
+name: Temporary package inventory trusted generator
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-package-inventory:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'fix/librarian-context-budget'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact PR branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Regenerate package architecture snapshots
+        run: >-
+          python scripts/inventory_package_architecture.py
+          --write
+          --label p1-package-architecture-baseline
+
+      - name: Commit generated snapshots only
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md; then
+            echo "Package architecture snapshots are already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md
+          git commit -m "Refresh package architecture inventory"
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
