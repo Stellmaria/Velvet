@@ -89,12 +89,12 @@ def test_systemd_permission_preflight_covers_image_runners() -> None:
         "byesu_image_routing_policy.py",
         "codex_image_limit_preflight.py",
         "codex_image_high_res_export.py",
-        "prepare_image_secret_env.py",
     ):
         runtime_path = f"/deploy/hermes-coders/{runtime_source}"
         assert unit.count(runtime_path) == 2
 
-    # The provider smoke is normalized twice and also executed after start/reload.
+    # Host-only helpers are normalized twice and executed on start/reload.
+    assert unit.count("/deploy/hermes-coders/prepare_image_secret_env.py") == 4
     assert unit.count("/deploy/hermes-coders/image_provider_smoke.py") == 4
 
 
