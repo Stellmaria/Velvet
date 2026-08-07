@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import stat
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CODERS = ROOT / "deploy" / "hermes-coders"
+ENTITIES = ROOT / "deploy" / "hermes-entities"
 LAUNCHER = ROOT / "deploy" / "hermes-sandbox-launcher"
 SYSTEMD = ROOT / "deploy" / "systemd"
 
@@ -81,10 +83,17 @@ class SandboxDeploymentContractTests(unittest.TestCase):
             launcher,
         )
         self.assertIn("EnvironmentFile=/srv/hermes-coders/launcher-secrets.env", launcher)
+        self.assertIn("RuntimeDirectory=hermes-sandbox-private", launcher)
+        self.assertIn("RuntimeDirectoryMode=0700", launcher)
+        self.assertIn("ReadWritePaths=/run/hermes-sandbox-private", launcher)
         self.assertIn("NoNewPrivileges=yes", launcher)
         self.assertIn("RestrictAddressFamilies=AF_UNIX", launcher)
         self.assertIn("SocketGroup=hermes-sandbox", socket_unit)
         self.assertIn("SocketMode=0660", socket_unit)
+
+    def test_entity_reconciler_is_executable(self) -> None:
+        mode = (ENTITIES / "reconcile.sh").stat().st_mode
+        self.assertTrue(mode & stat.S_IXUSR)
 
     def test_runtime_code_has_single_fixed_boundary(self) -> None:
         contract = (LAUNCHER / "launcher_contract.py").read_text(encoding="utf-8")
