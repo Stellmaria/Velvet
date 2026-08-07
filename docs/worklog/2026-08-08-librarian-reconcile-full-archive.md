@@ -3,7 +3,7 @@
 - Дата: 2026-08-08
 - ID: librarian-reconcile-full-archive-20260808
 - Линия/фаза: Arthur / Storage Librarian production hardening
-- Статус: в работе
+- Статус: `частично`
 - Ветка: `fix/librarian-reconcile-tmp`
 - Базовый commit: `c6f0544730aed289b4d105a01389d15c53b1e9f1`
 
@@ -16,9 +16,9 @@
 3. добавить явный bounded режим полного архивного анализа через локальный Ollama;
 4. не превращать full archive в массовый enqueue одной транзакцией.
 
-### Production evidence
+### Исходный контекст
 
-На production checkout `8e77885c676c51fbae49e513c28265e8a45b7e47` первый fixed reconcile завершился ошибкой:
+На production checkout `8e77885c676c51fbae49e513c28265e8a45b7e47` fixed reconcile завершился ошибкой:
 
 ```text
 Velvet Librarian profile preparation failed: Отсутствует SOUL.md, AGENTS.md или context-manifest.json Velvet Librarian.
@@ -38,64 +38,88 @@ Velvet Librarian profile preparation failed: Отсутствует SOUL.md, AGE
 - context `8192`, output `384`, heartbeat present;
 - ручной Telegram acceptance Arthur: успешно.
 
-### Причина
+Пользователь после успешной ручной acceptance явно запросил полный архивный анализ через локальный Ollama и включение фонового режима. Существующий `enable_afk.sh` намеренно работал только `new-only`, фиксируя текущий максимальный Storage ID как cutoff, поэтому этот режим нельзя было использовать как скрытый full backfill.
 
-Это namespace boundary, а не повреждение context pack. Ослаблять unit до `PrivateTmp=false` не требуется.
+### Планируемый объём
 
-## Планируемый контракт
+- Оставить `PrivateTmp=true` в systemd unit.
+- Создавать host-visible reconcile temp внутри уже разрешённого `/srv/hermes-operator-control/reconcile-state` и передавать его дочерним installer-процессам через `TMPDIR`.
+- Сохранить AFK `new-only` как отдельный fail-closed режим с ненулевым cutoff.
+- Добавить отдельный opt-in full-archive режим с `AUTO_BACKFILL=true` и `AUTO_MIN_OBJECT_ID=0`.
+- Использовать существующий `StorageLibrarianRepository.enqueue_pending(..., limit=batch_size)` вместо массового enqueue всего архива.
+- По умолчанию обрабатывать один объект за цикл через `OllamaStorageAnalysisClient` и локальный `http://ollama-librarian:11434`.
+- Сохранить encryption, size, kind и unsupported-content ограничения.
+- Оставить Arthur container без второго фонового scheduler; background mode живёт в основном Velvet bot process.
+- Обновить operator scripts, status text, env example, runbook и regression tests.
 
-### Reconcile temp
+### Критерии готовности
 
-`host_reconcile_entrypoint.py` создаёт private mode `0700` temp directory внутри уже разрешённого host-visible reconcile state boundary и передаёт его дочерним process через `TMPDIR`.
+- `PrivateTmp=true` остаётся в systemd unit.
+- Reconcile child process получает host-visible `TMPDIR` внутри reconcile-state boundary.
+- Regression test фиксирует PrivateTmp/Docker bind boundary.
+- New-only script явно устанавливает `STORAGE_LIBRARIAN_AUTO_BACKFILL=false`.
+- Full-archive script включает `STORAGE_LIBRARIAN_AUTO_ENQUEUE=true`, `STORAGE_LIBRARIAN_AUTO_BACKFILL=true`, `STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID=0`, требует local Ollama и batch `1` по умолчанию.
+- Scheduler при backfill использует bounded `enqueue_pending`, а не mass enqueue.
+- `/storage_librarian` различает `AFK new-only` и `AFK full-archive`.
+- Disable script выключает оба background режима.
+- Protected CI зелёный на exact integrated PR head.
+- Merge выполняется без обхода branch protection.
 
-`PrivateTmp=true` остаётся включённым.
-
-### Full archive
-
-Полный архив включается только отдельным explicit opt-in:
-
-```dotenv
-STORAGE_LIBRARIAN_AUTO_ENQUEUE=true
-STORAGE_LIBRARIAN_AUTO_BACKFILL=true
-STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID=0
-```
-
-Scheduler в этом режиме:
-
-- использует обычный `StorageLibrarianRepository`;
-- вызывает bounded `enqueue_pending(..., limit=batch_size)`;
-- затем выполняет одну `process_once(auto_enqueue=false)` итерацию;
-- по умолчанию batch `1`, interval `60` секунд;
-- analysis client остаётся `OllamaStorageAnalysisClient`;
-- cloud fallback для analysis не добавляется;
-- encrypted/unsupported/oversized objects остаются исключены;
-- текущий manual allowlist определяет поддерживаемые archive kinds;
-- mode можно остановить `disable_afk.sh` без остановки Ollama и ручных команд.
-
-New-only AFK остаётся отдельным режимом с `AUTO_BACKFILL=false` и ненулевым cutoff.
-
-## Риски и ограничения
+### Риски и ограничения
 
 - Full archive может работать долго на CPU-only inference; это ожидаемо.
-- Увеличение batch/concurrency ради скорости не является частью изменения.
+- Увеличение batch/concurrency ради скорости не входит в изменение.
 - Успешные analysis reports могут постепенно заполнять Hermes Reports, если publication включена.
 - Vision-only содержимое не становится поддержанным этим изменением; vision остаётся отдельной задачей.
-- Full archive не обходит encryption, size и allowed-kind boundaries.
-- Production deployment после merge должен сохранить source/image provenance; изменение env включается только после доставки соответствующего application image.
-
-## Критерии готовности
-
-- `PrivateTmp=true` остаётся в systemd unit;
-- reconcile child process получает host-visible `TMPDIR`;
-- regression test фиксирует этот boundary;
-- new-only script явно сбрасывает archive backfill flag;
-- full-archive script включает `AUTO_ENQUEUE=true` и `AUTO_BACKFILL=true`, требует local Ollama и batch=1 по умолчанию;
-- scheduler при backfill использует `enqueue_pending`, а не mass enqueue;
-- status различает `AFK new-only` и `AFK full-archive`;
-- disable script выключает оба background режима;
-- protected CI зелёный на exact PR head;
-- merge выполняется только после зелёного CI.
+- Full archive не обходит encryption, size, allowed-kind и unsupported-content boundaries.
+- Production env нельзя переключать в full-backfill до доставки application image, содержащего новый scheduler contract.
+- Repo merge сам по себе не является production deployment; rollout и включение backfill требуют отдельной проверки source/image provenance.
 
 ## После завершения
 
-Заполнить final PR/head/merge SHA и production rollout evidence после protected CI и merge.
+### Фактически сделано
+
+- `deploy/hermes-reconcile/host_reconcile_entrypoint.py` создаёт `reconcile-state/tmp` с mode `0700` и передаёт этот host-visible path как `TMPDIR` фиксированным дочерним reconcile-командам.
+- Systemd sandbox не ослаблен: `PrivateTmp=true` сохранён.
+- `deploy/hermes-librarian/enable_afk.sh` теперь явно оставляет `AUTO_BACKFILL=false` и сохраняет new-only cutoff contract.
+- Добавлен `deploy/hermes-librarian/enable_full_archive.sh` с local-Ollama gate, `AUTO_ENQUEUE=true`, `AUTO_BACKFILL=true`, min object `0`, batch `1` и interval `60` секунд по умолчанию.
+- `disable_afk.sh` выключает и enqueue, и backfill flags.
+- Main bot scheduler различает new-only и full-archive; full mode использует bounded `enqueue_pending(..., limit=batch_size)` и затем одну `process_once(auto_enqueue=false)` итерацию.
+- Status показывает активный full-archive режим, локальный Ollama, batch и interval.
+- Arthur compose не получает второй scheduler; его hardcoded `STORAGE_LIBRARIAN_AUTO_ENQUEUE=false` не изменён.
+- Обновлены env example, runbook и regression contracts.
+
+### Миграции и совместимость
+
+SQL migrations отсутствуют. Существующие analysis rows и Telegram Storage schema не меняются. Новый `STORAGE_LIBRARIAN_AUTO_BACKFILL` является opt-in env flag с безопасным default `false`.
+
+Старый new-only режим остаётся совместимым: `AUTO_BACKFILL=false` требует ненулевой cutoff. Нулевой cutoff разрешён только при явном `AUTO_BACKFILL=true`.
+
+Production `.env.server` с legacy `STORAGE_LIBRARIAN_MAX_TEXT_CHARS=120000` остаётся допустимым; effective runtime limit продолжает clamp до `11520` для standard context/output settings.
+
+### Проверки
+
+- Production workaround с host-visible `TMPDIR` уже подтвердил фактическую причину и успешный Librarian install.
+- Manual Arthur Telegram acceptance на production прошла до repo fix.
+- `tests/test_hermes_reconcile_checkout_entrypoint.py` проверяет host-visible TMPDIR при сохранённом `PrivateTmp=true`.
+- `tests/test_storage_librarian_afk.py` проверяет явное разделение new-only/full-archive, local Ollama gate, bounded batch и disable contract.
+- `type check` на integrated head `3490c46b1c73a1e40a61caccc83b9700cf10583f` завершился успешно.
+- Остальные protected checks должны завершиться на следующем exact head после исправления worklog contract.
+
+### PR и commit
+
+- PR: `#714` — `Fix Librarian reconcile temp and add bounded full archive`.
+- Ветка: `fix/librarian-reconcile-tmp`.
+- Integrated merge-with-main head до worklog fix: `3490c46b1c73a1e40a61caccc83b9700cf10583f`.
+- Финальный PR head и squash merge commit будут зафиксированы GitHub после terminal success protected CI.
+
+### Незавершённое
+
+- Protected CI ещё не завершён на финальном head.
+- PR ещё не merged.
+- Production ещё не получил новый scheduler code.
+- `STORAGE_LIBRARIAN_AUTO_ENQUEUE=true` и `STORAGE_LIBRARIAN_AUTO_BACKFILL=true` ещё не должны включаться на production до доставки нового application runtime.
+
+### Следующий шаг
+
+Дождаться terminal success всех required checks на exact PR head, при необходимости синхронизировать ветку с актуальным `main`, выполнить squash merge #714 без обхода branch protection, затем штатно обновить production application и включить `sudo bash deploy/hermes-librarian/enable_full_archive.sh` с последующей проверкой local Ollama route, batch `1`, queue progress и health Arthur/Librarian services.
