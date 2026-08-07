@@ -31,10 +31,10 @@ services:
       # Actual order is selected from immutable requested_tier.
       CODEX_PROVIDER_FALLBACK_MODELS: gpt-5.4-mini,gpt-5.6-terra,gpt-5.6-luna
       CODEX_PRIMARY_COOLDOWN_SECONDS: "1800"
-      # Every image quality is Codex-first. A fresh live subscription check runs
-      # before creative generation; only an explicit exhaustion enters Byesu.
-      CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED: "${CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED:-true}"
-      CODEX_IMAGE_LIMIT_PREFLIGHT_TIMEOUT_SECONDS: "${CODEX_IMAGE_LIMIT_PREFLIGHT_TIMEOUT_SECONDS:-3}"
+      # One persistent dynamic flag gates every primary Codex attempt. A quiet
+      # live quota refresh runs independently every five hours and also at the
+      # provider's reported recovery timestamp.
+      CODEX_AVAILABILITY_REFRESH_SECONDS: "18000"
       CODEX_IMAGE_BYESU_FALLBACK_ENABLED: "${CODEX_IMAGE_BYESU_FALLBACK_ENABLED:-false}"
       CODEX_IMAGE_BYESU_BASE_URL: "${CODEX_IMAGE_BYESU_BASE_URL:-https://byesu.com/v1}"
       CODEX_IMAGE_BYESU_TIMEOUT_SECONDS: "${CODEX_IMAGE_BYESU_TIMEOUT_SECONDS:-600}"
@@ -49,6 +49,8 @@ services:
       - ./codex_provider_chain_runner.py:/app/codex_provider_chain_runner.py:ro
       - ./codex_tier_runner.py:/app/codex_tier_runner.py:ro
       - ./codex_launcher_runner.py:/app/codex_launcher_runner.py:ro
+      - ./codex_availability.py:/app/codex_availability.py:ro
+      - ./codex_availability_ctl.py:/app/codex_availability_ctl.py:ro
       - ./codex_image_runner.py:/app/codex_image_runner.py:ro
       - ./byesu_image_fallback.py:/app/byesu_image_fallback.py:ro
       - ./byesu_image_routing_policy.py:/app/byesu_image_routing_policy.py:ro
@@ -74,10 +76,10 @@ services:
       # Actual order is selected from immutable requested_tier.
       CODEX_PROVIDER_FALLBACK_MODELS: gpt-5.4-mini,gpt-5.6-terra,gpt-5.6-luna
       CODEX_PRIMARY_COOLDOWN_SECONDS: "1800"
-      # Max imports shared modules but has neither image provider fallback nor
-      # Media Gen credential.
+      CODEX_AVAILABILITY_REFRESH_SECONDS: "18000"
+      # Max imports shared image modules but has neither image provider fallback
+      # nor Media Gen credential.
       CODEX_IMAGE_BYESU_FALLBACK_ENABLED: "false"
-      CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED: "false"
     volumes:
       - ./codex_runner.py:/app/codex_runner.py:ro
       - ./codex_routed_runner.py:/app/codex_routed_runner.py:ro
@@ -86,6 +88,8 @@ services:
       - ./codex_provider_chain_runner.py:/app/codex_provider_chain_runner.py:ro
       - ./codex_tier_runner.py:/app/codex_tier_runner.py:ro
       - ./codex_launcher_runner.py:/app/codex_launcher_runner.py:ro
+      - ./codex_availability.py:/app/codex_availability.py:ro
+      - ./codex_availability_ctl.py:/app/codex_availability_ctl.py:ro
       - ./codex_image_runner.py:/app/codex_image_runner.py:ro
       - ./byesu_image_fallback.py:/app/byesu_image_fallback.py:ro
       - ./byesu_image_routing_policy.py:/app/byesu_image_routing_policy.py:ro
