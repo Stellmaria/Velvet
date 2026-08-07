@@ -235,20 +235,22 @@ def build_worker_manager(
             max_attempts=settings.ai_vision_max_attempts,
         )
         ai_service.set_cache_chat_id(cache_chat_id)
-        quality_service = CalibratedAIQualityService(
-            bot=bot,
-            repository=ResilientAIQualityRepository(database),
-            calibration_repository=QualityCalibrationRepository(database),
-            client=QualityVisionClient(
-                provider=settings.ai_vision_provider,
-                base_url=settings.ai_vision_base_url,
-                model=settings.ai_vision_model,
-                api_key=(settings.ai_vision_api_key),
-                timeout_seconds=settings.ai_vision_timeout_seconds,
-            ),
-            max_attempts=settings.ai_vision_max_attempts,
-        )
-        quality_service.set_cache_chat_id(cache_chat_id)
+        quality_service: CalibratedAIQualityService | None = None
+        if _env_enabled("AI_QUALITY_ENABLED"):
+            quality_service = CalibratedAIQualityService(
+                bot=bot,
+                repository=ResilientAIQualityRepository(database),
+                calibration_repository=QualityCalibrationRepository(database),
+                client=QualityVisionClient(
+                    provider=settings.ai_vision_provider,
+                    base_url=settings.ai_vision_base_url,
+                    model=settings.ai_vision_model,
+                    api_key=(settings.ai_vision_api_key),
+                    timeout_seconds=settings.ai_vision_timeout_seconds,
+                ),
+                max_attempts=settings.ai_vision_max_attempts,
+            )
+            quality_service.set_cache_chat_id(cache_chat_id)
         workspace_quality_router = build_vision_cascade_router(
             settings=settings,
             database=database,
@@ -300,14 +302,15 @@ def build_worker_manager(
                     ),
                 )
             )
-        manager.register(
-            PeriodicWorkerSpec(
-                name="ai-quality",
-                description="Qwen-проверка качества изображений",
-                interval_seconds=10,
-                runner=partial(_run_ai_locked, ai_lock, quality_service.process_once),
+        if quality_service is not None:
+            manager.register(
+                PeriodicWorkerSpec(
+                    name="ai-quality",
+                    description="Qwen-проверка качества изображений",
+                    interval_seconds=10,
+                    runner=partial(_run_ai_locked, ai_lock, quality_service.process_once),
+                )
             )
-        )
         manager.register(
             PeriodicWorkerSpec(
                 name="workspace-qwen-quality",
