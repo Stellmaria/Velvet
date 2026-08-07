@@ -2,24 +2,35 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
+
+from velvet_bot.calibrated_ai_quality import CalibratedAIQualityService
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-class VLQualityWorkerGateTests(unittest.TestCase):
-    def test_background_quality_worker_is_behind_explicit_gate(self) -> None:
-        source = (ROOT / "velvet_bot/app/workers.py").read_text(encoding="utf-8")
-        gate = 'if _env_enabled("AI_QUALITY_ENABLED"):'
-        service = "quality_service = CalibratedAIQualityService("
-        registration = 'name="ai-quality"'
+class VLQualityWorkerGateTests(unittest.IsolatedAsyncioTestCase):
+    async def test_background_quality_processing_is_fail_closed(self) -> None:
+        service = object.__new__(CalibratedAIQualityService)
+        service._background_enabled = False
+        service._provider_available = AsyncMock(return_value=True)
+        service._repository = SimpleNamespace(claim_targets=AsyncMock())
 
-        self.assertIn(gate, source)
-        self.assertIn(service, source)
-        self.assertIn(registration, source)
-        self.assertLess(source.index(gate), source.index(service))
-        self.assertLess(source.index(service), source.index(registration))
-        self.assertIn("if quality_service is not None:", source)
+        processed = await service.process_once()
+
+        self.assertEqual(0, processed)
+        service._provider_available.assert_not_awaited()
+        service._repository.claim_targets.assert_not_awaited()
+
+    def test_quality_gate_defaults_to_disabled(self) -> None:
+        from velvet_bot.calibrated_ai_quality import _quality_worker_enabled
+
+        with patch.dict("os.environ", {}, clear=True):
+            self.assertFalse(_quality_worker_enabled())
+        with patch.dict("os.environ", {"AI_QUALITY_ENABLED": "true"}, clear=True):
+            self.assertTrue(_quality_worker_enabled())
 
     def test_quality_gate_defaults_to_disabled_in_env_examples(self) -> None:
         for relative_path in (".env.server.example", ".env.vision-local.example"):
