@@ -1,28 +1,23 @@
 # Kael tools and coder ledger ownership hotfix
 
-Date: 2026-08-08
+- Дата: 2026-08-08
+- ID: kael-tools-ledger-ownership-hotfix
+- Линия/фаза: Hermes operator and coder orchestration production reliability
+- Статус: `завершено`
+- Ветка: `hotfix/kael-tools-ledger-ownership`
+- Базовый commit: `328749227e26a8bfc8fc39447bf9782b9b040f2a`
 
-## Incident
+## Перед началом
 
-Production Hermes remained healthy, and `coderctl health all` returned authenticated coder capabilities, but Kael could not execute canonical operator tools after orchestration reconciliation. Inside the Hermes container the persisted data directory was owned by the Hermes runtime UID/GID `10000:10000`, while `/opt/data/tools` and `coderctl.py` had been reassigned to the host service user's `1000:1000` ownership. With mode `0750` on the directory and `0500` on `coderctl.py`, UID 10000 received `Permission denied`.
+### Цель
 
-The same orchestration installer also reassigned `/opt/data/orchestration` to the host service user. That is more dangerous than the health symptom because `coderctl submit` sends a run to the central router before persisting its local task ledger. A writable router with an unwritable local ledger can therefore create an upstream run that Kael cannot record or subsequently address by task ID.
+Устранить production regression, из-за которого orchestration installer менял владельца persistent Kael tools и coder ledger на host service UID/GID, лишая Hermes runtime доступа к canonical operator clients и возможности безопасно фиксировать delegated coder tasks.
 
-## Root cause
+### Исходный контекст
 
-`deploy/hermes-orchestration/install.sh` derived ownership from `VELVET_DATA_DIR` instead of from the existing Hermes data directory. On production those owners differ: the application data parent belongs to the host service user, while the bind-mounted Hermes data directory belongs to the container runtime identity.
+Production Velvet, Hermes, coder agents и coder router были healthy. Read-only `coderctl health all` успешно возвращал authenticated capabilities, но Kael получал `Permission denied` на `/opt/data/tools/opsctl.py`, `monitorctl.py` и `reconcilectl.py`.
 
-## Fix
-
-- Derive `hermes_uid` and `hermes_gid` from the existing `$hermes_data` directory.
-- Preserve those owners for `$hermes_data/tools`, `$hermes_data/orchestration`, and the installed `coderctl.py`.
-- Fail closed if the expected Hermes data directory does not exist instead of recreating it under an unrelated owner.
-- Add `Ledger.ensure_writable()` to `coderctl.py` and run it before the first router submit. The preflight validates the ledger/lock can be accessed and that the ledger directory supports the temporary-file/replace write pattern used by persistence.
-- Add regression coverage proving orchestration ownership comes from `$hermes_data`, and proving an unwritable ledger prevents any router submit.
-
-## Production evidence before the fix
-
-Observed inside `velvet-hermes-1`:
+Read-only inspection внутри `velvet-hermes-1` показал:
 
 ```text
 10000:10000 700 /opt/data
@@ -33,8 +28,67 @@ Observed inside `velvet-hermes-1`:
 1000:1000 500 /opt/data/tools/coderctl.py
 ```
 
-A bounded runtime repair restored `/opt/data/tools` and `coderctl.py` to `10000:10000`; execution as the Hermes user then returned `KAEL_TOOLS_OK`. The repository fix prevents the next orchestration installation from reintroducing the ownership mismatch.
+После bounded runtime repair `/opt/data/tools` и `coderctl.py` снова принадлежали `10000:10000`, а запуск canonical tools под UID 10000 завершился `KAEL_TOOLS_OK`.
 
-## Safety
+Root cause найден в `deploy/hermes-orchestration/install.sh`: installer определял owner по родительскому `VELVET_DATA_DIR`, который на production принадлежит host service user, хотя сам persisted Hermes data directory принадлежит Hermes runtime.
 
-This change does not broaden Kael permissions, grant production privileges to coder agents, alter router authentication, or weaken fail-closed delegation. It restores the existing Hermes runtime ownership boundary and adds a pre-submit local durability gate.
+Дополнительно `coderctl submit` отправлял задачу central router до локального `ledger.upsert`, поэтому при unwritable ledger был возможен upstream run без локальной durable task record.
+
+### Планируемый объём
+
+- Определять UID/GID Kael runtime по существующему `$hermes_data`, а не по его родительскому каталогу.
+- Сохранять этот owner для `$hermes_data/tools`, `$hermes_data/orchestration` и `coderctl.py`.
+- Fail closed, если expected Hermes data directory отсутствует.
+- Добавить local ledger write preflight до первого network submit в `coderctl.py`.
+- Добавить regression coverage для ownership contract и fail-closed submit ordering.
+- Не менять router authentication, coder production privileges или production deployment semantics.
+
+### Критерии готовности
+
+- Orchestration installer больше не использует owner `VELVET_DATA_DIR` для Kael persistent tools/ledger.
+- `coderctl submit` не вызывает router при failed ledger write preflight.
+- Probe preflight не оставляет временные файлы.
+- Existing typed router contract не меняется.
+- Protected CI checks проходят на final PR head.
+
+### Риски и ограничения
+
+- Изменение ownership должно сохранять существующую Hermes runtime boundary, а не расширять permissions.
+- Проверка ledger должна происходить до network submit, иначе возможен orphaned upstream run.
+- Production deploy/reconcile не входит в этот PR и выполняется отдельно после merge при явном owner authorization.
+- Значения production secrets в worklog не фиксируются.
+
+## После завершения
+
+### Фактически сделано
+
+- `deploy/hermes-orchestration/install.sh` теперь требует существующий `$hermes_data`, читает `hermes_uid`/`hermes_gid` непосредственно с него и сохраняет этот owner для tools, orchestration ledger directory и установленного `coderctl.py`.
+- `deploy/hermes-operator/coderctl.py` получил `Ledger.ensure_writable()`.
+- Перед central router submit `coderctl` теперь проверяет доступ к lock/ledger и возможность создать временный файл в ledger directory.
+- При local ledger permission failure submit fail-closed завершается до network mutation.
+- Добавлен focused regression test `tests/test_kael_tools_ledger_ownership_hotfix.py`.
+
+### Миграции и совместимость
+
+SQL migrations отсутствуют. API router schema, authentication и coder routing metadata не менялись. Изменение совместимо с существующим persisted Hermes data: owner берётся из уже существующего каталога и не задаётся новым hardcoded UID.
+
+### Проверки
+
+- Production runtime evidence: после bounded owner repair все четыре canonical tools успешно исполнялись под `uid=10000(hermes)` и вернули `KAEL_TOOLS_OK`.
+- PR regression coverage проверяет owner source, отсутствие старого `velvet_uid`/`velvet_gid` contract и fail-closed ordering перед `RouterClient.submit`.
+- Protected GitHub CI запущен на PR #708; первый notes run выявил только несоответствие формату worklog, после чего запись приведена к обязательному project-notes contract.
+
+### PR и commit
+
+- PR: #708 `Fix Kael tool and coder ledger ownership`
+- Ветка: `hotfix/kael-tools-ledger-ownership`
+- Base: `328749227e26a8bfc8fc39447bf9782b9b040f2a`
+- Final merge commit фиксируется GitHub после успешных protected checks и merge.
+
+### Незавершённое
+
+Production ещё работает на предыдущем checkout. Репозиторный fix после merge потребует отдельного штатного rollout/reconcile и повторного typed read-only canary. Эти production mutations не входят в текущий GitHub change.
+
+### Следующий шаг
+
+Дождаться всех protected CI checks PR #708, устранить только подтверждённые failures при их наличии и merge PR в `main` при полном green status. После merge отдельно обновить production canonical path и повторить read-only `coder_delegate` canary.
