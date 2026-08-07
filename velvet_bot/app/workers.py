@@ -246,7 +246,7 @@ def build_worker_manager(
                 api_key=(settings.ai_vision_api_key),
                 timeout_seconds=settings.ai_vision_timeout_seconds,
             ),
-            max_attempts=settings.ai_vision_max_attempts,
+            max_attempts=settings.ai_vision_max_attempts, background_enabled=_env_enabled("AI_QUALITY_ENABLED"),
         )
         quality_service.set_cache_chat_id(cache_chat_id)
         workspace_quality_router = build_vision_cascade_router(
