@@ -1,0 +1,157 @@
+name: production server supervisor log diagnostic
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/production-server-supervisor-log-diagnostic.yml
+
+concurrency:
+  group: velvet-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose-supervisor-update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - name: Prepare SSH
+        shell: bash
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Read bounded redacted Supervisor update failure record
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
+          EXPECTED_PROD_HEAD: 0dceb104a8d5c6a1a25dda07c708b916f2e9439f
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          port="${DEPLOY_PORT:-22}"
+          app_dir="${DEPLOY_APP_DIR:-/srv/velvet}"
+          printf -v remote_command 'APP_DIR=%q EXPECTED_PROD_HEAD=%q bash -s' "$app_dir" "$EXPECTED_PROD_HEAD"
+          ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command" <<'REMOTE'
+          set -Eeuo pipefail
+          cd "$APP_DIR"
+
+          branch="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
+          head="$(git rev-parse HEAD)"
+          dirty="$(git status --porcelain --untracked-files=no)"
+          printf 'branch=%s\nhead=%s\n' "$branch" "$head"
+          test "$branch" = main
+          test "$head" = "$EXPECTED_PROD_HEAD"
+          test -z "$dirty"
+
+          data_dir="$(python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('.env.server')
+          value = '/srv/velvet/data'
+          if path.exists():
+              for raw in path.read_text(encoding='utf-8').splitlines():
+                  line = raw.strip()
+                  if not line or line.startswith('#') or '=' not in line:
+                      continue
+                  key, raw_value = line.split('=', 1)
+                  if key.strip() == 'VELVET_DATA_DIR':
+                      candidate = raw_value.strip().strip('"').strip("'")
+                      if candidate:
+                          value = candidate
+                      break
+          print(value)
+          PY
+          )"
+          log_path="$data_dir/logs/server-supervisor.log"
+          test -f "$log_path"
+          test ! -L "$log_path"
+
+          python3 - "$log_path" <<'PY'
+          from __future__ import annotations
+
+          import re
+          import sys
+          from datetime import datetime
+          from pathlib import Path
+
+          path = Path(sys.argv[1])
+          start = datetime.fromisoformat('2026-08-07T18:52:50')
+          end = datetime.fromisoformat('2026-08-07T18:54:45')
+          stamp = re.compile(r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})(?:[,.]\d+)?')
+          records: list[tuple[datetime | None, list[str]]] = []
+          current_time: datetime | None = None
+          current: list[str] = []
+
+          for raw in path.read_text(encoding='utf-8', errors='replace').splitlines():
+              match = stamp.match(raw)
+              if match:
+                  if current:
+                      records.append((current_time, current))
+                  current_time = datetime.strptime(match.group(1), '%Y-%m-%d %H:%M:%S')
+                  current = [raw]
+              elif current:
+                  current.append(raw)
+          if current:
+              records.append((current_time, current))
+
+          matching_records: list[str] = []
+          fallback_window: list[str] = []
+          marker = 'Server Supervisor operation failed kind=update'
+          for timestamp, lines in records:
+              if timestamp is None or not (start <= timestamp <= end):
+                  continue
+              fallback_window.extend(lines)
+              if marker in '\n'.join(lines):
+                  matching_records.extend(lines)
+
+          selected = matching_records if matching_records else fallback_window
+
+          patterns = (
+              (re.compile(r'(?i)(authorization\s*:\s*bearer\s+)\S+'), r'\1[redacted]'),
+              (re.compile(r'(?i)((?:api[_-]?key|token|password|secret|credential)\s*[=:]\s*)\S+'), r'\1[redacted]'),
+              (re.compile(r'\b\d{6,12}:[A-Za-z0-9_-]{20,}\b'), '[telegram-token-redacted]'),
+              (re.compile(r'(?i)postgres(?:ql)?://[^@\s]+@'), 'postgresql://[redacted]@'),
+              (re.compile(r'github_pat_[A-Za-z0-9_]+'), '[github-token-redacted]'),
+              (re.compile(r'gh[opsu]_[A-Za-z0-9]+'), '[github-token-redacted]'),
+              (re.compile(r'\bsk-[A-Za-z0-9_-]{16,}\b'), '[api-key-redacted]'),
+          )
+
+          redacted: list[str] = []
+          for line in selected[:180]:
+              value = line
+              for pattern, replacement in patterns:
+                  value = pattern.sub(replacement, value)
+              redacted.append(value[:2000])
+
+          print('failed_operation=e06bcb64c2764cba')
+          print('log_window_start=2026-08-07T18:52:50Z')
+          print('log_window_end=2026-08-07T18:54:45Z')
+          print(f'failure_record_matched={bool(matching_records)}')
+          print(f'log_lines_selected={len(redacted)}')
+          if redacted:
+              print('=== redacted Server Supervisor failure evidence ===')
+              print('\n'.join(redacted))
+          else:
+              print('no_matching_log_lines=true')
+          PY
+          REMOTE
