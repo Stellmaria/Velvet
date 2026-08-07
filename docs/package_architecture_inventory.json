@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
-  "production_module_count": 657,
-  "production_loc": 144316,
+  "production_module_count": 656,
+  "production_loc": 144094,
   "layer_counts": {
     "application": 22,
     "composition": 61,
     "core": 8,
-    "domain": 188,
+    "domain": 187,
     "infrastructure": 33,
     "other": 1,
     "presentation": 218,
@@ -14457,11 +14457,11 @@
       "module": "velvet_bot.core.config.arthur",
       "layer": "core",
       "target_package": "core",
-      "loc": 163,
-      "function_count": 7,
+      "loc": 156,
+      "function_count": 6,
       "class_count": 2,
       "handler_count": 0,
-      "max_function_length": 49,
+      "max_function_length": 58,
       "branch_count": 13,
       "internal_imports": [],
       "external_import_count": 4,
@@ -14480,62 +14480,62 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 13,
+          "line": 11,
           "owner": "_required",
           "call": "os.getenv"
         },
         {
-          "line": 41,
+          "line": 39,
           "owner": "_parse_optional_int",
           "call": "os.getenv"
         },
         {
-          "line": 84,
+          "line": 68,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 86,
+          "line": 70,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 109,
+          "line": 93,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 145,
+          "line": 138,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 149,
+          "line": 142,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 80,
+          "line": 64,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 106,
+          "line": 90,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 157,
+          "line": 150,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 97,
+          "line": 81,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 118,
+          "line": 111,
           "owner": "from_env",
           "call": "os.getenv"
         }
@@ -21012,8 +21012,8 @@
       "internal_imports": [
         "velvet_bot.domains.telegram_storage",
         "velvet_bot.domains.telegram_storage.backup_repository",
-        "velvet_bot.domains.telegram_storage.integrity_service",
-        "velvet_bot.domains.telegram_storage.models"
+        "velvet_bot.domains.telegram_storage.models",
+        "velvet_bot.domains.telegram_storage.service"
       ],
       "external_import_count": 0,
       "aiogram_imports": [],
@@ -21090,8 +21090,8 @@
       "module": "velvet_bot.domains.telegram_storage.backup_repository",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 134,
-      "function_count": 3,
+      "loc": 115,
+      "function_count": 2,
       "class_count": 1,
       "handler_count": 0,
       "max_function_length": 55,
@@ -21101,8 +21101,8 @@
       ],
       "external_import_count": 6,
       "aiogram_imports": [],
-      "sql_literal_count": 2,
-      "database_acquire_count": 2,
+      "sql_literal_count": 1,
+      "database_acquire_count": 1,
       "foreign_assignment_targets": [],
       "dynamic_import_count": 0,
       "any_count": 2,
@@ -21228,42 +21228,6 @@
         "velvet_bot.domains.telegram_storage.encryption"
       ],
       "external_import_count": 7,
-      "aiogram_imports": [],
-      "sql_literal_count": 0,
-      "database_acquire_count": 0,
-      "foreign_assignment_targets": [],
-      "dynamic_import_count": 0,
-      "any_count": 0,
-      "cast_count": 0,
-      "type_ignore_count": 0,
-      "method_assign_ignore_count": 0,
-      "install_definitions": [],
-      "install_calls": [],
-      "installed_sentinel_count": 0,
-      "package_getattr": false,
-      "env_reads": [],
-      "polling_values": [],
-      "worker_registrations": [],
-      "violations": []
-    },
-    {
-      "path": "velvet_bot/domains/telegram_storage/integrity_service.py",
-      "module": "velvet_bot.domains.telegram_storage.integrity_service",
-      "layer": "domain",
-      "target_package": "domain",
-      "loc": 223,
-      "function_count": 3,
-      "class_count": 1,
-      "handler_count": 0,
-      "max_function_length": 118,
-      "branch_count": 13,
-      "internal_imports": [
-        "velvet_bot.domains.telegram_storage.files",
-        "velvet_bot.domains.telegram_storage.models",
-        "velvet_bot.domains.telegram_storage.repository",
-        "velvet_bot.domains.telegram_storage.service"
-      ],
-      "external_import_count": 6,
       "aiogram_imports": [],
       "sql_literal_count": 0,
       "database_acquire_count": 0,
@@ -21621,7 +21585,7 @@
       "module": "velvet_bot.domains.telegram_storage.repository",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 545,
+      "loc": 547,
       "function_count": 15,
       "class_count": 4,
       "handler_count": 0,
@@ -21666,12 +21630,12 @@
       "module": "velvet_bot.domains.telegram_storage.service",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 739,
+      "loc": 764,
       "function_count": 23,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 109,
-      "branch_count": 63,
+      "max_function_length": 119,
+      "branch_count": 68,
       "internal_imports": [
         "velvet_bot.database",
         "velvet_bot.domains.public_archive.watermark_repository",

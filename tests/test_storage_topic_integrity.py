@@ -36,7 +36,7 @@ class StorageTopicIntegrityTests(unittest.IsolatedAsyncioTestCase):
             )
             service.repository = SimpleNamespace(
                 list_backup_backfill=AsyncMock(return_value=[item]),
-                latest_object_id_by_logical_key=AsyncMock(return_value=3596),
+                get_existing=AsyncMock(return_value=SimpleNamespace(object_id=3596)),
                 mark_backup_offloaded=AsyncMock(),
             )
             service.uploader = SimpleNamespace(upload=AsyncMock())
@@ -48,7 +48,11 @@ class StorageTopicIntegrityTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(1, summary.skipped_files)
             self.assertEqual(0, summary.stored_files)
             service.uploader.upload.assert_not_awaited()
-            service.repository.latest_object_id_by_logical_key.assert_awaited_once()
+            service.repository.get_existing.assert_awaited_once_with(
+                "backups",
+                "backup:42:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                None,
+            )
             service.repository.mark_backup_offloaded.assert_awaited_once_with(42, 3596)
 
     async def test_unchanged_rework_snapshot_is_semantically_deduplicated(self) -> None:
@@ -58,7 +62,7 @@ class StorageTopicIntegrityTests(unittest.IsolatedAsyncioTestCase):
             service.settings = SimpleNamespace(staging_dir=root / "staging")
             service.repository = SimpleNamespace(
                 rework_snapshot=AsyncMock(return_value=[{"id": 1, "status": "open"}]),
-                latest_object_id_by_logical_key=AsyncMock(return_value=3597),
+                get_existing=AsyncMock(return_value=SimpleNamespace(object_id=3597)),
             )
             service._upload_candidate = AsyncMock()
             summary = MigrationSummary(run_id=1, migration_kind="resume")
@@ -69,7 +73,7 @@ class StorageTopicIntegrityTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(1, summary.skipped_files)
             self.assertEqual(0, summary.stored_files)
             service._upload_candidate.assert_not_awaited()
-            service.repository.latest_object_id_by_logical_key.assert_awaited_once()
+            service.repository.get_existing.assert_awaited_once()
             self.assertFalse((root / "staging" / "rework").exists())
 
 

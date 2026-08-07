@@ -385,6 +385,25 @@ class TelegramStorageMigrationService:
                     sha256_file,
                     item.path,
                 )
+                logical_key = f"backup:{item.run_id or item.file_name}:{source_digest}"
+                existing = await self.repository.get_existing("backups", logical_key, None)
+                if existing is not None:
+                    summary.skipped_files += 1
+                    summary.bump("backups", "skipped")
+                    if item.run_id is not None:
+                        await self.repository.mark_backup_offloaded(item.run_id, existing.object_id)
+                    if self.settings.delete_after_upload:
+                        result = await asyncio.to_thread(
+                            remove_paths,
+                            tuple(path for path in (item.path, manifest_path) if path.exists()),
+                            policy=self.settings.deletion_policy_for("backups"),
+                        )
+                        summary.deleted_files += result.deleted_count
+                        summary.freed_bytes += result.freed_bytes
+                        summary.bump("backups", "deleted", result.deleted_count)
+                        if result.complete and result.deleted_count:
+                            await self.repository.mark_local_deleted(existing.object_id)
+                    continue
                 files = {item.file_name: item.path}
                 if manifest_path.is_file():
                     files[manifest_path.name] = manifest_path
@@ -430,7 +449,7 @@ class TelegramStorageMigrationService:
                 candidate = StorageCandidate(
                     kind="backups",
                     path=encrypted_path,
-                    logical_key=f"backup:{item.run_id or item.file_name}:{source_digest}",
+                    logical_key=logical_key,
                     original_name=encrypted_path.name,
                     source_path=str(item.path),
                     mime_type="application/octet-stream",
@@ -691,6 +710,12 @@ class TelegramStorageMigrationService:
         content_hash = hashlib.sha256(
             json.dumps(rows, ensure_ascii=False, sort_keys=True).encode("utf-8")
         ).hexdigest()
+        logical_key = f"rework:snapshot:{content_hash}"
+        if await self.repository.get_existing("rework", logical_key, None) is not None:
+            self._record_discovered(summary, "rework")
+            summary.skipped_files += 1
+            summary.bump("rework", "skipped")
+            return
         snapshot = self.settings.staging_dir / "rework" / (
             f"rework-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}-{content_hash[:12]}.json"
         )
@@ -706,7 +731,7 @@ class TelegramStorageMigrationService:
         candidate = StorageCandidate(
             kind="rework",
             path=snapshot,
-            logical_key=f"rework:snapshot:{content_hash}",
+            logical_key=logical_key,
             original_name=snapshot.name,
             source_path="postgresql:media_rework_items",
             mime_type="application/json",

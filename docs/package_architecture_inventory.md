@@ -1,8 +1,8 @@
 # Package-wide architecture inventory
 
 - Generated from: `p1-package-architecture-baseline`
-- Production modules: **657**
-- Production LOC: **144316**
+- Production modules: **656**
+- Production LOC: **144094**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **46**
@@ -15,7 +15,7 @@
 - `application`: **22** modules
 - `composition`: **61** modules
 - `core`: **8** modules
-- `domain`: **188** modules
+- `domain`: **187** modules
 - `infrastructure`: **33** modules
 - `other`: **1** modules
 - `presentation`: **218** modules
