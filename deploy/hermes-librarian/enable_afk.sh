@@ -76,6 +76,7 @@ if not auto_kinds:
 
 updates = {
     "STORAGE_LIBRARIAN_AUTO_ENQUEUE": "true",
+    "STORAGE_LIBRARIAN_AUTO_BACKFILL": "false",
     "STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID": str(cutoff),
     "STORAGE_LIBRARIAN_AUTO_ALLOWED_KINDS": auto_kinds,
     "STORAGE_LIBRARIAN_AUTO_BATCH_SIZE": str(batch_size),
