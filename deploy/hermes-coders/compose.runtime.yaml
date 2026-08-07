@@ -30,7 +30,6 @@ services:
       CODEX_PROVIDER_FALLBACK_ENABLED: "true"
       # Actual order is selected from immutable requested_tier.
       CODEX_PROVIDER_FALLBACK_MODELS: gpt-5.4-mini,gpt-5.6-terra,gpt-5.6-luna
-      CODEX_PRIMARY_COOLDOWN_SECONDS: "1800"
       # One persistent dynamic flag gates every primary Codex attempt. A quiet
       # live quota refresh runs independently every five hours and also at the
       # provider's reported recovery timestamp.
@@ -75,7 +74,6 @@ services:
       CODEX_PROVIDER_FALLBACK_ENABLED: "true"
       # Actual order is selected from immutable requested_tier.
       CODEX_PROVIDER_FALLBACK_MODELS: gpt-5.4-mini,gpt-5.6-terra,gpt-5.6-luna
-      CODEX_PRIMARY_COOLDOWN_SECONDS: "1800"
       CODEX_AVAILABILITY_REFRESH_SECONDS: "18000"
       # Max imports shared image modules but has neither image provider fallback
       # nor Media Gen credential.
