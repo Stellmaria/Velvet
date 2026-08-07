@@ -77,12 +77,13 @@ class HermesImageRuntimeEnvTests(unittest.TestCase):
         with self.assertRaises(image_env.ImageRuntimeEnvError):
             image_env.build_environment(linked, {})
 
-    def test_media_secret_file_is_scoped_only_to_velvet_coder(self) -> None:
+    def test_compose_adds_no_second_secret_env_file(self) -> None:
         compose = (CODERS / "compose.runtime.yaml").read_text(encoding="utf-8")
-        velvet, maximum = compose.split("  hermes-coder-max:", 1)
-        self.assertIn("secrets/velvet-media.env", velvet)
-        self.assertNotIn("secrets/velvet-media.env", maximum)
+        self.assertNotIn("velvet-media.env", compose)
         self.assertNotIn("BYESU_MEDIA_GEN_API_KEY:", compose)
+        base = (CODERS / "compose.yaml").read_text(encoding="utf-8")
+        self.assertIn("/secrets/velvet.env", base)
+        self.assertIn("/secrets/max.env", base)
 
     def test_systemd_wraps_every_compose_lifecycle_command(self) -> None:
         unit = (ROOT / "deploy" / "systemd" / "hermes-coders.service").read_text(
