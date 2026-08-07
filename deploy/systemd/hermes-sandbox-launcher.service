@@ -7,6 +7,8 @@ After=docker.service hermes-sandbox-launcher.socket
 Type=simple
 User=root
 Group=root
+RuntimeDirectory=hermes-sandbox-private
+RuntimeDirectoryMode=0700
 Environment=PYTHONPATH=/usr/local/lib/hermes-sandbox-launcher/current
 EnvironmentFile=/srv/hermes-coders/launcher.env
 EnvironmentFile=/srv/hermes-coders/launcher-secrets.env
