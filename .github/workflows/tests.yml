@@ -98,18 +98,6 @@ jobs:
       - name: Compile Python sources
         run: python -m compileall -q main.py velvet_bot scripts tests
 
-      - name: Generate package inventory for branch repair
-        run: python scripts/inventory_package_architecture.py --write --label p1-package-architecture-baseline
-
-      - name: Upload generated package inventory
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: package-inventory-repair
-          path: |
-            docs/package_architecture_inventory.json
-            docs/package_architecture_inventory.md
-          retention-days: 1
-
       - name: Run fast architecture contracts
         shell: bash
         run: |
