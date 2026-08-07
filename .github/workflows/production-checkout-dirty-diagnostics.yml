@@ -1,0 +1,113 @@
+name: production checkout dirty diagnostics
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/production-checkout-dirty-diagnostics.yml
+
+concurrency:
+  group: velvet-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose-checkout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - name: Prepare SSH
+        shell: bash
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Read redacted checkout status paths
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          port="${DEPLOY_PORT:-22}"
+          app_dir="${DEPLOY_APP_DIR:-/srv/velvet}"
+          printf -v remote_command 'APP_DIR=%q bash -s' "$app_dir"
+          ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command" <<'REMOTE'
+          set -Eeuo pipefail
+
+          redact() {
+            python3 -c '
+          import re
+          import sys
+
+          value = sys.stdin.read()
+          patterns = (
+              (r"(?i)(authorization\s*:\s*bearer\s+)\S+", r"\1[redacted]"),
+              (r"(?i)((?:api[_-]?key|token|password)\s*[=:]\s*)\S+", r"\1[redacted]"),
+              (r"\b\d{6,12}:[A-Za-z0-9_-]{20,}\b", "[telegram-token-redacted]"),
+              (r"(?i)postgres(?:ql)?://[^@\s]+@", "postgresql://[redacted]@"),
+              (r"github_pat_[A-Za-z0-9_]+", "[github-token-redacted]"),
+              (r"gh[opsu]_[A-Za-z0-9]+", "[github-token-redacted]"),
+          )
+          for pattern, replacement in patterns:
+              value = re.sub(pattern, replacement, value)
+          sys.stdout.write(value)
+          '
+          }
+
+          cd "$APP_DIR"
+          echo "=== checkout identity ==="
+          printf 'branch=%s\n' "$(git symbolic-ref --short HEAD 2>/dev/null || echo detached)"
+          printf 'head=%s\n' "$(git rev-parse HEAD)"
+          printf 'origin_main=%s\n' "$(git rev-parse refs/remotes/origin/main)"
+
+          status_file="$(mktemp)"
+          error_file="$(mktemp)"
+          trap 'rm -f -- "$status_file" "$error_file"' EXIT
+
+          set +e
+          GIT_OPTIONAL_LOCKS=0 git status --porcelain=v1 --untracked-files=all \
+            >"$status_file" 2>"$error_file"
+          status_rc=$?
+          set -e
+
+          printf 'git_status_rc=%s\n' "$status_rc"
+          if [[ "$status_rc" != "0" ]]; then
+            echo "working_tree=unavailable"
+            sed -n '1,5p' "$error_file" | redact
+            exit 0
+          fi
+
+          if [[ ! -s "$status_file" ]]; then
+            echo "working_tree=clean"
+            echo "dirty_path_count=0"
+            exit 0
+          fi
+
+          echo "working_tree=dirty"
+          dirty_count="$(wc -l < "$status_file" | tr -d '[:space:]')"
+          printf 'dirty_path_count=%s\n' "$dirty_count"
+          echo "=== dirty status paths, max 50 ==="
+          sed -n '1,50p' "$status_file" | redact
+          if (( dirty_count > 50 )); then
+            printf 'dirty_paths_truncated=%s\n' "$((dirty_count - 50))"
+          fi
+          REMOTE
