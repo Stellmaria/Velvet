@@ -22,7 +22,7 @@ jobs:
     env:
       SOURCE_COMMIT: e6571062af2c963297c17f94685490fa054c90ca
       IMAGE_DIGEST: ghcr.io/stellmaria/velvet@sha256:517165ef91701ec7138ddb11a0138e6a2375d22a3a7683737b15ef7ea46c98d0
-      ROLLOUT_REVISION: pin-verified-arthur-image
+      ROLLOUT_REVISION: repair-index-activate-reconcile
     steps:
       - name: Checkout rollout payload
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -94,7 +94,7 @@ jobs:
             "$payload" "$DEPLOY_USER@$DEPLOY_HOST:$remote_payload"
           echo "REMOTE_PAYLOAD=$remote_payload" >> "$GITHUB_ENV"
 
-      - name: Repair legacy backup ownership contract
+      - name: Repair checkout and legacy backup ownership contracts
         shell: bash
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -112,8 +112,51 @@ jobs:
             "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command" <<'REMOTE'
           set -Eeuo pipefail
           cd "$APP_DIR"
+          test -d "$APP_DIR"
+          test ! -L "$APP_DIR"
+          test -d "$APP_DIR/.git"
+          test ! -L "$APP_DIR/.git"
+
+          deploy_uid="$(id -u)"
+          deploy_gid="$(id -g)"
+          test "$(stat -c '%u' "$APP_DIR")" = "$deploy_uid"
+          test "$(stat -c '%g' "$APP_DIR")" = "$deploy_gid"
+
+          git_index="$APP_DIR/.git/index"
+          test -f "$git_index"
+          test ! -L "$git_index"
+          index_uid="$(stat -c '%u' "$git_index")"
+          index_gid="$(stat -c '%g' "$git_index")"
+          if [[ "$index_uid" != "$deploy_uid" || "$index_gid" != "$deploy_gid" ]]; then
+            docker run --rm -i \
+              --network none \
+              --user 0:0 \
+              --cap-drop ALL \
+              --cap-add CHOWN \
+              --security-opt no-new-privileges \
+              --env TARGET_UID="$deploy_uid" \
+              --env TARGET_GID="$deploy_gid" \
+              --mount "type=bind,src=$APP_DIR/.git,dst=/repair" \
+              "$IMAGE_DIGEST" \
+              python - <<'PY'
+          import os
+          import stat
+
+          target_uid = int(os.environ["TARGET_UID"])
+          target_gid = int(os.environ["TARGET_GID"])
+          path = "/repair/index"
+          value = os.lstat(path)
+          if not stat.S_ISREG(value.st_mode):
+              raise SystemExit("Git index is not a regular file")
+          os.chown(path, target_uid, target_gid, follow_symlinks=False)
+          print("Production Git index ownership repaired without changing mode.")
+          PY
+          fi
+          test "$(stat -c '%u:%g' "$git_index")" = "$deploy_uid:$deploy_gid"
+          test -r "$git_index"
+          test -w "$git_index"
           test "$(git symbolic-ref --short HEAD)" = main
-          test -z "$(git status --porcelain --untracked-files=all)"
+          test -z "$(GIT_OPTIONAL_LOCKS=0 git status --porcelain --untracked-files=all)"
           echo "Initial production checkout: $(git rev-parse HEAD)"
 
           find /tmp -maxdepth 1 -type f -user "$(id -u)" \
@@ -134,8 +177,6 @@ jobs:
           backup_root="$data_dir/backups"
           test -d "$backup_root"
           test ! -L "$backup_root"
-          deploy_uid="$(id -u)"
-          deploy_gid="$(id -g)"
 
           docker run --rm -i \
             --network none \
