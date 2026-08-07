@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Any
 
 from velvet_bot.ai_quality import AIQualityService
@@ -13,6 +14,16 @@ from velvet_bot.quality_calibration import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _quality_worker_enabled() -> bool:
+    return os.getenv("AI_QUALITY_ENABLED", "false").strip().casefold() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+        "да",
+    }
 
 
 def apply_calibration_to_report(
@@ -76,6 +87,8 @@ class CalibratedAIQualityService(AIQualityService):
         self._calibration_repository = calibration_repository
 
     async def process_once(self) -> int:
+        if not _quality_worker_enabled():
+            return 0
         if not await self._provider_available():
             return 0
         targets = await self._repository.claim_targets(
