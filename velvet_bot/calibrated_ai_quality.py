@@ -71,12 +71,12 @@ def _is_permanent_analysis_error(error: BaseException) -> bool:
 
 
 class CalibratedAIQualityService(AIQualityService):
-    def __init__(self, *args, calibration_repository: QualityCalibrationRepository, **kwargs) -> None:
+    def __init__(self, *args, calibration_repository: QualityCalibrationRepository, background_enabled: bool = True, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._calibration_repository = calibration_repository
+        self._calibration_repository = calibration_repository; self._background_enabled = background_enabled
 
     async def process_once(self) -> int:
-        if not await self._provider_available():
+        if not getattr(self, "_background_enabled", True) or not await self._provider_available():
             return 0
         targets = await self._repository.claim_targets(
             provider=self._client.provider,
