@@ -28,22 +28,6 @@ from velvet_bot.domains.telegram_storage.service import (
 class TelegramStorageMigrationService(BaseTelegramStorageMigrationService):
     """Storage migration with stable semantic dedupe for generated artifacts."""
 
-    async def _existing_object_id(self, kind: str, logical_key: str) -> int | None:
-        async with self._database.acquire() as connection:
-            value = await connection.fetchval(
-                """
-                SELECT id
-                FROM telegram_storage_objects
-                WHERE storage_kind = $1::VARCHAR
-                  AND logical_key = $2::TEXT
-                ORDER BY migrated_at DESC, id DESC
-                LIMIT 1
-                """,
-                kind,
-                logical_key,
-            )
-        return int(value) if value is not None else None
-
     async def _skip_existing_backup(
         self,
         *,
@@ -91,7 +75,10 @@ class TelegramStorageMigrationService(BaseTelegramStorageMigrationService):
                     item.path,
                 )
                 logical_key = f"backup:{item.run_id or item.file_name}:{source_digest}"
-                existing_id = await self._existing_object_id("backups", logical_key)
+                existing_id = await self.repository.latest_object_id_by_logical_key(
+                    "backups",
+                    logical_key,
+                )
                 if existing_id is not None:
                     await self._skip_existing_backup(
                         summary=summary,
@@ -198,7 +185,11 @@ class TelegramStorageMigrationService(BaseTelegramStorageMigrationService):
             json.dumps(rows, ensure_ascii=False, sort_keys=True).encode("utf-8")
         ).hexdigest()
         logical_key = f"rework:snapshot:{content_hash}"
-        if await self._existing_object_id("rework", logical_key) is not None:
+        existing_id = await self.repository.latest_object_id_by_logical_key(
+            "rework",
+            logical_key,
+        )
+        if existing_id is not None:
             self._record_discovered(summary, "rework")
             summary.skipped_files += 1
             summary.bump("rework", "skipped")
