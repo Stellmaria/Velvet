@@ -85,9 +85,10 @@ class CalibratedAIQualityService(AIQualityService):
     def __init__(self, *args, calibration_repository: QualityCalibrationRepository, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._calibration_repository = calibration_repository
+        self._background_enabled = _quality_worker_enabled()
 
     async def process_once(self) -> int:
-        if not _quality_worker_enabled():
+        if not getattr(self, "_background_enabled", True):
             return 0
         if not await self._provider_available():
             return 0
