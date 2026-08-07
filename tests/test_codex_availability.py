@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 CODERS = ROOT / "deploy" / "hermes-coders"
@@ -12,6 +13,7 @@ if str(CODERS) not in sys.path:
 
 from codex_availability import (  # noqa: E402
     CodexAvailabilityGate,
+    STATE_POLL_SECONDS,
     classify_rate_limits,
 )
 
@@ -25,12 +27,12 @@ class FakeClock:
 
 
 class MutableProbe:
-    def __init__(self, snapshot: dict[str, object]) -> None:
+    def __init__(self, snapshot: dict[str, Any]) -> None:
         self.snapshot = snapshot
         self.calls = 0
         self.error: Exception | None = None
 
-    def __call__(self) -> dict[str, object]:
+    def __call__(self) -> dict[str, Any]:
         self.calls += 1
         if self.error is not None:
             raise self.error
@@ -44,7 +46,7 @@ class CodexAvailabilityTests(unittest.TestCase):
         clock: FakeClock,
         *,
         refresh_seconds: int = 18_000,
-    ) -> tuple[tempfile.TemporaryDirectory[str], CodexAvailabilityGate]:
+    ) -> tuple[tempfile.TemporaryDirectory, CodexAvailabilityGate]:
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         gate = CodexAvailabilityGate(
@@ -147,6 +149,29 @@ class CodexAvailabilityTests(unittest.TestCase):
         self.assertIn("offline", state["last_error"])
         self.assertEqual(19_000, state["next_periodic_check_at"])
 
+    def test_explicit_execution_limit_stays_false_if_probe_disagrees(self) -> None:
+        probe = MutableProbe(
+            {
+                "rate_limit_reached_type": None,
+                "primary": {"used_percent": 15, "resets_at": 5_000},
+            }
+        )
+        clock = FakeClock(1_000)
+        _, gate = self.make_gate(probe, clock)
+        gate.refresh(source="startup", periodic=True)
+        self.assertTrue(gate.codex_available)
+
+        state = gate.note_subscription_failure("subscription_limit")
+        self.assertFalse(state["codex_available"])
+        self.assertFalse(state["provider_available"])
+        self.assertEqual("subscription_limit", state["provider_reason"])
+        self.assertIn("disagreed", state["last_error"])
+        self.assertEqual(
+            19_000,
+            state["next_periodic_check_at"],
+            "execution failure must not shift the 5h periodic schedule",
+        )
+
     def test_manual_auto_hold_clears_only_after_successful_live_probe(self) -> None:
         probe = MutableProbe(
             {
@@ -210,6 +235,12 @@ class CodexAvailabilityTests(unittest.TestCase):
         self.assertFalse(state["manual_hold"])
         self.assertFalse(state["codex_available"])
         self.assertEqual(5_000, state["codex_available_at"])
+
+    def test_background_uses_local_state_poll_without_extra_provider_cadence(self) -> None:
+        self.assertEqual(60, STATE_POLL_SECONDS)
+        source = (CODERS / "codex_availability.py").read_text(encoding="utf-8")
+        self.assertIn("float(STATE_POLL_SECONDS)", source)
+        self.assertIn("local state-file poll only", source)
 
 
 if __name__ == "__main__":
