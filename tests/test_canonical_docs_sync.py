@@ -5,49 +5,66 @@ import unittest
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
-
-
 class CanonicalDocsSyncTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.status = (ROOT / "docs/PROJECT_STATUS.md").read_text(encoding="utf-8")
-        cls.memory = (ROOT / "docs/PROJECT_MEMORY.md").read_text(encoding="utf-8")
-        cls.audit = (ROOT / "docs/P2_AUDIT_REPORT.md").read_text(encoding="utf-8")
-        cls.changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+        cls.root = Path(__file__).resolve().parents[1]
+        cls.status = (cls.root / "docs/development_status.md").read_text(
+            encoding="utf-8"
+        )
+        cls.memory = (cls.root / "docs/project_memory.md").read_text(
+            encoding="utf-8"
+        )
+        cls.audit = (cls.root / "docs/ARCHITECTURE_AUDIT.md").read_text(
+            encoding="utf-8"
+        )
+        cls.changelog = (cls.root / "CHANGELOG.md").read_text(encoding="utf-8")
         cls.navigation = (
-            ROOT / "docs/generated/telegram_navigation_inventory.md"
+            cls.root / "docs/generated/telegram_navigation_inventory.md"
         ).read_text(encoding="utf-8")
         cls.package_inventory = json.loads(
-            (ROOT / "docs/package_architecture_inventory.json").read_text(
+            (cls.root / "docs/package_architecture_inventory.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        cls.package_exemptions = json.loads(
+            (cls.root / "docs/package_architecture_exemptions.json").read_text(
                 encoding="utf-8"
             )
         )
 
+    def test_canonical_documents_are_dated_and_keep_release_contract(self) -> None:
+        for document in (self.status, self.memory, self.audit):
+            self.assertIn("2026-08-05", document)
+        self.assertIn("v1.3.0", self.status)
+        self.assertIn("v1.3.0", self.memory)
+        self.assertIn("v1.3.0", self.audit)
+        self.assertIn("1.3.0", self.changelog)
+
     def test_canonical_architecture_numbers_match_generated_inventory(self) -> None:
-        modules = self.package_inventory["production_module_count"]
-        loc = self.package_inventory["production_loc"]
-        routers = self.package_inventory["router_count"]
-        repositories = self.package_inventory["repository_module_count"]
-        installers = len(self.package_inventory["installer_graph"])
+        production_files = self.package_inventory["production_module_count"]
+        functions = self.package_inventory["shared_contract_summary"][
+            "function_count"
+        ]
+        private_debt = self.package_inventory["shared_contract_summary"][
+            "private_contract_access_count"
+        ]
+        blocking = sum(
+            1
+            for row in self.package_exemptions["exceptions"]
+            if row.get("blocking") is True
+        )
 
         for document in (self.status, self.memory, self.audit):
-            self.assertIn(f"{modules}", document)
-            self.assertIn(f"{loc}", document)
-            self.assertIn(f"{routers}", document)
-            self.assertIn(f"{repositories}", document)
-            self.assertIn(f"{installers}", document)
+            self.assertIn(str(production_files), document)
+            self.assertIn(str(functions), document)
+            self.assertIn(str(private_debt), document)
+            self.assertIn(str(blocking), document)
+            self.assertIn("#457", document)
 
-    def test_canonical_documents_are_dated_and_keep_release_contract(self) -> None:
-        self.assertIn("2026-08-06", self.status)
-        self.assertIn("2026-08-06", self.memory)
-        self.assertIn("2026-08-06", self.audit)
-        self.assertIn("release/reconcile", self.status.casefold())
-        self.assertIn("release/reconcile", self.memory.casefold())
-        self.assertIn("release/reconcile", self.audit.casefold())
-        self.assertIn("current/main", self.status.casefold())
-        self.assertIn("current/main", self.memory.casefold())
-        self.assertIn("current/main", self.audit.casefold())
+        self.assertIn("136 registered transitional private accesses", self.changelog)
+        self.assertIn("0 blocking known contracts", self.changelog)
+        self.assertIn("transitional", self.audit.casefold())
 
     def test_live_obligations_and_temporary_layers_are_not_marked_complete(self) -> None:
         for document in (self.status, self.memory, self.audit):
