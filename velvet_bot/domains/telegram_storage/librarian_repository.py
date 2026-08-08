@@ -63,12 +63,22 @@ class StorageLibrarianRepository:
                 FROM telegram_storage_objects AS o
                 LEFT JOIN telegram_storage_analysis AS a
                   ON a.storage_object_id = o.id
+                LEFT JOIN telegram_storage_analysis_jobs AS existing_job
+                  ON existing_job.storage_object_id = o.id
                 WHERE o.storage_kind = ANY($1::VARCHAR[])
                   AND o.encrypted = FALSE
                   AND o.size_bytes <= $2::BIGINT
                   AND (
                       a.storage_object_id IS NULL
                       OR a.analyzer_version <> $3::TEXT
+                  )
+                  AND (
+                      existing_job.storage_object_id IS NULL
+                      OR (
+                          existing_job.status IN ('completed', 'skipped')
+                          AND a.storage_object_id IS NOT NULL
+                          AND a.analyzer_version <> $3::TEXT
+                      )
                   )
                 ORDER BY o.migrated_at, o.id
                 LIMIT $5::INTEGER
