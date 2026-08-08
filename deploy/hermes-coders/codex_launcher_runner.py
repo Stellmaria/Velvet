@@ -14,6 +14,22 @@ _PROJECTS = frozenset({"velvet", "max"})
 _TERMINAL = frozenset({"completed", "failed", "cancelled"})
 
 
+def sandbox_visible_prompt(prompt: str, controller_workspace: Path) -> str:
+    """Translate only the injected controller workspace notice for the sandbox."""
+
+    controller_notice = (
+        f"EFFECTIVE RUN WORKSPACE: {controller_workspace}\n"
+        "This current working directory is the only task checkout. "
+        "Do not access /workspace, /workspace-base, chat workspaces or sibling runs."
+    )
+    sandbox_notice = (
+        "EFFECTIVE RUN WORKSPACE: /workspace\n"
+        "This current working directory is the only task checkout. "
+        "Do not access /workspace-base, chat workspaces or sibling runs."
+    )
+    return prompt.replace(controller_notice, sandbox_notice)
+
+
 class LauncherTierProviderManager(AuditedTierProviderManager):
     """Preserve the existing control plane and replace only Codex process launch."""
 
@@ -68,7 +84,7 @@ class LauncherTierProviderManager(AuditedTierProviderManager):
                 route=route,
                 mutation_policy=self._mutation_policy(run_id),
                 timeout_seconds=self.timeout_seconds,
-                prompt=prompt,
+                prompt=sandbox_visible_prompt(prompt, Path(self.workspace)),
             )
         except LauncherClientError as error:
             return {
