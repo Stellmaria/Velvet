@@ -5,12 +5,13 @@ import logging
 from typing import Any
 
 from velvet_bot.ai_quality import AIQualityService
-from velvet_bot.ai_vision import VisionAnalysisError, VisionProviderUnavailable
+from velvet_bot.ai_vision import VisionProviderUnavailable
 from velvet_bot.quality_calibration import (
     CalibrationProfile,
     QualityCalibrationRepository,
     recommended_decision,
 )
+from velvet_bot.domains.vision_routing.failures import is_permanent_vision_failure
 
 logger = logging.getLogger(__name__)
 
@@ -60,20 +61,17 @@ def apply_calibration_to_report(
     return calibrated
 
 
-def _is_permanent_analysis_error(error: BaseException) -> bool:
-    if not isinstance(error, VisionAnalysisError):
-        return False
-    message = str(error)
-    return (
-        "прочитать как изображение" in message
-        or "file is too big" in message.casefold()
-    )
-
-
 class CalibratedAIQualityService(AIQualityService):
-    def __init__(self, *args, calibration_repository: QualityCalibrationRepository, background_enabled: bool = True, **kwargs) -> None:
+    def __init__(
+        self,
+        *args,
+        calibration_repository: QualityCalibrationRepository,
+        background_enabled: bool = True,
+        **kwargs,
+    ) -> None:
         super().__init__(*args, **kwargs)
-        self._calibration_repository = calibration_repository; self._background_enabled = background_enabled
+        self._calibration_repository = calibration_repository
+        self._background_enabled = background_enabled
 
     async def process_once(self) -> int:
         if not getattr(self, "_background_enabled", True) or not await self._provider_available():
@@ -109,6 +107,8 @@ class CalibratedAIQualityService(AIQualityService):
                     profile.sample_count,
                 )
             except asyncio.CancelledError:
+                # Cancellation is an operator/runtime decision, not a provider error.
+                # Do not mutate retry state here.
                 raise
             except VisionProviderUnavailable as error:
                 self._healthy = False
@@ -116,10 +116,11 @@ class CalibratedAIQualityService(AIQualityService):
                     target.media_id,
                     error,
                     max_attempts=self._max_attempts,
+                    permanent=is_permanent_vision_failure(error),
                 )
                 break
             except Exception as error:  # p2-approved-boundary: compensate-claimed-calibrated-quality
-                permanent = _is_permanent_analysis_error(error)
+                permanent = is_permanent_vision_failure(error)
                 log_failure = logger.info if permanent else logger.warning
                 log_failure(
                     "Calibrated AI quality analysis failed media_id=%s: %s",

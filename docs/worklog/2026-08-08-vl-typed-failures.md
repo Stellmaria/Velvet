@@ -1,0 +1,115 @@
+# VL typed failures and bounded retries
+
+- Дата: 2026-08-08
+- ID: `2026-08-08-vl-typed-failures`
+- Линия/фаза: Velvet AI / VL production safety / transport lifecycle
+- Статус: `частично`
+- Ветка: `fix/vl-typed-failures`
+- Базовый commit: `86b276120fd7e260a16a78d83154c2ddaeac83bf`
+
+Связано: #630, #709, #712, #718, #421.
+
+## Перед началом
+
+### Цель
+
+Разделить VL failures на typed outcomes и прекратить бесконтрольный повтор полного image request. Timeout, cancellation, OOM, transport, provider error, invalid schema и refusal должны иметь разные semantics, а один local image не должен повторно уходить на 300-second inference только потому, что ошибка попала в общий `VisionProviderUnavailable`.
+
+### Исходный контекст
+
+Production `qwen3.5:9b` уже демонстрировал 300-second timeout при ~1.8-2.2 output tok/s. Старый `MeteredVisionClient` повторял любой `VisionProviderUnavailable` до route `max_attempts`, а global `QualityVisionClient` при invalid structured output мог повторно передать то же изображение в другом JSON mode. Вдобавок inference transport выполнялся через `asyncio.to_thread(urllib)`, поэтому cancellation Python task не гарантировала закрытие уже начатого HTTP request.
+
+После #718 mass queue уже требует owner plan/start. Следующий safety layer должен сделать один конкретный inference предсказуемым до перехода к multi-model routing.
+
+### Планируемый объём
+
+- ввести typed failure taxonomy: `timeout`, `cancelled`, `transport`, `oom`, `provider_error`, `invalid_schema`, `refusal`;
+- добавить cancellable aiohttp transport для VL POST requests;
+- сохранить `asyncio.CancelledError` как cancellation, не превращать его в provider retry;
+- ограничить full-image retry максимум двумя total attempts и только transient transport failure;
+- timeout не replay-ить автоматически полным image request;
+- OOM/schema/provider/refusal считать terminal для текущего full-image route;
+- убрать automatic second-image JSON-mode fallback;
+- перевести global quality client на тот же cancellable single-shot transport;
+- сохранять typed terminal quality failures как permanent там, где это доказано;
+- не увеличивать production timeout.
+
+### Критерии готовности
+
+- HTTP 504/timeout получает `timeout` и не вызывает automatic full-image replay;
+- HTTP/Ollama OOM получает `oom` и не retry-ится;
+- transient transport получает максимум один full-image retry;
+- invalid structured output получает `invalid_schema` и не передаёт image повторно;
+- provider refusal получает отдельный typed outcome для будущего uncensored route;
+- task cancellation проходит наружу как `CancelledError`, aiohttp request context закрывается;
+- global quality worker и manual quality используют cancellable client;
+- required CI зелёный на актуальном main head.
+
+### Риски и ограничения
+
+- typed failures не являются разрешением на cloud fallback;
+- timeout остаётся 300 seconds там, где он уже настроен, этот slice меняет semantics, а не число;
+- text-only schema repair не добавляется автоматически: invalid schema сейчас останавливается terminal вместо повторной отправки изображения;
+- provider-specific OOM detection основан на HTTP status/detail markers и должен дополняться по production evidence;
+- semantic durable task queue может иметь собственный task-level retry lifecycle, который остаётся отдельным от immediate full-image retry transport;
+- `AI_QUALITY_ENABLED=false` остаётся production default до single-target smoke.
+
+### Стабилизационный допуск
+
+1. Никакой новой модели и никакого cloud provider этот PR не включает.
+2. Retry blast radius уменьшается: route max attempts больше не может превратить один request в пять full-image calls.
+3. Existing public `VisionAnalysisError` / `VisionProviderUnavailable` catches продолжают работать через subclasses.
+4. Cancellable HTTP применяется к routed VL и global/manual quality inference, где длинные requests наиболее опасны.
+5. Следующий slice после merge остаётся 3-model routing по #630.
+
+## После завершения
+
+### Фактически сделано
+
+- typed failure taxonomy и retry/permanent helpers размещены в `velvet_bot/domains/vision_routing/failures.py`;
+- cancellable aiohttp transport размещён в `velvet_bot/domains/vision_routing/http.py`;
+- `TypedQualityVisionClient` размещён в `velvet_bot/services/typed_quality_vision.py`, чтобы не добавлять новые unclassified root modules;
+- generated package-layer move commit `7a41a8abc802ad0af312fe2c7b7819a4f39469d5` удалил временные root copies и переподключил imports;
+- `MeteredVisionClient` больше не использует `to_thread` для inference HTTP;
+- immediate full-image attempt limit hard-capped at 2 независимо от более высокого route max attempts;
+- только `VisionTransportError` допускает один immediate full-image retry;
+- `VisionTimeoutError` typed transient, но full-image replay запрещён;
+- OOM/provider/schema/refusal не replay-ятся;
+- structured-output failure больше не включает второй image request с другим JSON mode;
+- global quality worker и manual quality controller переключены на `TypedQualityVisionClient` commit `6273dfdccca7300f1a74bff788b450fd27796ab9`;
+- calibrated quality persistence использует typed permanent classification;
+- unit coverage добавлена для timeout/OOM/transport/schema/cancellation и retry bounds.
+
+### Миграции и совместимость
+
+DB migration в этом slice нет. Typed exceptions наследуются от существующих `VisionAnalysisError` / `VisionProviderUnavailable`, поэтому существующие внешние catch-boundaries продолжают работать. Public route/config schema не меняется, production timeout не увеличивается, а `AI_QUALITY_ENABLED=false` остаётся прежним fail-closed default. Изменение совместимости намеренно касается только retry semantics: timeout/schema/OOM/refusal больше не считаются основанием для повторной передачи полного изображения.
+
+### Проверки
+
+- targeted typed-failure tests добавлены;
+- существующие metered client/refusal contracts сохраняются через subclass compatibility;
+- первый preflight выявил три unclassified root modules; они перемещены в существующие domain/service package layers вместо расширения root debt;
+- regression fixture `CalibratedAITerminalSkipLoggingTests` обновлён под новый `background_enabled` contract;
+- package architecture inventory/exemptions пересобраны штатным workflow в commit `f8a68788fa1eab10a1f91f9e5fd4d7f1c006915b`;
+- generated bot commit не запускает нормальный required CI, поэтому owner-authored финальный commit запускает required checks на итоговом tree;
+- required project CI должен быть зелёным на финальном head до merge.
+
+### PR и commit
+
+- PR: #724 `Type VL failures and bound image retries`;
+- branch: `fix/vl-typed-failures`;
+- quality wiring commit: `6273dfdccca7300f1a74bff788b450fd27796ab9`;
+- package-layer move commit: `7a41a8abc802ad0af312fe2c7b7819a4f39469d5`;
+- generated package architecture baseline: `f8a68788fa1eab10a1f91f9e5fd4d7f1c006915b`;
+- merge SHA будет добавлен после зелёного CI.
+
+### Незавершённое
+
+- дождаться required green checks на owner-authored финальном head;
+- слить PR только после required green checks;
+- production `AI_QUALITY_ENABLED=false` не менять этим PR;
+- после merge продолжить 3-model runtime/router #630.
+
+### Следующий шаг
+
+После required green checks слить #724 в `main` и перейти к runtime model routing без возврата к массовым retries.

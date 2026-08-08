@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
-  "production_module_count": 656,
-  "production_loc": 144455,
+  "production_module_count": 659,
+  "production_loc": 144853,
   "layer_counts": {
     "application": 22,
     "composition": 61,
     "core": 8,
-    "domain": 187,
+    "domain": 189,
     "infrastructure": 33,
     "other": 1,
     "presentation": 218,
     "root": 114,
-    "service": 8,
+    "service": 9,
     "worker": 4
   },
   "root_module_count": 113,
@@ -12207,7 +12207,7 @@
       "module": "velvet_bot.app.workers",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 354,
+      "loc": 352,
       "function_count": 5,
       "class_count": 0,
       "handler_count": 0,
@@ -12243,6 +12243,7 @@
         "velvet_bot.resilient_ai_quality",
         "velvet_bot.services.diagnostic_bundle",
         "velvet_bot.services.system_health",
+        "velvet_bot.services.typed_quality_vision",
         "velvet_bot.services.workspace_qwen_quality",
         "velvet_bot.workers",
         "velvet_bot.workers.adaptive",
@@ -12263,7 +12264,7 @@
       "install_definitions": [],
       "install_calls": [
         {
-          "line": 128,
+          "line": 126,
           "call": "install_recoverable_polling_filter"
         }
       ],
@@ -12271,7 +12272,7 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 81,
+          "line": 79,
           "owner": "_env_enabled",
           "call": "os.getenv"
         }
@@ -12279,77 +12280,77 @@
       "polling_values": [],
       "worker_registrations": [
         {
-          "line": 124,
+          "line": 122,
           "owner": "build_worker_manager",
           "call": "WorkerManager"
         },
         {
-          "line": 130,
+          "line": 128,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 138,
+          "line": 136,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 146,
+          "line": 144,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 154,
+          "line": 152,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 347,
+          "line": 345,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 187,
+          "line": 185,
           "owner": "build_worker_manager",
           "call": "KieGenerationWorker"
         },
         {
-          "line": 214,
+          "line": 212,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 304,
+          "line": 302,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 312,
+          "line": 310,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 325,
+          "line": 323,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 334,
+          "line": 332,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 197,
+          "line": 195,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 277,
+          "line": 275,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 289,
+          "line": 287,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         }
@@ -13813,15 +13814,16 @@
       "module": "velvet_bot.calibrated_ai_quality",
       "layer": "root",
       "target_package": "domains/<bounded-domain>",
-      "loc": 138,
-      "function_count": 4,
+      "loc": 139,
+      "function_count": 3,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 58,
-      "branch_count": 10,
+      "max_function_length": 61,
+      "branch_count": 9,
       "internal_imports": [
         "velvet_bot.ai_quality",
         "velvet_bot.ai_vision",
+        "velvet_bot.domains.vision_routing.failures",
         "velvet_bot.quality_calibration"
       ],
       "external_import_count": 4,
@@ -22262,20 +22264,22 @@
       "module": "velvet_bot.domains.vision_routing.client",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 409,
+      "loc": 408,
       "function_count": 13,
       "class_count": 1,
       "handler_count": 0,
       "max_function_length": 88,
-      "branch_count": 26,
+      "branch_count": 24,
       "internal_imports": [
         "velvet_bot.ai_vision",
         "velvet_bot.core.ai_budget",
         "velvet_bot.domains.ai_usage",
+        "velvet_bot.domains.vision_routing.failures",
+        "velvet_bot.domains.vision_routing.http",
         "velvet_bot.domains.vision_routing.models",
         "velvet_bot.domains.vision_routing.profile_contract"
       ],
-      "external_import_count": 6,
+      "external_import_count": 5,
       "aiogram_imports": [],
       "sql_literal_count": 0,
       "database_acquire_count": 0,
@@ -22292,11 +22296,11 @@
       "env_reads": [],
       "polling_values": [
         {
-          "line": 182,
+          "line": 195,
           "owner": "_analyze_with_attempts",
           "call": "asyncio.sleep",
           "values": [
-            4,
+            2,
             2,
             1
           ]
@@ -22398,6 +22402,72 @@
           "call": "os.getenv"
         }
       ],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/domains/vision_routing/failures.py",
+      "module": "velvet_bot.domains.vision_routing.failures",
+      "layer": "domain",
+      "target_package": "domain",
+      "loc": 168,
+      "function_count": 8,
+      "class_count": 8,
+      "handler_count": 0,
+      "max_function_length": 11,
+      "branch_count": 14,
+      "internal_imports": [
+        "velvet_bot.ai_vision"
+      ],
+      "external_import_count": 3,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/domains/vision_routing/http.py",
+      "module": "velvet_bot.domains.vision_routing.http",
+      "layer": "domain",
+      "target_package": "domain",
+      "loc": 83,
+      "function_count": 2,
+      "class_count": 0,
+      "handler_count": 0,
+      "max_function_length": 47,
+      "branch_count": 11,
+      "internal_imports": [
+        "velvet_bot.domains.vision_routing.failures"
+      ],
+      "external_import_count": 5,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
       "polling_values": [],
       "worker_registrations": [],
       "violations": []
@@ -31568,7 +31638,7 @@
       "module": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_operations",
       "layer": "presentation",
       "target_package": "presentation",
-      "loc": 465,
+      "loc": 466,
       "function_count": 16,
       "class_count": 1,
       "handler_count": 7,
@@ -31583,6 +31653,7 @@
         "velvet_bot.presentation.telegram.shared",
         "velvet_bot.quality_operations",
         "velvet_bot.quality_ui",
+        "velvet_bot.services.typed_quality_vision",
         "velvet_bot.workers"
       ],
       "external_import_count": 9,
@@ -31607,7 +31678,7 @@
       "env_reads": [],
       "polling_values": [
         {
-          "line": 102,
+          "line": 103,
           "owner": "_download_image",
           "call": "asyncio.sleep",
           "values": [
@@ -31617,17 +31688,17 @@
       ],
       "worker_registrations": [
         {
-          "line": 285,
+          "line": 286,
           "owner": "_show_menu",
           "call": "worker_manager.snapshot"
         },
         {
-          "line": 441,
+          "line": 442,
           "owner": "handle_quality_run",
           "call": "worker_manager.run_now"
         },
         {
-          "line": 178,
+          "line": 179,
           "owner": "build_quality_operations_menu",
           "call": "_worker_text"
         }
@@ -40508,6 +40579,42 @@
           }
         }
       ]
+    },
+    {
+      "path": "velvet_bot/services/typed_quality_vision.py",
+      "module": "velvet_bot.services.typed_quality_vision",
+      "layer": "service",
+      "target_package": "service",
+      "loc": 148,
+      "function_count": 3,
+      "class_count": 1,
+      "handler_count": 0,
+      "max_function_length": 75,
+      "branch_count": 11,
+      "internal_imports": [
+        "velvet_bot.ai_quality",
+        "velvet_bot.ai_vision",
+        "velvet_bot.domains.vision_routing.failures",
+        "velvet_bot.domains.vision_routing.http"
+      ],
+      "external_import_count": 7,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
     },
     {
       "path": "velvet_bot/services/workspace_qwen_quality.py",
