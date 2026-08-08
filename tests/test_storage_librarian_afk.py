@@ -150,6 +150,35 @@ class StorageLibrarianAfkContractTests(unittest.TestCase):
         )
         self.assertIn("local Ollama only", full_archive)
 
+    def test_full_archive_scheduler_is_owned_by_application_lifecycle(self) -> None:
+        bootstrap = (ROOT / "velvet_bot/app/bootstrap.py").read_text(
+            encoding="utf-8"
+        )
+        repository = (
+            ROOT / "velvet_bot/domains/telegram_storage/librarian_repository.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("await start_storage_librarian(bot, database)", bootstrap)
+        self.assertIn("await stop_storage_librarian()", bootstrap)
+        self.assertIn(
+            "await _start_background_workers(bot, database, worker_manager)",
+            bootstrap,
+        )
+        self.assertIn("await _stop_background_workers(worker_manager)", bootstrap)
+        self.assertIn(
+            "LEFT JOIN telegram_storage_analysis_jobs AS existing_job",
+            repository,
+        )
+        self.assertIn("existing_job.storage_object_id IS NULL", repository)
+        self.assertIn(
+            "existing_job.status IN ('completed', 'skipped')",
+            repository,
+        )
+        self.assertNotIn(
+            "existing_job.status IN ('completed', 'skipped', 'failed')",
+            repository,
+        )
+
     def test_terminal_failure_report_is_redacted_and_non_mutating(self) -> None:
         item = LibrarianObject(
             object_id=2201,
