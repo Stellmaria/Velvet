@@ -47,6 +47,14 @@ profiles orphan cleanup не должен быть побочным эффект
   обычного core lifecycle;
 - shell/deployment contracts и обязательный CI остаются зелёными.
 
+### Риски и ограничения
+
+Production evidence доказывает отсутствие `vision-runtime` и последующее
+восстановление Vision, но не позволяет ретроспективно доказать конкретный
+исторический вызов, удаливший контейнер. Поэтому изменение формулируется как
+устранение destructive risk из normal lifecycle, а не как утверждение о
+единственной доказанной root cause.
+
 ## После завершения
 
 ### Фактически сделано
@@ -74,11 +82,31 @@ profiles orphan cleanup не должен быть побочным эффект
 что конкретный исторический запуск `--remove-orphans` доказан как единственная
 команда, удалившая production runtime.
 
+### Миграции и совместимость
+
+PostgreSQL migration отсутствует. Compose service names, profiles, volumes,
+healthchecks и runtime settings не меняются. Изменение затрагивает только
+cleanup semantics обычного partial startup: orphan removal больше не выполняется
+неявно и при необходимости остаётся отдельной явной maintenance-операцией.
+
 ### Проверки
 
 PR запускает обязательные repository checks, включая deployment/unit contracts,
 type check, Docker build, security/supply-chain gates и project notes contract.
 
-### PR
+### PR и commit
 
-- PR: #723.
+- PR: #723;
+- branch head после worklog contract fix определяется финальным зелёным CI.
+
+### Незавершённое
+
+Отдельно остаётся более широкая работа #630 по controlled Vision pipeline и
+model routing. Этот PR не меняет inference policy, model scheduler или batch
+семантику.
+
+### Следующий шаг
+
+После зелёного обязательного CI слить PR #723 в `main`. Production Vision уже
+восстановлен вручную; следующий штатный server update должен получить lifecycle
+fix из `main`.
