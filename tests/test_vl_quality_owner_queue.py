@@ -40,16 +40,8 @@ def _plan_row(*, media_ids: list[int], started_at=None) -> dict[str, object]:
 
 class QualityOwnerQueueTests(unittest.IsolatedAsyncioTestCase):
     async def test_plan_recent_is_dry_run_for_quality_queue(self) -> None:
-        candidates = [
-            {"media_id": 101, "candidate_kind": "new"},
-            {"media_id": 99, "candidate_kind": "legacy_pending"},
-            {"media_id": 95, "candidate_kind": "failed"},
-        ]
         connection = SimpleNamespace(
-            execute=AsyncMock(return_value="DELETE 0"),
-            fetch=AsyncMock(return_value=candidates),
             fetchrow=AsyncMock(return_value=_plan_row(media_ids=[101, 99, 95])),
-            transaction=Mock(return_value=_AsyncContext(None)),
         )
         database = SimpleNamespace(acquire=Mock(return_value=_AsyncContext(connection)))
 
@@ -63,23 +55,13 @@ class QualityOwnerQueueTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(plan.new_count, 1)
         self.assertEqual(plan.legacy_pending_count, 1)
         self.assertEqual(plan.failed_count, 1)
-        self.assertEqual(connection.fetch.await_args.args[-1], 25)
-        all_sql = "\n".join(
-            str(call.args[0]) for call in connection.execute.await_args_list
-        )
-        self.assertNotIn("INSERT INTO media_ai_quality_checks", all_sql)
-        self.assertIn("INSERT INTO media_ai_quality_queue_plans", connection.fetchrow.await_args.args[0])
+        create_sql, requested_by, kind, limit = connection.fetchrow.await_args.args
+        self.assertIn("INSERT INTO media_ai_quality_queue_plans", create_sql)
+        self.assertNotIn("INSERT INTO media_ai_quality_checks", create_sql)
+        self.assertEqual((requested_by, kind, limit), (42, "recent", 25))
 
-    async def test_start_plan_queues_only_exact_persisted_media_ids(self) -> None:
-        plan_row = _plan_row(media_ids=[101, 99, 95])
-        connection = SimpleNamespace(
-            fetchrow=AsyncMock(return_value=plan_row),
-            fetch=AsyncMock(
-                return_value=[{"media_id": 101}, {"media_id": 99}, {"media_id": 95}]
-            ),
-            execute=AsyncMock(return_value="UPDATE 1"),
-            transaction=Mock(return_value=_AsyncContext(None)),
-        )
+    async def test_start_plan_queues_only_persisted_plan_media_ids(self) -> None:
+        connection = SimpleNamespace(fetchval=AsyncMock(return_value=3))
         database = SimpleNamespace(acquire=Mock(return_value=_AsyncContext(connection)))
 
         count = await QualityOperationsRepository(database).start_plan(
@@ -88,34 +70,28 @@ class QualityOwnerQueueTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(count, 3)
-        queue_sql, media_ids, plan_id = connection.fetch.await_args.args
-        self.assertIn("INSERT INTO media_ai_quality_checks", queue_sql)
-        self.assertIn("queue_plan_id", queue_sql)
-        self.assertEqual(media_ids, [101, 99, 95])
-        self.assertEqual(plan_id, 17)
-        self.assertIn(
-            "started_at = NOW()",
-            connection.execute.await_args.args[0],
-        )
-        self.assertEqual(connection.execute.await_args.args[1:], (17, 3))
+        start_sql, plan_id, requested_by = connection.fetchval.await_args.args
+        self.assertIn("selected_plan.media_ids", start_sql)
+        self.assertIn("INSERT INTO media_ai_quality_checks", start_sql)
+        self.assertIn("queue_plan_id", start_sql)
+        self.assertIn("started_at = NOW()", start_sql)
+        self.assertEqual((plan_id, requested_by), (17, 42))
 
-    async def test_start_plan_rejects_wrong_owner_without_queue_mutation(self) -> None:
-        connection = SimpleNamespace(
-            fetchrow=AsyncMock(return_value=None),
-            fetch=AsyncMock(),
-            execute=AsyncMock(),
-            transaction=Mock(return_value=_AsyncContext(None)),
-        )
+    async def test_start_plan_rejects_wrong_owner_or_stale_plan(self) -> None:
+        connection = SimpleNamespace(fetchval=AsyncMock(return_value=None))
         database = SimpleNamespace(acquire=Mock(return_value=_AsyncContext(connection)))
 
-        with self.assertRaisesRegex(ValueError, "не найден"):
+        with self.assertRaisesRegex(ValueError, "не найден, устарел"):
             await QualityOperationsRepository(database).start_plan(
                 17,
                 requested_by=777,
             )
 
-        connection.fetch.assert_not_awaited()
-        connection.execute.assert_not_awaited()
+        start_sql, plan_id, requested_by = connection.fetchval.await_args.args
+        self.assertIn("requested_by = $2::BIGINT", start_sql)
+        self.assertIn("started_at IS NULL", start_sql)
+        self.assertIn("expires_at > NOW()", start_sql)
+        self.assertEqual((plan_id, requested_by), (17, 777))
 
     def test_migration_quarantines_pre_plan_active_backlog(self) -> None:
         migration = Path("migrations/zz002_quality_owner_queue.sql").read_text(
