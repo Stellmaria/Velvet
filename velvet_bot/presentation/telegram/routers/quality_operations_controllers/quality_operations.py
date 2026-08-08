@@ -27,7 +27,7 @@ from velvet_bot.ai_quality import AIQualityRepository, AIQualitySummary, Quality
 from velvet_bot.core.config import load_settings
 from velvet_bot.database import Database
 from velvet_bot.local_ai_runtime import get_local_ai_lock
-from velvet_bot.quality_operations import QualityOperationsRepository
+from velvet_bot.quality_operations import QualityOperationsRepository, QualityQueuePlan
 from velvet_bot.quality_ui import QualityCallback, quality_callback
 from velvet_bot.workers import WorkerManager, WorkerSnapshot
 
@@ -169,11 +169,12 @@ def build_quality_operations_menu(
 ) -> tuple[str, InlineKeyboardMarkup]:
     text = (
         "<b>🖼 Qwen · проверка архива</b>\n\n"
-        "Ручная проверка изображения и управление фоновым worker.\n\n"
+        "Mass-backfill отключён. Сначала сформируйте точный план, затем "
+        "явно подтвердите его запуск.\n\n"
         f"Очередь: <b>{summary.pending + summary.processing}</b> · "
         f"готово <b>{summary.ready}</b>\n"
         f"Без решения: <b>{summary.unreviewed}</b> · "
-        f"ошибок <b>{summary.errors + summary.skipped}</b>\n"
+        f"ошибок/карантина <b>{summary.errors + summary.skipped}</b>\n"
         f"Worker: <code>{escape(_worker_text(worker))}</code>"
     )
     keyboard = InlineKeyboardMarkup(
@@ -190,28 +191,32 @@ def build_quality_operations_menu(
             ],
             [
                 InlineKeyboardButton(
+                    text="📦 План 10",
+                    callback_data=quality_callback("quality_recent", item_id=10),
+                ),
+                InlineKeyboardButton(
+                    text="📦 План 25",
+                    callback_data=quality_callback("quality_recent", item_id=25),
+                ),
+                InlineKeyboardButton(
+                    text="▶️ План 100",
+                    callback_data=quality_callback("quality_recent", item_id=100),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
                     text="❌ Ошибки",
                     callback_data=quality_callback("qchecks", section="errors"),
                 ),
                 InlineKeyboardButton(
-                    text="🛠 Доработка",
-                    callback_data=quality_callback("reworks"),
+                    text="🔁 Ошибки: план 10",
+                    callback_data=quality_callback("quality_retry_errors", item_id=10),
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text="🕘 Последние",
-                    callback_data=quality_callback("quality_recent"),
-                ),
-                InlineKeyboardButton(
-                    text="▶️ Запуск",
+                    text="▶️ Один цикл",
                     callback_data=quality_callback("quality_run"),
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    text="🔁 Повтор ошибок",
-                    callback_data=quality_callback("quality_retry_errors"),
                 ),
                 InlineKeyboardButton(
                     text="🔄 Обновить",
@@ -220,13 +225,55 @@ def build_quality_operations_menu(
             ],
             [
                 InlineKeyboardButton(
+                    text="🛠 Доработка",
+                    callback_data=quality_callback("reworks"),
+                ),
+                InlineKeyboardButton(
                     text="↩️ Qwen",
                     callback_data=quality_callback("ai_menu"),
-                )
+                ),
             ],
         ]
     )
     return text, keyboard
+
+
+def _plan_view(plan: QualityQueuePlan) -> tuple[str, InlineKeyboardMarkup]:
+    kind_label = "последние изображения" if plan.kind == "recent" else "ошибки/карантин"
+    text = (
+        "<b>📦 План quality queue</b>\n\n"
+        f"План: <code>#{plan.plan_id}</code>\n"
+        f"Источник: <b>{escape(kind_label)}</b>\n"
+        f"Лимит: <b>{plan.requested_limit}</b>\n"
+        f"Выбрано: <b>{plan.selected_count}</b>\n"
+        f"Новые: <b>{plan.new_count}</b> · "
+        f"legacy pending: <b>{plan.legacy_pending_count}</b> · "
+        f"ошибки/карантин: <b>{plan.failed_count}</b>\n\n"
+        "План ничего не запускает сам. Подтверждение ниже поставит только "
+        "эти media_id в global quality queue. План живёт 15 минут."
+    )
+    rows: list[list[InlineKeyboardButton]] = []
+    if plan.selected_count:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=f"▶️ Запустить {plan.selected_count}",
+                    callback_data=quality_callback(
+                        "quality_plan_start",
+                        item_id=plan.plan_id,
+                    ),
+                )
+            ]
+        )
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="↩️ Без запуска",
+                callback_data=quality_callback("quality_ops"),
+            )
+        ]
+    )
+    return text, InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 async def _show_menu(
@@ -303,11 +350,12 @@ async def handle_quality_upload_reply(
     try:
         await tracker.stage("downloading")
         source = await _download_image(bot, file_id)
+        vision_key = settings.ai_vision_api_key
         client = QualityVisionClient(
             provider=settings.ai_vision_provider,
             base_url=settings.ai_vision_base_url,
             model=settings.ai_vision_model,
-            api_key=settings.ai_vision_api_key,
+            api_key=vision_key,
             timeout_seconds=settings.ai_vision_timeout_seconds,
         )
         await tracker.stage("analyzing")
@@ -327,23 +375,57 @@ async def handle_quality_upload_reply(
 @router.callback_query(QualityCallback.filter(F.action == "quality_recent"))
 async def handle_quality_recent(
     callback: CallbackQuery,
+    callback_data: QualityCallback,
     database: Database,
-    worker_manager: WorkerManager,
 ) -> None:
-    count = await QualityOperationsRepository(database).enqueue_recent(limit=24)
-    await callback.answer(f"Поставлено или возвращено в очередь: {count}.", show_alert=True)
-    if isinstance(callback.message, Message):
-        await _show_menu(callback.message, database, worker_manager)
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    limit = callback_data.item_id if callback_data.item_id in {10, 25, 100} else 25
+    plan = await QualityOperationsRepository(database).plan_recent(
+        requested_by=callback.from_user.id,
+        limit=limit,
+    )
+    await callback.answer(f"План #{plan.plan_id}: {plan.selected_count} media.")
+    text, keyboard = _plan_view(plan)
+    await safe_edit_message_text(callback.message, text, reply_markup=keyboard)
 
 
 @router.callback_query(QualityCallback.filter(F.action == "quality_retry_errors"))
 async def handle_quality_retry_errors(
     callback: CallbackQuery,
+    callback_data: QualityCallback,
+    database: Database,
+) -> None:
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    limit = callback_data.item_id if callback_data.item_id in {10, 25, 100} else 10
+    plan = await QualityOperationsRepository(database).plan_errors(
+        requested_by=callback.from_user.id,
+        limit=limit,
+    )
+    await callback.answer(f"План #{plan.plan_id}: {plan.selected_count} media.")
+    text, keyboard = _plan_view(plan)
+    await safe_edit_message_text(callback.message, text, reply_markup=keyboard)
+
+
+@router.callback_query(QualityCallback.filter(F.action == "quality_plan_start"))
+async def handle_quality_plan_start(
+    callback: CallbackQuery,
+    callback_data: QualityCallback,
     database: Database,
     worker_manager: WorkerManager,
 ) -> None:
-    count = await QualityOperationsRepository(database).retry_errors()
-    await callback.answer(f"Возвращено в очередь: {count}.", show_alert=True)
+    try:
+        count = await QualityOperationsRepository(database).start_plan(
+            callback_data.item_id,
+            requested_by=callback.from_user.id,
+        )
+    except ValueError as error:
+        await callback.answer(str(error)[:180], show_alert=True)
+        return
+    await callback.answer(f"В очередь добавлено: {count}.", show_alert=True)
     if isinstance(callback.message, Message):
         await _show_menu(callback.message, database, worker_manager)
 
@@ -354,7 +436,7 @@ async def handle_quality_run(
     database: Database,
     worker_manager: WorkerManager,
 ) -> None:
-    await callback.answer("Запускаю цикл проверки качества.")
+    await callback.answer("Запускаю один цикл проверки качества.")
     try:
         ok = await worker_manager.run_now("ai-quality")
     except (RuntimeError, ValueError) as error:
