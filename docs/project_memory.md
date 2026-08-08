@@ -432,3 +432,15 @@ Repository implementation #457 завершена этим срезом, но li
 - blocking known contracts: **0**;
 - #457 уже объединён в `main`; live provider и Telegram acceptance для нового GPT Image маршрута остаются отдельными эксплуатационными проверками.
 <!-- /pr-663-byesu-image-quality-architecture-slice -->
+
+<!-- codex-recovery-notification-architecture-slice -->
+## Срез Codex recovery notification от 8 августа 2026 года
+
+Воспроизводимый repository baseline после добавления persistent-deduplicated recovery notification:
+
+- package production modules: **658**;
+- package production LOC: **144910**;
+- Codex availability/routing authority и пятичасовой probe cadence не менялись;
+- Telegram transport использует существующий main Velvet bot/application path;
+- production rollout и live canary остаются отдельной эксплуатационной проверкой.
+<!-- /codex-recovery-notification-architecture-slice -->

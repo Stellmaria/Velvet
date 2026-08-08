@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_from": "working-tree",
+  "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 658,
   "production_loc": 144910,
   "layer_counts": {
