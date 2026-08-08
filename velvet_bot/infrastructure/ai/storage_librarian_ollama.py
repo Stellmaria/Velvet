@@ -285,6 +285,31 @@ def _request_body(
     }
 
 
+async def _post_analysis_json(
+    session: _SessionProtocol,
+    *,
+    url: str,
+    request: dict[str, object],
+) -> dict[object, object]:
+    async with session.post(url, json=request) as response:
+        if response.status < 200 or response.status >= 300:
+            error_type = (
+                StorageLibrarianError
+                if response.status in {408, 429} or response.status >= 500
+                else TerminalStorageLibrarianError
+            )
+            raise error_type(f"Ollama analysis HTTP {response.status}.")
+        try:
+            raw_payload = await response.json(content_type=None)
+        except (json.JSONDecodeError, ValueError, TypeError) as error:
+            raise _terminal(
+                "Ollama analysis вернул malformed HTTP JSON."
+            ) from error
+    if not isinstance(raw_payload, dict):
+        raise _terminal("Ollama analysis вернул malformed response.")
+    return raw_payload
+
+
 class OllamaStorageAnalysisClient:
     def __init__(
         self,
@@ -355,35 +380,11 @@ class OllamaStorageAnalysisClient:
                                 else max_output_tokens
                             ),
                         )
-                        async with session.post(
-                            self._settings.ollama_base_url + "/api/chat",
-                            json=request,
-                        ) as response:
-                            if response.status < 200 or response.status >= 300:
-                                error_type = (
-                                    StorageLibrarianError
-                                    if response.status in {408, 429}
-                                    or response.status >= 500
-                                    else TerminalStorageLibrarianError
-                                )
-                                raise error_type(
-                                    f"Ollama analysis HTTP {response.status}."
-                                )
-                            try:
-                                raw_payload = await response.json(content_type=None)
-                            except (
-                                json.JSONDecodeError,
-                                ValueError,
-                                TypeError,
-                            ) as error:
-                                raise _terminal(
-                                    "Ollama analysis вернул malformed HTTP JSON."
-                                ) from error
-
-                        if not isinstance(raw_payload, dict):
-                            raise _terminal(
-                                "Ollama analysis вернул malformed response."
-                            )
+                        raw_payload = await _post_analysis_json(
+                            session,
+                            url=self._settings.ollama_base_url + "/api/chat",
+                            request=request,
+                        )
                         payload = raw_payload
                         prompt_tokens += _usage_count(
                             payload,
