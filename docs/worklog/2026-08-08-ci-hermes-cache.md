@@ -38,7 +38,7 @@
 - `docker-build-contract` остаётся required check и продолжает проверять exact PR head;
 - CodeQL, supply-chain, static-security, image-security, tests и type-check не ослабляются.
 
-### Риски
+### Риски и ограничения
 
 - ошибка в явном наборе tags могла бы оставить один из Hermes service images непроверенным;
 - GHA cache не должен становиться обязательным условием успеха, поэтому cache export остаётся `ignore-error=true`;
