@@ -63,20 +63,20 @@ jobs:
           test_path = Path('tests/test_package_architecture_inventory.py')
           test_text = test_path.read_text(encoding='utf-8')
           test_text, files_updates = re.subn(
-              r'(?m)^EXPECTED_PRODUCTION_FILES\s*=\s*\d+\s*$',
-              f'EXPECTED_PRODUCTION_FILES = {production_files}',
+              r'self\.assertEqual\(\d+, self\.inventory\["production_module_count"\]\)',
+              f'self.assertEqual({production_files}, self.inventory["production_module_count"])',
               test_text,
               count=1,
           )
           test_text, loc_updates = re.subn(
-              r'(?m)^EXPECTED_PRODUCTION_LOC\s*=\s*\d+\s*$',
-              f'EXPECTED_PRODUCTION_LOC = {production_loc}',
+              r'self\.assertEqual\(\d+, self\.inventory\["production_loc"\]\)',
+              f'self.assertEqual({production_loc}, self.inventory["production_loc"])',
               test_text,
               count=1,
           )
           if files_updates != 1 or loc_updates != 1:
               raise SystemExit(
-                  f'baseline constants update mismatch: files={files_updates} loc={loc_updates}'
+                  f'baseline assertions update mismatch: files={files_updates} loc={loc_updates}'
               )
           test_path.write_text(test_text, encoding='utf-8')
 
