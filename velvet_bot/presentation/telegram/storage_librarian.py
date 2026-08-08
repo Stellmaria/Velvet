@@ -39,6 +39,7 @@ from velvet_bot.infrastructure.telegram.storage_librarian_reports import (
 logger = logging.getLogger(__name__)
 _scheduler_task: asyncio.Task[None] | None = None
 _background_tasks: set[asyncio.Task[None]] = set()
+_STALE_RUNNING_SECONDS = 15 * 60
 
 
 def _env_enabled(name: str, default: bool = False) -> bool:
@@ -132,6 +133,46 @@ async def _send_chunks(message: Message, text: str) -> None:
         await message.answer(chunk)
 
 
+async def _recover_stale_running_jobs(database: Database) -> tuple[int, int]:
+    """Release orphaned Librarian claims without erasing attempt history."""
+    async with database.acquire() as connection:
+        rows = await connection.fetch(
+            """
+            UPDATE telegram_storage_analysis_jobs
+            SET status = CASE
+                    WHEN attempts >= max_attempts THEN 'failed'
+                    ELSE 'queued'
+                END,
+                available_at = NOW(),
+                last_error = CASE
+                    WHEN attempts >= max_attempts
+                        THEN COALESCE(
+                            NULLIF(last_error, ''),
+                            'Storage Librarian worker lease expired after maximum attempts.'
+                        )
+                    ELSE last_error
+                END,
+                locked_at = NULL,
+                worker_id = NULL,
+                finished_at = CASE
+                    WHEN attempts >= max_attempts THEN NOW()
+                    ELSE NULL
+                END,
+                updated_at = NOW()
+            WHERE status = 'running'
+              AND (
+                  locked_at IS NULL
+                  OR locked_at <= NOW() - ($1::INTEGER * INTERVAL '1 second')
+              )
+            RETURNING status
+            """,
+            _STALE_RUNNING_SECONDS,
+        )
+    requeued = sum(1 for row in rows if str(row["status"]) == "queued")
+    failed = sum(1 for row in rows if str(row["status"]) == "failed")
+    return requeued, failed
+
+
 async def _librarian_scheduler_loop(
     *,
     bot: Bot,
@@ -158,6 +199,15 @@ async def _librarian_scheduler_loop(
     service.repository = repository
     while True:
         try:
+            requeued, failed = await _recover_stale_running_jobs(database)
+            if requeued or failed:
+                logger.warning(
+                    "Storage Librarian stale running recovery "
+                    "requeued=%s failed=%s stale_after=%ss",
+                    requeued,
+                    failed,
+                    _STALE_RUNNING_SECONDS,
+                )
             if full_archive:
                 queued = await repository.enqueue_pending(
                     settings=settings,
