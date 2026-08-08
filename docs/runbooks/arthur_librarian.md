@@ -1,7 +1,9 @@
 # Arthur Librarian
 
 Arthur is the dedicated owner-only Telegram interface for the existing Storage
-Librarian. Phase 2 does not enable archive batches, AFK processing or vision.
+Librarian. Archive processing remains explicit: environment-driven AFK enqueue is
+disabled, while the owner can start or stop a cooperative full-archive loop from
+the Arthur Telegram bot.
 
 ## Security boundary
 
@@ -14,8 +16,12 @@ Librarian. Phase 2 does not enable archive batches, AFK processing or vision.
   socket, shell/systemd tools nor cloud provider keys.
 - Arthur, gateway, Ollama and Librarian Hermes publish no host ports.
 - `STORAGE_LIBRARIAN_AUTO_ENQUEUE=false` is enforced both by settings and Compose.
+  `/archive start` does not change that environment flag; it explicitly drives
+  `enqueue_pending()` inside the already running owner-only Arthur process.
 - A running Storage analysis cannot be reset to `queued` by another manual
   `/analyze` request.
+- Archive and manual `/analyze` inference share one application lock, so Arthur
+  does not intentionally run two local Storage analyses in parallel.
 
 ## Required secrets
 
@@ -53,6 +59,9 @@ Do not replace the canonical lifecycle with a direct profile-wide
 
 - `/start`
 - `/status`
+- `/archive start`
+- `/archive stop`
+- `/archive status`
 - `/analyze ID`
 - `/result ID`
 - `/ask вопрос`
@@ -61,14 +70,33 @@ Do not replace the canonical lifecycle with a direct profile-wide
 - `/download ID`
 - `/help`
 
-`/cancel` is intentionally absent until cooperative cancellation can guarantee
-that a running inference and its PostgreSQL state are reconciled safely.
+`/archive start` starts a full-archive loop for the currently configured
+`STORAGE_LIBRARIAN_ANALYZER_VERSION`. It gradually calls `enqueue_pending()` and
+processes one Storage job per cycle using the configured Librarian scan interval.
+Objects that already have a completed analysis for the same analyzer version are
+not reprocessed. A deliberate full rescan therefore still uses a new analyzer
+version, preserving previous results until each object is replaced by the new
+analysis.
+
+`/archive stop` is cooperative. It does not cancel Ollama in the middle of an
+object and does not mutate Docker state. If an object is currently running,
+Arthur finishes that object and then exits the archive loop. Queue rows and
+stored analyses remain in PostgreSQL, so `/archive start` can resume later.
+
+`/archive status` shows whether the loop is running, stopping or stopped,
+current queue counters, analyzer version and the last loop-level error if one
+was observed.
+
+`/cancel` remains intentionally absent for individual inference. Cooperative
+archive stop is safe because it waits for the current Storage job boundary.
 
 ## Production acceptance
 
-Use one safe Storage object. Confirm the Telegram result and then query
-PostgreSQL for job status, `analyzer`, `analyzer_version`, `confidence` and run
-metadata. Also verify one loaded Ollama model, no host binding for `11434`, and
-`STORAGE_LIBRARIAN_AUTO_ENQUEUE=false`.
+Confirm that Telegram `/archive status` initially reports `stopped`. Run
+`/archive start`, verify that the state becomes `running` and queue counters move,
+then run `/archive stop` and confirm the state becomes `stopping` or `stopped`
+without Docker pause/restart activity. After the current object boundary, status
+must settle on `stopped` while Arthur itself remains healthy.
 
-Do not remove temporary reconcile workarounds during the first Arthur rollout.
+Also verify one loaded Ollama model, no host binding for `11434`, and
+`STORAGE_LIBRARIAN_AUTO_ENQUEUE=false`.

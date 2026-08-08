@@ -18,6 +18,7 @@ from aiogram.types import (
 
 from velvet_bot.application.arthur_librarian import (
     ArthurAnalysisOutcome,
+    ArthurArchiveStatus,
     ArthurLibrarianApplication,
 )
 from velvet_bot.core.config.arthur import ArthurSettings
@@ -26,7 +27,10 @@ from velvet_bot.domains.telegram_storage.librarian_models import StorageLibraria
 
 _HELP = """<b>Arthur Librarian</b>
 
-<code>/status</code> — сервисы, модель и manual queue
+<code>/status</code> — сервисы, модель и очередь
+<code>/archive start</code> — запустить полный архивный цикл
+<code>/archive stop</code> — мягко остановить архивный цикл
+<code>/archive status</code> — состояние архивного цикла
 <code>/analyze ID</code> — анализ одного Storage object
 <code>/result ID</code> — сохранённый результат
 <code>/ask вопрос</code> — ответ по готовому индексу
@@ -35,14 +39,16 @@ _HELP = """<b>Arthur Librarian</b>
 <code>/download ID</code> — исходный объект
 <code>/help</code> — ограничения
 
-Mass enqueue и AFK отключены. Vision относится к отдельному gateway scope."""
+Env auto-enqueue остаётся выключенным. Архив запускается только явной owner-командой. Vision относится к отдельному gateway scope."""
 
 
 def _menu() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="/status"), KeyboardButton(text="/queue")],
-            [KeyboardButton(text="/digest 1"), KeyboardButton(text="/help")],
+            [KeyboardButton(text="/archive start"), KeyboardButton(text="/archive stop")],
+            [KeyboardButton(text="/archive status"), KeyboardButton(text="/digest 1")],
+            [KeyboardButton(text="/help")],
         ],
         resize_keyboard=True,
         is_persistent=True,
@@ -89,6 +95,11 @@ def _positive_id(message: Message) -> int | None:
     return value if value > 0 else None
 
 
+def _command_argument(message: Message) -> str:
+    _, _, raw = (message.text or "").partition(" ")
+    return raw.strip().casefold()
+
+
 def _safe_error(error: BaseException) -> str:
     return escape(redact_sensitive(str(error))[:1200] or type(error).__name__)
 
@@ -117,15 +128,77 @@ def _render_outcome(outcome: ArthurAnalysisOutcome) -> str:
     return "\n".join(lines)[:4000]
 
 
+def _render_archive_status(status: ArthurArchiveStatus) -> str:
+    state = "stopping" if status.stopping else "running" if status.active else "stopped"
+    counts = status.counts
+    lines = [
+        "<b>Arthur · archive</b>",
+        "",
+        f"State: <code>{state}</code>",
+        f"Analyzer: <code>{escape(status.analyzer_version)}</code>",
+        f"Queued: <code>{counts.get('queued', 0)}</code>",
+        f"Running: <code>{counts.get('running', 0)}</code>",
+        f"Completed: <code>{counts.get('completed', 0)}</code>",
+        f"Skipped: <code>{counts.get('skipped', 0)}</code>",
+        f"Failed: <code>{counts.get('failed', 0)}</code>",
+    ]
+    if status.last_error:
+        lines.extend(("", "Последняя ошибка: " + escape(status.last_error)))
+    return "\n".join(lines)[:4000]
+
+
+def _register_archive_commands(router: Router) -> None:
+    @router.message(Command("archive"))
+    async def archive(
+        message: Message,
+        arthur_app: ArthurLibrarianApplication,
+    ) -> None:
+        action = _command_argument(message) or "status"
+        try:
+            if action == "start":
+                started = await arthur_app.start_archive()
+                status = await arthur_app.archive_status()
+                prefix = (
+                    "Архивный анализ запущен."
+                    if started
+                    else "Архивный анализ уже запущен."
+                )
+                await message.answer(prefix + "\n\n" + _render_archive_status(status))
+                return
+            if action == "stop":
+                stopping = await arthur_app.stop_archive()
+                status = await arthur_app.archive_status()
+                prefix = (
+                    "Остановка запрошена. Текущий объект будет завершён."
+                    if stopping
+                    else "Архивный анализ уже остановлен."
+                )
+                await message.answer(prefix + "\n\n" + _render_archive_status(status))
+                return
+            if action == "status":
+                await message.answer(
+                    _render_archive_status(await arthur_app.archive_status())
+                )
+                return
+        except StorageLibrarianError as error:
+            await message.answer("Arthur archive недоступен: " + _safe_error(error))
+            return
+        await message.answer(
+            "Формат: <code>/archive start</code>, <code>/archive stop</code> "
+            "или <code>/archive status</code>"
+        )
+
+
 def build_arthur_router() -> Router:
     router = Router(name="arthur-librarian")
+    _register_archive_commands(router)
 
     @router.message(Command("start"))
     async def start(message: Message) -> None:
         await message.answer(
             "<b>Arthur Librarian</b>\n\n"
             "Отдельный owner-only интерфейс локального Storage analysis. "
-            "Артур работает manual-first и не запускает массовую очередь.",
+            "Массовый архив запускается только явной командой владельца.",
             reply_markup=_menu(),
         )
 
@@ -138,11 +211,15 @@ def build_arthur_router() -> Router:
         message: Message,
         arthur_app: ArthurLibrarianApplication,
     ) -> None:
-        counts, health = await asyncio.gather(
+        counts, health, archive = await asyncio.gather(
             arthur_app.queue_counts(),
             arthur_app.service_health(),
+            arthur_app.archive_status(),
         )
         settings = arthur_app.librarian_settings
+        archive_state = (
+            "stopping" if archive.stopping else "running" if archive.active else "stopped"
+        )
         await message.answer(
             "<b>Arthur status</b>\n\n"
             f"Gateway: <code>{'ok' if health.gateway else 'unavailable'}</code>\n"
@@ -152,7 +229,8 @@ def build_arthur_router() -> Router:
             f"Librarian: <code>{'enabled' if settings.enabled else 'disabled'}</code>\n"
             f"Text model: <code>{escape(settings.text_model)}</code>\n"
             f"Analyzer: <code>{escape(settings.analyzer_version)}</code>\n"
-            "Auto enqueue: <code>false</code>\n"
+            "Env auto enqueue: <code>false</code>\n"
+            f"Archive: <code>{archive_state}</code>\n"
             f"Queued: <code>{counts.get('queued', 0)}</code>\n"
             f"Running: <code>{counts.get('running', 0)}</code>\n"
             f"Failed: <code>{counts.get('failed', 0)}</code>"
@@ -168,7 +246,7 @@ def build_arthur_router() -> Router:
             f"{escape(name)}: <code>{value}</code>"
             for name, value in sorted(counts.items())
         )
-        await message.answer("<b>Manual queue</b>\n\n" + body)
+        await message.answer("<b>Storage queue</b>\n\n" + body)
 
     @router.message(Command("analyze"))
     async def analyze(
