@@ -7,6 +7,7 @@ from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError
 
 from velvet_bot.app.ai_usage import build_audited_ai_usage_service
+from velvet_bot.app.codex_recovery_worker import register_codex_recovery_worker
 from velvet_bot.app.commands import install_command_menus
 from velvet_bot.app.dispatcher import build_dispatcher
 from velvet_bot.app.save_sessions import SaveUploadSessions
@@ -44,6 +45,7 @@ async def _start_background_workers(
 ) -> None:
     from velvet_bot.presentation.telegram.storage_librarian import start_storage_librarian
 
+    register_codex_recovery_worker(bot=bot, manager=worker_manager)
     await start_storage_librarian(bot, database)
     await worker_manager.start_all()
 
