@@ -31,7 +31,10 @@ from velvet_bot.domains.vision_routing.integration import (
 from velvet_bot.infrastructure.postgres.ai_task_wakeup_repository import (
     PostgresAITaskQueueDiagnostics,
 )
-from velvet_bot.local_ai_runtime import get_local_ai_lock
+from velvet_bot.local_ai_runtime import (
+    get_local_ai_lock,
+    storage_librarian_archive_phase_enabled,
+)
 from velvet_bot.workers.adaptive import (
     WorkerIterationOutcome,
     WorkerIterationResult,
@@ -50,9 +53,11 @@ def _env_enabled(name: str, default: bool = False) -> bool:
 async def storage_librarian_full_archive_has_priority(database: Database) -> bool:
     """Keep automatic VL behind the explicitly enabled Arthur full-archive phase."""
 
-    if not _env_enabled("STORAGE_LIBRARIAN_AUTO_ENQUEUE", False):
-        return False
-    if not _env_enabled("STORAGE_LIBRARIAN_AUTO_BACKFILL", False):
+    runtime_archive = storage_librarian_archive_phase_enabled()
+    legacy_archive = _env_enabled(
+        "STORAGE_LIBRARIAN_AUTO_ENQUEUE", False
+    ) and _env_enabled("STORAGE_LIBRARIAN_AUTO_BACKFILL", False)
+    if not runtime_archive and not legacy_archive:
         return False
 
     try:
@@ -77,7 +82,7 @@ async def storage_librarian_full_archive_has_priority(database: Database) -> boo
     # Probe the exact existing full-archive eligibility query with a hard limit of
     # one. If work remains, queue exactly one Arthur item and keep VL closed. The
     # next gate iteration sees that queued/running item and cannot grow the queue
-    # during the Librarian scheduler's idle interval.
+    # during either the legacy scheduler or Arthur's explicit archive idle interval.
     enqueued = await repository.enqueue_pending(settings=settings, limit=1)
     return enqueued > 0
 
