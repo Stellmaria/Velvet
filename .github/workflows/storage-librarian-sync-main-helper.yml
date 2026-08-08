@@ -1,0 +1,111 @@
+name: storage librarian sync main helper
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  sync-and-clean:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'fix/storage-librarian-bounded-chunking'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Merge latest main and regenerate canonical inventory
+        shell: bash
+        env:
+          HEAD_BRANCH: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          set +e
+          git merge --no-commit --no-ff origin/main
+          merge_status=$?
+          set -e
+          if test "$merge_status" -ne 0; then
+            conflicts="$(git diff --name-only --diff-filter=U)"
+            printf 'merge conflicts:\n%s\n' "$conflicts"
+            CONFLICTS="$conflicts" python - <<'PY'
+          from __future__ import annotations
+
+          import os
+
+          allowed = {
+              "docs/package_architecture_inventory.json",
+              "docs/package_architecture_inventory.md",
+              "tests/test_package_architecture_inventory.py",
+          }
+          found = {line for line in os.environ["CONFLICTS"].splitlines() if line}
+          unexpected = found - allowed
+          if unexpected:
+              raise SystemExit(
+                  "unexpected merge conflicts: " + ", ".join(sorted(unexpected))
+              )
+          if not found:
+              raise SystemExit("merge failed without reported conflicts")
+          PY
+            for path in \
+              docs/package_architecture_inventory.json \
+              docs/package_architecture_inventory.md \
+              tests/test_package_architecture_inventory.py
+            do
+              if git diff --name-only --diff-filter=U -- "$path" | grep -q .; then
+                git checkout --theirs -- "$path"
+                git add -- "$path"
+              fi
+            done
+            test -z "$(git diff --name-only --diff-filter=U)"
+          fi
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --label p1-package-architecture-baseline
+          python - <<'PY'
+          from __future__ import annotations
+
+          import json
+          import re
+          from pathlib import Path
+
+          inventory = json.loads(
+              Path("docs/package_architecture_inventory.json").read_text(encoding="utf-8")
+          )
+          production_loc = int(inventory["production_loc"])
+          path = Path("tests/test_package_architecture_inventory.py")
+          source = path.read_text(encoding="utf-8")
+          updated, count = re.subn(
+              r'self\.assertEqual\(\d+, self\.inventory\["production_loc"\]\)',
+              f'self.assertEqual({production_loc}, self.inventory["production_loc"])',
+              source,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit("production_loc assertion was not updated exactly once")
+          path.write_text(updated, encoding="utf-8")
+          print(f"combined production_loc={production_loc}")
+          PY
+          rm .github/workflows/storage-librarian-sync-main-helper.yml
+          git add -- \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            tests/test_package_architecture_inventory.py \
+            .github/workflows/storage-librarian-sync-main-helper.yml
+          git diff --cached --check
+          git commit -m "Merge latest main into bounded chunking branch"
+          git push origin "HEAD:${HEAD_BRANCH}"
