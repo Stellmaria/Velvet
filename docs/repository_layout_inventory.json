@@ -532,14 +532,17 @@
       "path": "velvet_bot/domains/telegram_storage/arthur_repository.py",
       "layout": "domain",
       "domain": "telegram_storage",
-      "production_consumer_count": 1,
-      "test_consumer_count": 0,
+      "production_consumer_count": 2,
+      "test_consumer_count": 1,
       "package_export_count": 0,
-      "reference_count": 1,
+      "reference_count": 3,
       "production_consumers": [
-        "velvet_bot/application/arthur_librarian.py"
+        "velvet_bot/application/arthur_librarian.py",
+        "velvet_bot/domains/vision_batches/worker.py"
       ],
-      "test_consumers": [],
+      "test_consumers": [
+        "tests/test_arthur_archive_control.py"
+      ],
       "package_exports": []
     },
     {
@@ -597,15 +600,14 @@
       "path": "velvet_bot/domains/telegram_storage/librarian_repository.py",
       "layout": "domain",
       "domain": "telegram_storage",
-      "production_consumer_count": 6,
+      "production_consumer_count": 5,
       "test_consumer_count": 1,
       "package_export_count": 0,
-      "reference_count": 7,
+      "reference_count": 6,
       "production_consumers": [
         "velvet_bot/application/storage_librarian.py",
         "velvet_bot/domains/telegram_storage/arthur_repository.py",
         "velvet_bot/domains/telegram_storage/librarian_afk_repository.py",
-        "velvet_bot/domains/vision_batches/worker.py",
         "velvet_bot/infrastructure/telegram/arthur_storage_gateway_server.py",
         "velvet_bot/presentation/telegram/storage_librarian.py"
       ],
