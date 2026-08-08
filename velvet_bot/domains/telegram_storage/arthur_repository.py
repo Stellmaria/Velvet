@@ -23,7 +23,7 @@ class ArthurStorageLibrarianRepository(StorageLibrarianRepository):
     async def claim_next(self, worker_id: str) -> LibrarianJob | None:
         if self._target_object_id is None:
             return await super().claim_next(worker_id)
-        return await self._claim_next(
+        return await self.claim_matching(
             worker_id,
             target_object_id=self._target_object_id,
         )
