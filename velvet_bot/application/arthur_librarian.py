@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 
 import aiohttp
@@ -206,58 +207,64 @@ class ArthurLibrarianApplication:
             analysis=await self.repository.analysis_by_object_id(object_id),
         )
 
-    async def _archive_loop(self, stop_event: asyncio.Event) -> None:
+    async def _archive_loop(
+        self,
+        stop_event: asyncio.Event,
+        archive_phase: AbstractAsyncContextManager[None],
+    ) -> None:
         service = self._service()
         try:
-            async with self.repository.full_archive_phase():
-                while not stop_event.is_set():
-                    try:
-                        queued = await self.repository.enqueue_pending(
-                            settings=self.librarian_settings,
-                            limit=_ARCHIVE_BATCH_SIZE,
-                        )
-                        if stop_event.is_set():
-                            break
-                        async with self._analysis_lock:
-                            if stop_event.is_set():
-                                break
-                            processed = await service.process_once(auto_enqueue=False)
-                        self._archive_last_error = None
-                        if queued or processed:
-                            logger.info(
-                                "Arthur archive cycle queued=%s processed=%s analyzer=%s",
-                                queued,
-                                processed,
-                                self.librarian_settings.analyzer_version,
-                            )
-                    except asyncio.CancelledError:
-                        raise
-                    except (
-                        StorageLibrarianError,
-                        asyncpg.PostgresError,
-                        aiohttp.ClientError,
-                        OSError,
-                        ValueError,
-                        TimeoutError,
-                    ) as error:
-                        self._archive_last_error = str(error)[:1200] or type(error).__name__
-                        logger.warning("Arthur archive cycle failed: %s", error)
+            while not stop_event.is_set():
+                try:
+                    queued = await self.repository.enqueue_pending(
+                        settings=self.librarian_settings,
+                        limit=_ARCHIVE_BATCH_SIZE,
+                    )
                     if stop_event.is_set():
                         break
-                    try:
-                        await asyncio.wait_for(
-                            stop_event.wait(),
-                            timeout=self.librarian_settings.scan_interval_seconds,
+                    async with self._analysis_lock:
+                        if stop_event.is_set():
+                            break
+                        processed = await service.process_once(auto_enqueue=False)
+                    self._archive_last_error = None
+                    if queued or processed:
+                        logger.info(
+                            "Arthur archive cycle queued=%s processed=%s analyzer=%s",
+                            queued,
+                            processed,
+                            self.librarian_settings.analyzer_version,
                         )
-                    except TimeoutError:
-                        pass
-        except StorageLibrarianError as error:
-            self._archive_last_error = str(error)[:1200] or type(error).__name__
-            logger.warning("Arthur archive phase failed: %s", error)
+                except asyncio.CancelledError:
+                    raise
+                except (
+                    StorageLibrarianError,
+                    asyncpg.PostgresError,
+                    aiohttp.ClientError,
+                    OSError,
+                    ValueError,
+                    TimeoutError,
+                ) as error:
+                    self._archive_last_error = str(error)[:1200] or type(error).__name__
+                    logger.warning("Arthur archive cycle failed: %s", error)
+                if stop_event.is_set():
+                    break
+                try:
+                    await asyncio.wait_for(
+                        stop_event.wait(),
+                        timeout=self.librarian_settings.scan_interval_seconds,
+                    )
+                except TimeoutError:
+                    pass
         finally:
-            async with self._archive_control_lock:
-                if self._archive_task is asyncio.current_task():
-                    self._archive_task = None
+            try:
+                await archive_phase.__aexit__(None, None, None)
+            except (asyncpg.PostgresError, OSError, RuntimeError) as error:
+                self._archive_last_error = str(error)[:1200] or type(error).__name__
+                logger.error("Arthur archive lease release failed: %s", error)
+            finally:
+                async with self._archive_control_lock:
+                    if self._archive_task is asyncio.current_task():
+                        self._archive_task = None
 
     async def start_archive(self) -> bool:
         if not self.librarian_settings.enabled:
@@ -267,12 +274,18 @@ class ArthurLibrarianApplication:
             if task is not None and not task.done():
                 return False
             stop_event = asyncio.Event()
+            archive_phase = self.repository.full_archive_phase()
+            await archive_phase.__aenter__()
             self._archive_stop_event = stop_event
             self._archive_last_error = None
-            self._archive_task = asyncio.create_task(
-                self._archive_loop(stop_event),
-                name="arthur-full-archive",
-            )
+            try:
+                self._archive_task = asyncio.create_task(
+                    self._archive_loop(stop_event, archive_phase),
+                    name="arthur-full-archive",
+                )
+            except BaseException:
+                await archive_phase.__aexit__(None, None, None)
+                raise
             return True
 
     async def stop_archive(self) -> bool:
