@@ -21,6 +21,7 @@ TEXT_CONTEXT_RESERVED_TOKENS = 1024
 TEXT_CHARS_PER_TOKEN = 2
 TEXT_ANALYSIS_WRAPPER_RESERVED_CHARS = 2048
 TEXT_CHUNK_WRAPPER_RESERVED_CHARS = 512
+MIN_STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS = 720
 
 
 class StorageLibrarianError(RuntimeError):
@@ -220,6 +221,15 @@ class StorageLibrarianSettings:
         max_chunk_count, max_chunk_source_chars, max_inference_calls = _chunk_limits(
             max_text_chars
         )
+        run_timeout_seconds = max(
+            MIN_STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS,
+            _int_env(
+                "STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS",
+                MIN_STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS,
+                minimum=30,
+                maximum=1800,
+            ),
+        )
 
         return cls(
             enabled=enabled,
@@ -237,12 +247,7 @@ class StorageLibrarianSettings:
                 minimum=1,
                 maximum=30,
             ),
-            run_timeout_seconds=_int_env(
-                "STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS",
-                180,
-                minimum=30,
-                maximum=1800,
-            ),
+            run_timeout_seconds=run_timeout_seconds,
             max_object_bytes=_int_env(
                 "STORAGE_LIBRARIAN_MAX_OBJECT_BYTES",
                 12 * 1024 * 1024,
@@ -373,6 +378,7 @@ __all__ = (
     "LibrarianJob",
     "LibrarianObject",
     "LibrarianPart",
+    "MIN_STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS",
     "PROTECTED_KINDS",
     "StorageLibrarianError",
     "StorageLibrarianSettings",

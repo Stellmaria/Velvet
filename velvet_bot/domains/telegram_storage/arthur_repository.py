@@ -73,31 +73,9 @@ class ArthurStorageLibrarianRepository(StorageLibrarianRepository):
     async def claim_next(self, worker_id: str) -> LibrarianJob | None:
         if self._target_object_id is None:
             return await super().claim_next(worker_id)
-        async with self._arthur_database.acquire() as connection:
-            row = await connection.fetchrow(
-                """
-                UPDATE telegram_storage_analysis_jobs
-                SET status = 'running',
-                    attempts = attempts + 1,
-                    locked_at = NOW(),
-                    worker_id = $2::TEXT,
-                    updated_at = NOW()
-                WHERE storage_object_id = $1::BIGINT
-                  AND status = 'queued'
-                  AND available_at <= NOW()
-                  AND attempts < max_attempts
-                RETURNING id, storage_object_id, attempts, max_attempts
-                """,
-                int(self._target_object_id),
-                worker_id,
-            )
-        if row is None:
-            return None
-        return LibrarianJob(
-            job_id=int(row["id"]),
-            storage_object_id=int(row["storage_object_id"]),
-            attempts=int(row["attempts"]),
-            max_attempts=int(row["max_attempts"]),
+        return await self.claim_matching(
+            worker_id,
+            target_object_id=self._target_object_id,
         )
 
     async def job_status(self, object_id: int) -> dict[str, object] | None:

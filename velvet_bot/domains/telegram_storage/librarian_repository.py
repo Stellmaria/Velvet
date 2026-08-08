@@ -16,6 +16,8 @@ from velvet_bot.domains.telegram_storage.librarian_models import (
     UnsupportedStorageContent,
 )
 
+_CLAIM_ADVISORY_LOCK_KEY = 6216458794068888649
+
 
 def _json_object(value: object) -> JsonObject:
     if isinstance(value, dict):
@@ -236,33 +238,62 @@ class StorageLibrarianRepository:
             )
         return result.endswith(" 1")
 
-    async def claim_next(self, worker_id: str) -> LibrarianJob | None:
+    async def claim_matching(
+        self,
+        worker_id: str,
+        *,
+        target_object_id: int | None = None,
+        min_object_id: int | None = None,
+    ) -> LibrarianJob | None:
+        """Claim one matching job through the shared cross-process claim gate."""
         async with self._database.acquire() as connection:
-            row = await connection.fetchrow(
-                """
-                WITH picked AS (
-                    SELECT id
-                    FROM telegram_storage_analysis_jobs
-                    WHERE status = 'queued'
-                      AND available_at <= NOW()
-                      AND attempts < max_attempts
-                    ORDER BY priority DESC, available_at, id
-                    FOR UPDATE SKIP LOCKED
-                    LIMIT 1
+            async with connection.transaction():
+                await connection.execute(
+                    "SELECT pg_advisory_xact_lock($1::BIGINT)",
+                    _CLAIM_ADVISORY_LOCK_KEY,
                 )
-                UPDATE telegram_storage_analysis_jobs AS job
-                SET status = 'running',
-                    attempts = job.attempts + 1,
-                    locked_at = NOW(),
-                    worker_id = $1::TEXT,
-                    updated_at = NOW()
-                FROM picked
-                WHERE job.id = picked.id
-                RETURNING job.id, job.storage_object_id,
-                          job.attempts, job.max_attempts
-                """,
-                worker_id,
-            )
+                row = await connection.fetchrow(
+                    """
+                    WITH picked AS (
+                        SELECT candidate.id
+                        FROM telegram_storage_analysis_jobs AS candidate
+                        WHERE candidate.status = 'queued'
+                          AND candidate.available_at <= NOW()
+                          AND candidate.attempts < candidate.max_attempts
+                          AND (
+                              $2::BIGINT IS NULL
+                              OR candidate.storage_object_id = $2::BIGINT
+                          )
+                          AND (
+                              $3::BIGINT IS NULL
+                              OR candidate.storage_object_id > $3::BIGINT
+                          )
+                          AND NOT EXISTS (
+                              SELECT 1
+                              FROM telegram_storage_analysis_jobs AS active
+                              WHERE active.status = 'running'
+                          )
+                        ORDER BY candidate.priority DESC,
+                                 candidate.available_at,
+                                 candidate.id
+                        FOR UPDATE OF candidate SKIP LOCKED
+                        LIMIT 1
+                    )
+                    UPDATE telegram_storage_analysis_jobs AS job
+                    SET status = 'running',
+                        attempts = job.attempts + 1,
+                        locked_at = NOW(),
+                        worker_id = $1::TEXT,
+                        updated_at = NOW()
+                    FROM picked
+                    WHERE job.id = picked.id
+                    RETURNING job.id, job.storage_object_id,
+                              job.attempts, job.max_attempts
+                    """,
+                    worker_id,
+                    target_object_id,
+                    min_object_id,
+                )
         if row is None:
             return None
         return LibrarianJob(
@@ -271,6 +302,9 @@ class StorageLibrarianRepository:
             attempts=int(row["attempts"]),
             max_attempts=int(row["max_attempts"]),
         )
+
+    async def claim_next(self, worker_id: str) -> LibrarianJob | None:
+        return await self.claim_matching(worker_id)
 
     async def load_object(self, object_id: int) -> LibrarianObject | None:
         async with self._database.acquire() as connection:

@@ -1,0 +1,52 @@
+name: Storage Librarian inventory refresh artifact
+
+on:
+  push:
+    branches:
+      - fix/storage-librarian-cpu-runtime
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Regenerate canonical inventories
+        run: |
+          set -Eeuo pipefail
+          python scripts/shared_contract_inventory.py \
+            --write-json docs/shared_contract_inventory.json \
+            --write-markdown docs/shared_contract_inventory.md \
+            --check
+          python scripts/inventory_repository_layout.py \
+            --write \
+            --label p3e-repository-layout-complete
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --label p1-package-architecture-baseline
+          git status --short
+
+      - name: Upload generated inventories
+        uses: actions/upload-artifact@v4
+        with:
+          name: storage-librarian-generated-inventories
+          if-no-files-found: error
+          retention-days: 1
+          path: |
+            docs/shared_contract_inventory.json
+            docs/shared_contract_inventory.md
+            docs/repository_layout_inventory.json
+            docs/repository_layout_inventory.md
+            docs/package_architecture_inventory.json
+            docs/package_architecture_inventory.md
