@@ -279,8 +279,6 @@ def _validate_storage(values: dict[str, str], report: ValidationReport) -> None:
 def _validate_safety_flags(values: dict[str, str], report: ValidationReport) -> None:
     if _flag(values, "SUPERVISOR_ALLOW_REMOTE"):
         report.error("SUPERVISOR_ALLOW_REMOTE должен оставаться false на production VPS.")
-    if _flag(values, "KRITA_WATERMARK_ENABLED"):
-        report.error("KRITA_WATERMARK_ENABLED должен быть false на Linux VPS без bridge.")
     if _flag(values, "AI_VISION_QUEUE_ENABLED") and not _flag(
         values, "AI_VISION_ENABLED"
     ):
@@ -308,10 +306,27 @@ def _krita_bind_is_loopback(host: str) -> bool:
 
 
 def _validate_krita_remote(values: dict[str, str], report: ValidationReport) -> None:
+    watermark_enabled = _flag(values, "KRITA_WATERMARK_ENABLED")
     enabled = _flag(values, "KRITA_REMOTE_WORKER_ENABLED")
+    bridge_dir = values.get("KRITA_BRIDGE_DIR", "/app/runtime/krita").strip()
     host = values.get("KRITA_REMOTE_BIND_HOST", "127.0.0.1").strip() or "127.0.0.1"
     unsafe = _flag(values, "KRITA_REMOTE_ALLOW_UNSAFE_PUBLIC_BIND")
     token = values.get("KRITA_REMOTE_WORKER_TOKEN", "").strip()
+
+    if watermark_enabled and not enabled:
+        if bridge_dir != "/app/runtime/krita" and not bridge_dir.startswith(
+            "/app/runtime/krita/"
+        ):
+            report.error(
+                "KRITA_BRIDGE_DIR для локального server worker должен оставаться "
+                "внутри /app/runtime/krita."
+            )
+        else:
+            report.passed("Krita watermark использует локальный server bridge.")
+    if enabled and not watermark_enabled:
+        report.error(
+            "KRITA_REMOTE_WORKER_ENABLED требует KRITA_WATERMARK_ENABLED=true."
+        )
     if enabled and (not _configured(token) or len(token) < 32):
         report.error(
             "KRITA_REMOTE_WORKER_ENABLED требует отдельный "
