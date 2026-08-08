@@ -66,17 +66,17 @@ Production `qwen3.5:9b` уже демонстрировал 300-second timeout �
 
 ### Фактически сделано
 
-- добавлен `velvet_bot/vision_failures.py` с typed failure taxonomy и retry/permanent helpers;
-- добавлен `velvet_bot/vision_http.py` с aiohttp POST, real coroutine cancellation и typed HTTP/payload failures;
+- typed failure taxonomy и retry/permanent helpers размещены в `velvet_bot/domains/vision_routing/failures.py`;
+- cancellable aiohttp transport размещён в `velvet_bot/domains/vision_routing/http.py`;
+- `TypedQualityVisionClient` размещён в `velvet_bot/services/typed_quality_vision.py`, чтобы не добавлять новые unclassified root modules;
+- generated package-layer move commit `7a41a8abc802ad0af312fe2c7b7819a4f39469d5` удалил временные root copies и переподключил imports;
 - `MeteredVisionClient` больше не использует `to_thread` для inference HTTP;
 - immediate full-image attempt limit hard-capped at 2 независимо от более высокого route max attempts;
 - только `VisionTransportError` допускает один immediate full-image retry;
 - `VisionTimeoutError` typed transient, но full-image replay запрещён;
 - OOM/provider/schema/refusal не replay-ятся;
 - structured-output failure больше не включает второй image request с другим JSON mode;
-- добавлен `TypedQualityVisionClient` для global/manual quality;
-- global quality worker и manual quality controller уже переключены на `TypedQualityVisionClient` commit `6273dfdccca7300f1a74bff788b450fd27796ab9`;
-- temporary wiring workflow удалён тем же generated commit;
+- global quality worker и manual quality controller переключены на `TypedQualityVisionClient` commit `6273dfdccca7300f1a74bff788b450fd27796ab9`;
 - calibrated quality persistence использует typed permanent classification;
 - unit coverage добавлена для timeout/OOM/transport/schema/cancellation и retry bounds.
 
@@ -88,14 +88,16 @@ DB migration в этом slice нет. Typed exceptions наследуются �
 
 - targeted typed-failure tests добавлены;
 - существующие metered client/refusal contracts сохраняются через subclass compatibility;
-- generated wiring commit был GitHub Actions-authored, поэтому его стандартные PR runs получили `action_required`; owner-authored worklog commits запускают обычный required CI на том же code tree;
+- первый preflight выявил три unclassified root modules; они перемещены в существующие domain/service package layers вместо расширения root debt;
+- generated commits GitHub Actions не считаются финальными CI evidence, поэтому этот owner-authored commit запускает required checks на итоговом code tree;
 - required project CI должен быть зелёным на финальном head до merge.
 
 ### PR и commit
 
 - PR: #724 `Type VL failures and bound image retries`;
 - branch: `fix/vl-typed-failures`;
-- wiring commit: `6273dfdccca7300f1a74bff788b450fd27796ab9`;
+- quality wiring commit: `6273dfdccca7300f1a74bff788b450fd27796ab9`;
+- package-layer move commit: `7a41a8abc802ad0af312fe2c7b7819a4f39469d5`;
 - merge SHA будет добавлен после зелёного CI.
 
 ### Незавершённое
