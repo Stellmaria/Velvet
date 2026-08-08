@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import unittest
-from typing import Any
 
 from velvet_bot.domains.telegram_storage.arthur_repository import (
     ArthurStorageLibrarianRepository,
