@@ -73,6 +73,12 @@ Production verified deploy `a392df96e1cd113ff5bbe6e6e22246984d6b50ec` не вк�
 
 После activation gate сохраняет repository-backed semantics #741: сначала `queued/running`, затем bounded `enqueue_pending(limit=1)` probe. Поэтому живой Arthur archive loop без остаточного backlog не блокирует Qwen навсегда.
 
+### Миграции и совместимость
+
+SQL migrations отсутствуют. Advisory lock не создаёт persisted rows и не меняет схему Storage Librarian jobs/analysis. Если Arthur process или его PostgreSQL session завершается, сервер БД освобождает session advisory lock автоматически, поэтому отдельный stale-state recovery для archive lease не нужен.
+
+Legacy env-driven full-archive activation остаётся совместимым: при `STORAGE_LIBRARIAN_AUTO_ENQUEUE=true` + `STORAGE_LIBRARIAN_AUTO_BACKFILL=true` gate сохраняет прежний repository-backed путь. Production contract #742 с env `false/false` получает cross-container activation через Arthur advisory lease. Новых обязательных env vars нет.
+
 ### Проверки
 
 Regression coverage расширен так, чтобы проверять:
@@ -86,6 +92,14 @@ Regression coverage расширен так, чтобы проверять:
 - cooperative archive stop удерживает lease до фактического выхода task;
 - существующий consumer-before-claim contract остаётся покрыт.
 
+### PR и commit
+
+- Preflight PR: `#745` — `Integrate Arthur archive control with automatic VL priority`.
+- Ветка: `fix/arthur-archive-vl-gate-20260808`.
+- Исходный базовый commit ветки: `a392df96e1cd113ff5bbe6e6e22246984d6b50ec`.
+- Во время работы `main` продвинулся до `66f0993780a1428b260336929f2050b424aebf1e` через независимый #744, поэтому этот PR не будет merged, пока final tree не перенесён на актуальный `main` и `behind_by=0` не доказан.
+- Финальный exact head и squash merge commit фиксируются после terminal success required CI.
+
 ### Незавершённое
 
 - generated architecture/repository inventory должен быть синхронизирован, если protected preflight зафиксирует drift;
@@ -97,4 +111,4 @@ Regression coverage расширен так, чтобы проверять:
 
 ### Следующий шаг
 
-Открыть PR, устранить только фактические CI findings, дождаться terminal success required checks на exact head, проверить `behind_by=0`, выполнить authorized squash merge и развернуть новый verified immutable application image. После production verification перейти к canonical `512 / 1` acceptance, не включая automatic Qwen queue заранее.
+Устранить только фактические CI findings на preflight PR #745. После стабилизации final tree перенести его на свежую ветку от актуального `main`, дождаться terminal success required checks на exact head, проверить `behind_by=0`, выполнить authorized squash merge и развернуть новый verified immutable application image. После production verification перейти к canonical `512 / 1` acceptance, не включая automatic Qwen queue заранее.
