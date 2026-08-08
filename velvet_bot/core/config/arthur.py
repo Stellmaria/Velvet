@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+
+
 def _required(name: str) -> str:
     value = os.getenv(name, "").strip()
     if not value:
@@ -90,7 +92,11 @@ class ArthurSettings:
         heartbeat_path = Path(
             os.getenv("ARTHUR_HEARTBEAT_PATH", "/tmp/arthur-heartbeat")
         )
-        report_chat_id = _parse_optional_int("ARTHUR_REPORT_CHAT_ID")
+        report_chat_id = (
+            _parse_optional_int("ARTHUR_REPORT_CHAT_ID")
+            # Arthur is a separate bot; never inherit Velvet Storage chat.
+            # Reporting stays disabled until an explicit Arthur target is configured.
+        )
         report_thread_id = (
             _parse_optional_int("ARTHUR_REPORT_THREAD_ID")
             if report_chat_id is not None
