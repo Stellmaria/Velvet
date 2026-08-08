@@ -23,7 +23,8 @@ from aiogram.types import (
 )
 
 from velvet_bot.ai_job_runtime import AIJobTracker
-from velvet_bot.ai_quality import AIQualityRepository, AIQualitySummary, QualityVisionClient
+from velvet_bot.ai_quality import AIQualityRepository, AIQualitySummary
+from velvet_bot.services.typed_quality_vision import TypedQualityVisionClient
 from velvet_bot.core.config import load_settings
 from velvet_bot.database import Database
 from velvet_bot.local_ai_runtime import get_local_ai_lock
@@ -351,7 +352,7 @@ async def handle_quality_upload_reply(
         await tracker.stage("downloading")
         source = await _download_image(bot, file_id)
         vision_key = settings.ai_vision_api_key
-        client = QualityVisionClient(
+        client = TypedQualityVisionClient(
             provider=settings.ai_vision_provider,
             base_url=settings.ai_vision_base_url,
             model=settings.ai_vision_model,
