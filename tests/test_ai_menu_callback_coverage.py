@@ -134,7 +134,7 @@ class AIMenuCoverageTests(unittest.TestCase):
 
         self.assertEqual(set(), set(command_to_button.values()) - actions)
 
-    def test_quality_operations_keeps_only_worker_controls(self) -> None:
+    def test_quality_operations_exposes_only_controlled_queue_actions(self) -> None:
         text, markup = build_quality_operations_menu(self.summary, None)
         labels = {
             button.text
@@ -144,16 +144,19 @@ class AIMenuCoverageTests(unittest.TestCase):
         expected = {
             "🖼 Новое фото",
             "📋 Отчёты",
+            "📦 План 10",
+            "📦 План 25",
+            "▶️ План 100",
             "❌ Ошибки",
-            "🛠 Доработка",
-            "🕘 Последние",
-            "▶️ Запуск",
-            "🔁 Повтор ошибок",
+            "🔁 Ошибки: план 10",
+            "▶️ Один цикл",
             "🔄 Обновить",
+            "🛠 Доработка",
             "↩️ Qwen",
         }
 
-        self.assertIn("управление фоновым worker", text)
+        self.assertIn("Mass-backfill отключён", text)
+        self.assertIn("явно подтвердите его запуск", text)
         self.assertEqual(expected, labels)
 
     def test_each_primary_qwen_callback_has_a_handler(self) -> None:
