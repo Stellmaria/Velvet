@@ -3,7 +3,7 @@
 - Дата: 2026-08-08
 - ID: `2026-08-08-vl-typed-failures`
 - Линия/фаза: Velvet AI / VL production safety / transport lifecycle
-- Статус: `частично`
+- Статус: `готово к merge после required CI`
 - Ветка: `fix/vl-typed-failures`
 - Базовый commit: `86b276120fd7e260a16a78d83154c2ddaeac83bf`
 
@@ -89,7 +89,9 @@ DB migration в этом slice нет. Typed exceptions наследуются �
 - targeted typed-failure tests добавлены;
 - существующие metered client/refusal contracts сохраняются через subclass compatibility;
 - первый preflight выявил три unclassified root modules; они перемещены в существующие domain/service package layers вместо расширения root debt;
-- generated commits GitHub Actions не считаются финальными CI evidence, поэтому этот owner-authored commit запускает required checks на итоговом code tree;
+- regression fixture `CalibratedAITerminalSkipLoggingTests` обновлён под новый `background_enabled` contract;
+- package architecture inventory/exemptions пересобраны штатным workflow в commit `f8a68788fa1eab10a1f91f9e5fd4d7f1c006915b`;
+- generated bot commit не запускает нормальный required CI, поэтому этот owner-authored commit является финальным CI trigger на итоговом tree;
 - required project CI должен быть зелёным на финальном head до merge.
 
 ### PR и commit
@@ -98,15 +100,16 @@ DB migration в этом slice нет. Typed exceptions наследуются �
 - branch: `fix/vl-typed-failures`;
 - quality wiring commit: `6273dfdccca7300f1a74bff788b450fd27796ab9`;
 - package-layer move commit: `7a41a8abc802ad0af312fe2c7b7819a4f39469d5`;
+- generated package architecture baseline: `f8a68788fa1eab10a1f91f9e5fd4d7f1c006915b`;
 - merge SHA будет добавлен после зелёного CI.
 
 ### Незавершённое
 
-- исправить реальные CI regressions;
+- дождаться required green checks на owner-authored финальном head;
 - слить PR только после required green checks;
 - production `AI_QUALITY_ENABLED=false` не менять этим PR;
 - после merge продолжить 3-model runtime/router #630.
 
 ### Следующий шаг
 
-Прогнать required CI на owner-authored финальном head. После зелёного merge перейти к runtime model routing без возврата к массовым retries.
+После required green checks слить #724 в `main` и перейти к runtime model routing без возврата к массовым retries.
