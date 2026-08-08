@@ -88,11 +88,16 @@ class ArthurReportDestinationTests(unittest.TestCase):
             "STORAGE_LIBRARIAN_AUTO_ENQUEUE": "false",
         }
 
-    def test_blank_arthur_destination_defaults_to_canonical_reports_topic(self) -> None:
-        with patch.dict(os.environ, self._base_env(), clear=True):
+    def test_blank_arthur_destination_disables_report_publication(self) -> None:
+        environment = {
+            **self._base_env(),
+            "TELEGRAM_STORAGE_CHAT_ID": "-1004459280894",
+            "STORAGE_THREAD_ANALYSIS": "2478",
+        }
+        with patch.dict(os.environ, environment, clear=True):
             settings = ArthurSettings.from_env()
-        self.assertEqual(-1004459280894, settings.report_chat_id)
-        self.assertEqual(2478, settings.report_thread_id)
+        self.assertIsNone(settings.report_chat_id)
+        self.assertIsNone(settings.report_thread_id)
 
     def test_explicit_arthur_destination_overrides_defaults(self) -> None:
         environment = {
