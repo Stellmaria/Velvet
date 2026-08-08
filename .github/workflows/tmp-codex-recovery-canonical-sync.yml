@@ -14,8 +14,6 @@ concurrency:
 
 jobs:
   refresh:
-    if: >-
-      github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout feature branch
@@ -77,17 +75,7 @@ jobs:
 
           marker = '<!-- codex-recovery-notification-architecture-slice -->'
           end_marker = '<!-- /codex-recovery-notification-architecture-slice -->'
-          slice_text = f'''{marker}
-## Срез Codex recovery notification от 8 августа 2026 года
-
-Воспроизводимый repository baseline после добавления persistent-deduplicated recovery notification:
-
-- package production modules: **{production_files}**;
-- package production LOC: **{production_loc}**;
-- Codex availability/routing authority и пятичасовой probe cadence не менялись;
-- Telegram transport использует существующий main Velvet bot/application path;
-- production rollout и live canary остаются отдельной эксплуатационной проверкой.
-{end_marker}'''
+          slice_text = f'{marker}\n## Срез Codex recovery notification от 8 августа 2026 года\n\nВоспроизводимый repository baseline после добавления persistent-deduplicated recovery notification:\n\n- package production modules: **{production_files}**;\n- package production LOC: **{production_loc}**;\n- Codex availability/routing authority и пятичасовой probe cadence не менялись;\n- Telegram transport использует существующий main Velvet bot/application path;\n- production rollout и live canary остаются отдельной эксплуатационной проверкой.\n{end_marker}'
           slice_pattern = re.compile(
               re.escape(marker) + r'.*?' + re.escape(end_marker),
               re.DOTALL,
