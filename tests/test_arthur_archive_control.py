@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import unittest
+from contextlib import asynccontextmanager
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 from velvet_bot.application.arthur_librarian import ArthurLibrarianApplication
-from velvet_bot.local_ai_runtime import (
-    set_storage_librarian_archive_phase_enabled,
-    storage_librarian_archive_phase_enabled,
+from velvet_bot.domains.telegram_storage.arthur_repository import (
+    ArthurStorageLibrarianRepository,
 )
 
 
@@ -18,6 +19,17 @@ ROOT = Path(__file__).resolve().parents[1]
 class _FakeRepository:
     def __init__(self) -> None:
         self.enqueue_calls = 0
+        self.phase_entries = 0
+        self.phase_active = False
+
+    @asynccontextmanager
+    async def full_archive_phase(self):
+        self.phase_entries += 1
+        self.phase_active = True
+        try:
+            yield
+        finally:
+            self.phase_active = False
 
     async def enqueue_pending(self, *, settings: object, limit: int) -> int:
         self.enqueue_calls += 1
@@ -42,13 +54,61 @@ class _FakeService:
         return 1
 
 
+class _Acquire:
+    def __init__(self, connection: object) -> None:
+        self.connection = connection
+
+    async def __aenter__(self) -> object:
+        return self.connection
+
+    async def __aexit__(self, exc_type, exc, tb) -> None:
+        return None
+
+
+class _FakeDatabase:
+    def __init__(self, connection: object) -> None:
+        self.connection = connection
+
+    def acquire(self) -> _Acquire:
+        return _Acquire(self.connection)
+
+
+class ArthurArchiveRepositoryLeaseTests(unittest.IsolatedAsyncioTestCase):
+    async def test_inactive_phase_probe_releases_temporary_advisory_lock(self) -> None:
+        connection = SimpleNamespace(fetchval=AsyncMock(side_effect=[True, True]))
+        repository = ArthurStorageLibrarianRepository(  # type: ignore[arg-type]
+            _FakeDatabase(connection)
+        )
+
+        self.assertFalse(await repository.full_archive_phase_active())
+        self.assertEqual(2, connection.fetchval.await_count)
+        self.assertIn("pg_try_advisory_lock", connection.fetchval.await_args_list[0].args[0])
+        self.assertIn("pg_advisory_unlock", connection.fetchval.await_args_list[1].args[0])
+
+    async def test_active_phase_probe_does_not_unlock_foreign_lease(self) -> None:
+        connection = SimpleNamespace(fetchval=AsyncMock(return_value=False))
+        repository = ArthurStorageLibrarianRepository(  # type: ignore[arg-type]
+            _FakeDatabase(connection)
+        )
+
+        self.assertTrue(await repository.full_archive_phase_active())
+        connection.fetchval.assert_awaited_once()
+
+    async def test_phase_context_holds_and_releases_one_session_lock(self) -> None:
+        connection = SimpleNamespace(fetchval=AsyncMock(side_effect=[True, True]))
+        repository = ArthurStorageLibrarianRepository(  # type: ignore[arg-type]
+            _FakeDatabase(connection)
+        )
+
+        async with repository.full_archive_phase():
+            self.assertEqual(1, connection.fetchval.await_count)
+
+        self.assertEqual(2, connection.fetchval.await_count)
+        self.assertIn("pg_try_advisory_lock", connection.fetchval.await_args_list[0].args[0])
+        self.assertIn("pg_advisory_unlock", connection.fetchval.await_args_list[1].args[0])
+
+
 class ArthurArchiveControlTests(unittest.IsolatedAsyncioTestCase):
-    def setUp(self) -> None:
-        set_storage_librarian_archive_phase_enabled(False)
-
-    def tearDown(self) -> None:
-        set_storage_librarian_archive_phase_enabled(False)
-
     def _application(self) -> tuple[ArthurLibrarianApplication, _FakeRepository, _FakeService]:
         app = ArthurLibrarianApplication.__new__(ArthurLibrarianApplication)
         repository = _FakeRepository()
@@ -71,9 +131,9 @@ class ArthurArchiveControlTests(unittest.IsolatedAsyncioTestCase):
         app, repository, service = self._application()
 
         self.assertTrue(await app.start_archive())
-        self.assertTrue(storage_librarian_archive_phase_enabled())
         self.assertFalse(await app.start_archive())
         await asyncio.sleep(0)
+        self.assertTrue(repository.phase_active)
 
         status = await app.archive_status()
         self.assertTrue(status.active)
@@ -81,7 +141,7 @@ class ArthurArchiveControlTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("test-archive:v1", status.analyzer_version)
 
         self.assertTrue(await app.stop_archive())
-        self.assertTrue(storage_librarian_archive_phase_enabled())
+        self.assertTrue(repository.phase_active)
         stopping = await app.archive_status()
         self.assertTrue(stopping.active)
         self.assertTrue(stopping.stopping)
@@ -89,14 +149,15 @@ class ArthurArchiveControlTests(unittest.IsolatedAsyncioTestCase):
         await app.shutdown()
         stopped = await app.archive_status()
         self.assertFalse(stopped.active)
-        self.assertFalse(storage_librarian_archive_phase_enabled())
+        self.assertFalse(repository.phase_active)
+        self.assertEqual(1, repository.phase_entries)
         self.assertGreaterEqual(repository.enqueue_calls, 1)
         self.assertGreaterEqual(service.processed, 0)
 
     async def test_stop_when_idle_is_noop(self) -> None:
-        app, _, _ = self._application()
+        app, repository, _ = self._application()
         self.assertFalse(await app.stop_archive())
-        self.assertFalse(storage_librarian_archive_phase_enabled())
+        self.assertFalse(repository.phase_active)
 
 
 class ArthurArchiveTelegramContractTests(unittest.TestCase):
@@ -135,8 +196,7 @@ class ArthurArchiveTelegramContractTests(unittest.TestCase):
         self.assertIn("await application.shutdown()", runtime)
         self.assertIn("await self.repository.enqueue_pending(", application)
         self.assertIn("self._analysis_lock = asyncio.Lock()", application)
-        self.assertIn("set_storage_librarian_archive_phase_enabled(True)", application)
-        self.assertIn("set_storage_librarian_archive_phase_enabled(False)", application)
+        self.assertIn("self.repository.full_archive_phase()", application)
         self.assertIn("stop_event.wait()", application)
 
 
