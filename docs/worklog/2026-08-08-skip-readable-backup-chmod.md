@@ -65,6 +65,12 @@ Legacy artifacts без other-read bit продолжают нормализов
 
 Обязательный CI запускается через PR после публикации branch head. Проверяются tests, security/supply-chain, Docker build, type check, project notes и branch-protection contracts.
 
+### PR и commit
+
+PR: #726 `Skip chmod for already readable backup artifacts`.
+
+Кодовый и test head после синхронизации с актуальным `main`: `2382563646fb7f558989829de5b880e116a47257`. Финальный documentation commit является его потомком и не меняет production/test логику.
+
 ### Незавершённое
 
 Production уже вручную восстановлен и успешно обновлён до базового commit `ddc62c9587f92c69a51d2084e46ac2086fc7835e`. После merge этого hotfix следующий штатный deploy должен подтвердить, что daily backup от UID `10001` с mode `0644` больше не блокирует preflight lifecycle.
