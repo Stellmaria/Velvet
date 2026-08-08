@@ -36,6 +36,90 @@ jobs:
       - name: Install dependencies from hash lock
         run: uv pip install --system --require-hashes -r requirements.lock
 
+      - name: Refactor bounded Ollama response step
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("velvet_bot/infrastructure/ai/storage_librarian_ollama.py")
+          text = path.read_text(encoding="utf-8")
+          marker = "\n\nclass OllamaStorageAnalysisClient:\n"
+          helper = '''
+
+          async def _post_analysis_json(
+              session: _SessionProtocol,
+              *,
+              url: str,
+              request: dict[str, object],
+          ) -> dict[object, object]:
+              async with session.post(url, json=request) as response:
+                  if response.status < 200 or response.status >= 300:
+                      error_type = (
+                          StorageLibrarianError
+                          if response.status in {408, 429} or response.status >= 500
+                          else TerminalStorageLibrarianError
+                      )
+                      raise error_type(f"Ollama analysis HTTP {response.status}.")
+                  try:
+                      raw_payload = await response.json(content_type=None)
+                  except (json.JSONDecodeError, ValueError, TypeError) as error:
+                      raise _terminal(
+                          "Ollama analysis вернул malformed HTTP JSON."
+                      ) from error
+              if not isinstance(raw_payload, dict):
+                  raise _terminal("Ollama analysis вернул malformed response.")
+              return raw_payload
+          '''
+          helper = "\n".join(line[10:] if line.startswith("          ") else line for line in helper.splitlines())
+          if text.count(marker) != 1:
+              raise SystemExit("Ollama client class marker changed")
+          text = text.replace(marker, helper + marker, 1)
+
+          old = '''                        async with session.post(
+                              self._settings.ollama_base_url + "/api/chat",
+                              json=request,
+                          ) as response:
+                              if response.status < 200 or response.status >= 300:
+                                  error_type = (
+                                      StorageLibrarianError
+                                      if response.status in {408, 429}
+                                      or response.status >= 500
+                                      else TerminalStorageLibrarianError
+                                  )
+                                  raise error_type(
+                                      f"Ollama analysis HTTP {response.status}."
+                                  )
+                              try:
+                                  raw_payload = await response.json(content_type=None)
+                              except (
+                                  json.JSONDecodeError,
+                                  ValueError,
+                                  TypeError,
+                              ) as error:
+                                  raise _terminal(
+                                      "Ollama analysis вернул malformed HTTP JSON."
+                                  ) from error
+
+                          if not isinstance(raw_payload, dict):
+                              raise _terminal(
+                                  "Ollama analysis вернул malformed response."
+                              )
+          '''
+          new = '''                        raw_payload = await _post_analysis_json(
+                              session,
+                              url=self._settings.ollama_base_url + "/api/chat",
+                              request=request,
+                          )
+          '''
+          old = "\n".join(line[10:] if line.startswith("          ") else line for line in old.splitlines())
+          new = "\n".join(line[10:] if line.startswith("          ") else line for line in new.splitlines())
+          if text.count(old) != 1:
+              raise SystemExit("Ollama response block changed")
+          text = text.replace(old, new, 1)
+          path.write_text(text, encoding="utf-8")
+          PY
+
       - name: Compile and run Storage Librarian regressions
         run: |
           python -m compileall -q velvet_bot tests
@@ -85,17 +169,17 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t changed < <(git status --porcelain | sed 's/^...//')
-          printf 'generated changes:\n'
+          printf 'validated changes:\n'
           printf '%s\n' "${changed[@]}"
-          test "${#changed[@]}" -eq 3
+          test "${#changed[@]}" -eq 4
           for path in "${changed[@]}"; do
             case "$path" in
-              docs/package_architecture_inventory.json|docs/package_architecture_inventory.md|tests/test_package_architecture_inventory.py) ;;
-              *) echo "unexpected generated path: $path" >&2; exit 1 ;;
+              velvet_bot/infrastructure/ai/storage_librarian_ollama.py|docs/package_architecture_inventory.json|docs/package_architecture_inventory.md|tests/test_package_architecture_inventory.py) ;;
+              *) echo "unexpected validation path: $path" >&2; exit 1 ;;
             esac
           done
 
-      - name: Commit canonical generated baseline
+      - name: Commit validated refactor and canonical baseline
         shell: bash
         run: |
           set -euo pipefail
@@ -108,8 +192,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -- \
+            velvet_bot/infrastructure/ai/storage_librarian_ollama.py \
             docs/package_architecture_inventory.json \
             docs/package_architecture_inventory.md \
             tests/test_package_architecture_inventory.py
-          git commit -m "Refresh package architecture inventory"
+          git commit -m "Refactor bounded Ollama retry path"
           git push origin HEAD:refs/heads/fix/storage-librarian-length-retry
