@@ -39,7 +39,7 @@ Main bot уже получает `CODEX_LIMITS_BASE_URL` и `CODEX_LIMITS_API_KE
 
 ### Риски и ограничения
 
-- Telegram Bot API не предоставляет application-level idempotency key, поэтому durable marker закрывает штатные restart/retry дубли, но не может сделать сетевую отправку транзакционной вместе с локальным fsync.
+- Telegram Bot API не предоставляет application-level idempotency key, поэтому recovery event сначала атомарно помечается dedupe marker, а затем отправляется. Это гарантирует at-most-once retry semantics и исключает restart-дубли ценой возможного пропуска уведомления при crash/неоднозначном сетевом сбое строго между claim и подтверждённой доставкой.
 - Production rollout и реальные Telegram/coder canary выполняются отдельно после merge через canonical update/orchestration path.
 - На момент начала работы обязательный watcher tick `2026-08-08T04:29:43Z` ещё не наступил.
 
@@ -49,7 +49,7 @@ Main bot уже получает `CODEX_LIMITS_BASE_URL` и `CODEX_LIMITS_API_KE
 
 - Добавлен `CodexRecoveryNotificationMonitor` в main Velvet application.
 - Monitor использует существующие `CODEX_LIMITS_BASE_URL` и `CODEX_LIMITS_API_KEY`, читает только coder capabilities и не делает собственных live quota probes.
-- Pool-level limited/recovery state хранится атомарно в `/app/runtime/codex-recovery-notifications.json` с mode `0600`.
+- Pool-level limited/recovery state хранится атомарно в `/app/runtime/codex-recovery-notifications.json` с mode `0600`; recovery event durably claim-ится до вызова Telegram Bot API.
 - Одна recovery generation объединяет Velvet и Max: уведомление отправляется только после успешного recovery state обоих project и затем помечается persistent dedupe marker.
 - Получателем является primary owner numeric chat id; при отсутствии numeric owner используется существующий log chat. Отправка идёт через тот же `Bot`, который создаёт основной application bootstrap.
 - Добавлены regression tests для single-send, restart dedupe, staggered Velvet/Max recovery, probe error, startup без previous limit, manual hold и проверки отсутствия `/rate-limits` в monitor path.
@@ -63,6 +63,7 @@ SQL migrations отсутствуют. Формат `/opt/codex-runs/codex-avail
 - Изолированный state-machine smoke: `RECOVERY_DEDUPE_OK`.
 - Startup false-positive smoke: `NO_STARTUP_FALSE_POSITIVE_OK`.
 - Probe-error smoke: `PROBE_ERROR_NO_NOTIFY_OK`.
+- Delivery failure smoke: dedupe marker сохраняется до Telegram send и restart не повторяет claimed event.
 - Полный protected CI должен подтвердить final PR head перед merge.
 
 ### PR и commit

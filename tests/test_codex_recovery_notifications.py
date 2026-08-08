@@ -14,8 +14,11 @@ from velvet_bot.services.codex_recovery_notifications import (
 class FakeBot:
     def __init__(self) -> None:
         self.messages: list[dict[str, object]] = []
+        self.error: Exception | None = None
 
     async def send_message(self, **kwargs: object) -> object:
+        if self.error is not None:
+            raise self.error
         self.messages.append(dict(kwargs))
         return object()
 
@@ -101,6 +104,26 @@ class CodexRecoveryNotificationTests(unittest.IsolatedAsyncioTestCase):
         persisted = json.loads(self.state_path.read_text(encoding="utf-8"))
         self.assertIsNotNone(persisted["last_notified_event_id"])
         self.assertIsNone(persisted["active_limit_event_id"])
+
+    async def test_delivery_failure_is_claimed_before_send_and_not_retried(self) -> None:
+        monitor = self.monitor()
+        await monitor.process_once()
+        self.source.values = {
+            "velvet": available("velvet", 2_000),
+            "max": available("max", 2_001),
+        }
+        self.bot.error = RuntimeError("telegram unavailable")
+        with self.assertRaisesRegex(RuntimeError, "telegram unavailable"):
+            await monitor.process_once()
+
+        persisted = json.loads(self.state_path.read_text(encoding="utf-8"))
+        self.assertIsNotNone(persisted["last_notified_event_id"])
+        self.assertIsNone(persisted["active_limit_event_id"])
+
+        self.bot.error = None
+        restarted = self.monitor()
+        self.assertEqual(0, await restarted.process_once())
+        self.assertEqual([], self.bot.messages)
 
     async def test_waits_until_both_projects_confirm_recovery(self) -> None:
         monitor = self.monitor()

@@ -246,7 +246,7 @@ def _render_recovery_message(snapshots: tuple[CodexAvailabilitySnapshot, ...]) -
     plan = next((item.plan_type for item in snapshots if item.plan_type), None)
     lines = [
         "Codex снова доступен.",
-        "Лимит подписки восстановлен, primary Codex routing включён.",
+        "Лимит подписки восстановлен, primary Codex routing включсн.",
     ]
     details: list[str] = []
     recovered_label = _format_epoch(recovered_at)
@@ -341,17 +341,22 @@ class CodexRecoveryNotificationMonitor:
             ):
                 return 0
 
-            await self._bot.send_message(
-                chat_id=self._owner_chat_id,
-                text=_render_recovery_message(snapshots),
-                disable_web_page_preview=True,
-            )
+            # Claim the recovery event durably before the non-transactional
+            # Telegram call. Bot API sendMessage has no application-level
+            # idempotency key, so this ordering deliberately prefers at-most-once
+            # delivery over a duplicate after a process crash or ambiguous network
+            # failure.
             state["last_notified_event_id"] = active_event
             state["last_notified_at"] = int(datetime.now(UTC).timestamp())
             state["active_limit_event_id"] = None
             state["active_limit_observed_at"] = None
             state["active_limit_checked_at"] = None
             self._store.save(state)
+            await self._bot.send_message(
+                chat_id=self._owner_chat_id,
+                text=_render_recovery_message(snapshots),
+                disable_web_page_preview=True,
+            )
             return 1
 
 
