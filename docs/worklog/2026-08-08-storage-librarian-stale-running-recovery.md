@@ -13,17 +13,41 @@
 
 Не допускать вечных `running` jobs после потери worker process или замены bot container во время Storage Librarian analysis.
 
-### Production evidence
+### Исходный контекст
 
 После production rollout full-archive scheduler успешно прошёл несколько циклов и создал новый completed analysis для Storage `#33`. Одновременно Storage `#30` остался `running` с `locked_at=2026-08-08 09:51:50.762508+00` и `worker_id=storage-librarian:7`.
 
-Контроль показал, что текущий `velvet-bot-1` был создан только в `10:06:41 UTC` и запущен в `10:07:33 UTC`, то есть процесс, захвативший `#30`, уже не существовал. Сам объект `#30` состоит из одной Telegram part размером 942 bytes, поэтому длительное реальное выполнение исключалось.
-
-### Риск
+Контроль показал, что следующий `velvet-bot-1` был создан только в `10:06:41 UTC` и запущен в `10:07:33 UTC`, то есть процесс, захвативший `#30`, уже не существовал. Сам объект `#30` состоит из одной Telegram part размером 942 bytes, поэтому длительное реальное выполнение исключалось.
 
 `claim_next()` переводит job в `running`, но очередь не имела lease-expiry recovery. Потеря consumer после claim могла оставить строку `running` навсегда. Такой orphan не блокировал другие jobs благодаря `SKIP LOCKED`, но сам объект больше никогда не анализировался автоматически.
 
-## Сделано
+### Планируемый объём
+
+- добавить bounded recovery stale `running` jobs в существующий основной Librarian scheduler;
+- сохранять `attempts` и не скрывать фактически начатые попытки;
+- возвращать orphan с оставшимися попытками в `queued`;
+- переводить исчерпавший попытки orphan в `failed`;
+- не затрагивать terminal `completed`, `failed` и `skipped` jobs;
+- покрыть recovery regression test без SQL migration.
+
+### Критерии готовности
+
+- `running` lease старше 15 минут автоматически освобождается;
+- job с `attempts < max_attempts` снова становится доступна worker-у;
+- job с `attempts >= max_attempts` не получает бесконечный retry;
+- `attempts` не сбрасывается и не уменьшается;
+- Arthur остаётся manual-first с `STORAGE_LIBRARIAN_AUTO_ENQUEUE=false`;
+- required GitHub CI зелёный до merge.
+
+### Риски и ограничения
+
+Пятнадцатиминутный stale window намеренно значительно больше текущего 180-second Ollama request timeout и Telegram download timeout. Если в будущем появится легитимный единичный analysis дольше 15 минут, lease policy придётся пересмотреть вместе с end-to-end deadline.
+
+Этот fix не решает отдельные production defects `done_reason=length` на небольших Codex ZIP и отсутствие bounded chunking для oversized diagnostics. Они остаются отдельными follow-up задачами, чтобы lifecycle recovery не превращался в архитектурный комбайн.
+
+## После завершения
+
+### Фактически сделано
 
 - scheduler перед каждым циклом восстанавливает `running` jobs с lease старше 15 минут;
 - orphan с оставшимися попытками возвращается в `queued`;
@@ -34,22 +58,31 @@
 - terminal `completed`, `failed` и `skipped` jobs не затрагиваются;
 - добавлены regression tests на SQL contract и bounded stale window.
 
-## Почему 15 минут
-
-Production Ollama request bounded текущим `STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS` (180 seconds), Telegram part download имеет отдельный timeout, а Arthur использует тот же bounded local analysis path. Пятнадцать минут оставляют большой запас для нормальной обработки, но гарантируют автоматическое освобождение потерянного lease без ручной правки PostgreSQL.
-
-## Миграции и совместимость
+### Миграции и совместимость
 
 SQL migration не требуется: используются существующие поля `status`, `attempts`, `max_attempts`, `available_at`, `locked_at`, `worker_id`, `last_error`, `finished_at` и `updated_at`.
 
 Arthur `STORAGE_LIBRARIAN_AUTO_ENQUEUE=false` не меняется. Recovery живёт только внутри уже включённого background scheduler основного Velvet bot и не создаёт второй consumer.
 
-## Проверки
+### Проверки
 
-- Python syntax compile для изменённого scheduler и нового regression test;
-- regression test проверяет, что attempt history не стирается;
-- required GitHub CI должен пройти до merge.
+- Python syntax compile для изменённого scheduler и нового regression test пройден локально;
+- regression test проверяет stale predicate, queued/failed split и сохранение attempt history;
+- type-check GitHub CI на первом PR head прошёл;
+- полный required GitHub CI должен пройти на финальном head до merge.
 
-## Production acceptance после merge
+### PR и commit
 
-После штатного deploy проверить, что старый `#30` автоматически покидает `running` без ручного `UPDATE`, а в bot logs появляется `Storage Librarian stale running recovery ...` при фактическом восстановлении.
+PR: `#731 Recover stale Storage Librarian running jobs`.
+
+Ветка: `fix/storage-librarian-stale-running-recovery`. Финальный squash/merge SHA фиксируется после прохождения required CI и merge в `main`.
+
+### Незавершённое
+
+- исправить повторяющийся `done_reason=length` для небольших Codex объектов `#34`, `#35`, `#36`;
+- добавить bounded chunking/summarization для oversized diagnostics вместо terminal failure всего объекта;
+- после production deploy нового merge подтвердить, что исторический orphan `#30` автоматически покидает `running` без ручного `UPDATE`.
+
+### Следующий шаг
+
+Дождаться required CI PR #731, слить его в `main` обычным защищённым workflow, затем опубликовать и развернуть exact source/image pair и проверить production recovery на Storage `#30`.
