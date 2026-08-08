@@ -18,6 +18,18 @@ BENCHMARK_CONTRACT_VERSION = 2
 _REQUIRED_SCHEMA_KEYS = frozenset(
     {"subjects", "composition", "lighting", "palette", "confidence"}
 )
+_VISION_RESPONSE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "subjects": {"type": "array", "items": {"type": "string"}},
+        "composition": {"type": "string"},
+        "lighting": {"type": "string"},
+        "palette": {"type": "array", "items": {"type": "string"}},
+        "confidence": {"type": "integer", "minimum": 0, "maximum": 100},
+    },
+    "required": ["subjects", "composition", "lighting", "palette", "confidence"],
+}
 _MEMORY_UNITS = {
     "b": 1,
     "kb": 1000,
@@ -127,6 +139,8 @@ def _request_json_via_container(
         ) from error
     if completed.returncode != 0:
         detail = (completed.stderr or completed.stdout).strip()
+        if completed.returncode == 3 and detail.startswith("HTTP "):
+            raise RuntimeError(detail[:1000])
         raise RuntimeError(
             f"Container request failed via {container}: {detail[:1000]}"
         )
@@ -335,9 +349,15 @@ def _schema_valid(content: str) -> bool:
         return False
     if not _REQUIRED_SCHEMA_KEYS.issubset(payload):
         return False
-    if not isinstance(payload.get("subjects"), list):
+    if set(payload) != _REQUIRED_SCHEMA_KEYS:
         return False
-    if not isinstance(payload.get("palette"), list):
+    if not isinstance(payload.get("subjects"), list) or not all(
+        isinstance(value, str) for value in payload["subjects"]
+    ):
+        return False
+    if not isinstance(payload.get("palette"), list) or not all(
+        isinstance(value, str) for value in payload["palette"]
+    ):
         return False
     if not isinstance(payload.get("composition"), str):
         return False
@@ -345,9 +365,9 @@ def _schema_valid(content: str) -> bool:
         return False
     confidence = payload.get("confidence")
     return (
-        isinstance(confidence, (int, float))
+        isinstance(confidence, int)
         and not isinstance(confidence, bool)
-        and 0 <= float(confidence) <= 100
+        and 0 <= confidence <= 100
     )
 
 
@@ -372,6 +392,14 @@ def _build_payload(
         "stream": False,
         "temperature": 0,
         "max_tokens": max_output_tokens,
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "velvet_vision_benchmark",
+                "strict": True,
+                "schema": _VISION_RESPONSE_SCHEMA,
+            },
+        },
         "messages": [
             {
                 "role": "user",
@@ -379,10 +407,8 @@ def _build_payload(
                     {
                         "type": "text",
                         "text": (
-                            "Return only one JSON object, no markdown. Required keys: "
-                            "subjects (array of strings), composition (string), "
-                            "lighting (string), palette (array of strings), "
-                            "confidence (integer 0-100). Describe only visible facts."
+                            "Return only one JSON object matching the supplied schema. "
+                            "Describe only visible facts."
                         ),
                     },
                     {"type": "image_url", "image_url": {"url": data_uri}},
@@ -523,6 +549,14 @@ def _summary(samples: list[Sample]) -> dict[str, Any]:
     }
 
 
+def _benchmark_passed(result: Mapping[str, Any]) -> bool:
+    return (
+        result.get("success_rate") == 1.0
+        and result.get("failure_rate") == 0.0
+        and result.get("schema_validity_rate") == 1.0
+    )
+
+
 def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
     endpoint = args.endpoint.rstrip("/")
     health = _request_json(
@@ -571,6 +605,12 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
                 daemon=True,
             )
             monitor.start()
+        latency: float | None = None
+        completion_tokens: int | None = None
+        tokens_per_second: float | None = None
+        error: str | None = None
+        schema_valid = False
+        response_chars = 0
         started = time.monotonic()
         try:
             response = _request_json(
@@ -580,23 +620,21 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
                 request_container=args.request_container,
             )
             latency = time.monotonic() - started
-            content = _extract_content(response)
             completion_tokens = _completion_tokens(response)
             tokens_per_second = (
                 completion_tokens / latency
                 if completion_tokens is not None and latency > 0
                 else None
             )
-            error = None
-            schema_valid = _schema_valid(content)
-            response_chars = len(content)
+            try:
+                content = _extract_content(response)
+            except (RuntimeError, ValueError, json.JSONDecodeError) as exc:
+                error = str(exc)
+            else:
+                schema_valid = _schema_valid(content)
+                response_chars = len(content)
         except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
-            latency = None
-            completion_tokens = None
-            tokens_per_second = None
             error = str(exc)
-            schema_valid = False
-            response_chars = 0
         finally:
             stop.set()
             if monitor is not None:
@@ -679,7 +717,7 @@ def main() -> int:
         raise SystemExit("--max-output-tokens must be between 64 and 2048")
     result = run_benchmark(args)
     print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0
+    return 0 if _benchmark_passed(result) else 1
 
 
 if __name__ == "__main__":

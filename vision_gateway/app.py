@@ -269,6 +269,9 @@ def sanitize_chat_payload(
     result["model"] = settings.model
     result["messages"] = sanitized_messages
     result["stream"] = False
+    # This gateway is the bounded LOCAL_MAIN vision path, not a reasoning endpoint.
+    # Prevent thinking models from consuming the completion budget before final content.
+    result["reasoning_effort"] = "none"
     return result
 
 

@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from scripts.benchmark_vision_gateway import (
     Sample,
+    _benchmark_passed,
     _build_payload,
     _parse_memory_bytes,
     _parse_percent,
     _percentile,
+    _request_json_via_container,
     _schema_valid,
     _summary,
 )
@@ -32,8 +36,20 @@ class VisionGatewayBenchmarkContractTests(unittest.TestCase):
                 '"palette":[],"confidence":101}'
             )
         )
+        self.assertFalse(
+            _schema_valid(
+                '{"subjects":[1],"composition":"x","lighting":"y",'
+                '"palette":[],"confidence":80}'
+            )
+        )
+        self.assertFalse(
+            _schema_valid(
+                '{"subjects":[],"composition":"x","lighting":"y",'
+                '"palette":[],"confidence":80,"extra":true}'
+            )
+        )
 
-    def test_payload_applies_explicit_output_cap(self) -> None:
+    def test_payload_applies_output_cap_and_structured_schema(self) -> None:
         payload = _build_payload(
             model="qwen3.5:9b",
             data_uri="data:image/png;base64,AA==",
@@ -42,6 +58,31 @@ class VisionGatewayBenchmarkContractTests(unittest.TestCase):
         self.assertEqual("qwen3.5:9b", payload["model"])
         self.assertEqual(512, payload["max_tokens"])
         self.assertFalse(payload["stream"])
+        response_format = payload["response_format"]
+        self.assertEqual("json_schema", response_format["type"])
+        json_schema = response_format["json_schema"]
+        self.assertTrue(json_schema["strict"])
+        schema = json_schema["schema"]
+        self.assertFalse(schema["additionalProperties"])
+        self.assertEqual(
+            {"subjects", "composition", "lighting", "palette", "confidence"},
+            set(schema["required"]),
+        )
+
+    def test_container_http_status_is_preserved(self) -> None:
+        completed = SimpleNamespace(
+            returncode=3,
+            stderr='HTTP 504: {"error":{"message":"Local VL runtime timed out."}}\n',
+            stdout="",
+        )
+        with patch("scripts.benchmark_vision_gateway.subprocess.run", return_value=completed):
+            with self.assertRaisesRegex(RuntimeError, r"^HTTP 504:"):
+                _request_json_via_container(
+                    "gateway-container",
+                    "http://vision-gateway:8080/v1/chat/completions",
+                    {"model": "qwen3.5:9b"},
+                    360,
+                )
 
     def test_percentile_interpolates_small_samples(self) -> None:
         self.assertEqual(2.5, _percentile([1.0, 2.0, 3.0, 4.0], 0.50))
@@ -92,6 +133,35 @@ class VisionGatewayBenchmarkContractTests(unittest.TestCase):
         self.assertEqual(20, result["peak_runtime_memory_bytes"])
         self.assertEqual(600.0, result["peak_runtime_cpu_percent"])
         self.assertEqual(2000, result["peak_host_swap_used_bytes"])
+
+    def test_benchmark_pass_requires_transport_and_schema_success(self) -> None:
+        self.assertTrue(
+            _benchmark_passed(
+                {
+                    "success_rate": 1.0,
+                    "failure_rate": 0.0,
+                    "schema_validity_rate": 1.0,
+                }
+            )
+        )
+        self.assertFalse(
+            _benchmark_passed(
+                {
+                    "success_rate": 1.0,
+                    "failure_rate": 0.0,
+                    "schema_validity_rate": 0.0,
+                }
+            )
+        )
+        self.assertFalse(
+            _benchmark_passed(
+                {
+                    "success_rate": 0.0,
+                    "failure_rate": 1.0,
+                    "schema_validity_rate": 0.0,
+                }
+            )
+        )
 
 
 if __name__ == "__main__":
