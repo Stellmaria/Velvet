@@ -17,7 +17,7 @@ Environment=VELVET_APP_DIR=/srv/velvet
 Environment=VELVET_ENV_FILE=.env.server
 Environment=VELVET_COMPOSE_FILE=docker-compose.server.yml
 Environment=DOCKER_CONFIG=/srv/velvet/data/runtime/docker-config
-Environment=COMPOSE_BAKE=false
+Environment=COMPOSE_BAKE=true
 ExecStart=/usr/bin/python3 /srv/velvet/scripts/server_supervisor.py
 Restart=always
 RestartSec=3
