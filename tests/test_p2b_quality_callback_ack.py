@@ -11,8 +11,11 @@ import velvet_bot.presentation.telegram.routers.quality_operations_controllers.q
 class QualityCallbackAcknowledgmentTests(unittest.TestCase):
     def assert_ack_between(self, function, mutation: str, reload_call: str) -> None:
         source = inspect.getsource(function)
-        self.assertLess(source.index(mutation), source.index("await callback.answer("))
-        self.assertLess(source.index("await callback.answer("), source.index(reload_call))
+        mutation_index = source.index(mutation)
+        ack_index = source.index("await callback.answer(", mutation_index)
+        reload_index = source.index(reload_call, mutation_index)
+        self.assertLess(mutation_index, ack_index)
+        self.assertLess(ack_index, reload_index)
 
     def test_retry_ack_precedes_list_reload(self) -> None:
         self.assert_ack_between(
