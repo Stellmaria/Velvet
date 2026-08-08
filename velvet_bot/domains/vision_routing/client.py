@@ -29,13 +29,13 @@ from velvet_bot.domains.vision_routing.profile_contract import (
     prompt_for_mode,
     schema_for_mode,
 )
-from velvet_bot.vision_failures import (
+from velvet_bot.domains.vision_routing.failures import (
     VisionRefusalError,
     VisionSchemaError,
     is_full_image_retryable,
     schema_failure,
 )
-from velvet_bot.vision_http import post_vision_json
+from velvet_bot.domains.vision_routing.http import post_vision_json
 
 _MAX_OUTPUT_TOKENS = 1800
 _MAX_FULL_IMAGE_ATTEMPTS = 2

@@ -11,7 +11,7 @@ from velvet_bot.quality_calibration import (
     QualityCalibrationRepository,
     recommended_decision,
 )
-from velvet_bot.vision_failures import is_permanent_vision_failure
+from velvet_bot.domains.vision_routing.failures import is_permanent_vision_failure
 
 logger = logging.getLogger(__name__)
 

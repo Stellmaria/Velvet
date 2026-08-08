@@ -15,8 +15,8 @@ from velvet_bot.domains.vision_routing.models import (
     VisionRoute,
     VisionRouteConfig,
 )
-from velvet_bot.typed_quality_vision import TypedQualityVisionClient
-from velvet_bot.vision_failures import (
+from velvet_bot.services.typed_quality_vision import TypedQualityVisionClient
+from velvet_bot.domains.vision_routing.failures import (
     VisionFailureKind,
     VisionOutOfMemoryError,
     VisionSchemaError,
