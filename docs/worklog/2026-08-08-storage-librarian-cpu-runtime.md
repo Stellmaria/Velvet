@@ -3,7 +3,7 @@
 - Дата: 2026-08-08
 - ID: `2026-08-08-storage-librarian-cpu-runtime`
 - Линия/фаза: Storage Librarian / production reliability hotfix
-- Статус: `в работе`
+- Статус: `частично`
 - Ветка: `fix/storage-librarian-cpu-runtime`
 - Базовый commit: `66f0993780a1428b260336929f2050b424aebf1e`
 
@@ -33,6 +33,7 @@ Production evidence 2026-08-08 показал, что canonical `STORAGE_LIBRARI
 ### Критерии готовности
 
 - default `run_timeout_seconds` равен 720 и Compose/example/runbook не возвращают 180;
+- legacy timeout override ниже 720 не может опустить effective runtime ниже CPU floor;
 - только один Storage analysis job может быть переведён из `queued` в `running` через supported repositories одновременно;
 - base, AFK и Arthur target claims используют один и тот же PostgreSQL advisory transaction gate;
 - второй claimant возвращает no job, пока существует `running` Storage analysis;
@@ -48,24 +49,28 @@ Production evidence 2026-08-08 показал, что canonical `STORAGE_LIBRARI
 
 ### Фактически сделано
 
-Будет заполнено после реализации и CI.
+`StorageLibrarianSettings` получил effective CPU floor `720` seconds: default равен 720, legacy env override ниже floor автоматически поднимается до 720, а больший override сохраняется до существующего верхнего лимита 1800. Canonical `.env.server.example`, Librarian env example и Compose defaults обновлены на 720.
+
+`StorageLibrarianRepository` получил общий `_claim_next()` с PostgreSQL transaction advisory lock. В одной claim transaction проверяется отсутствие любого `running` Storage job и только затем один queued row переводится в `running`. Advisory lock не удерживается во время inference и не занимает connection на время Ollama request. Base `claim_next()`, Arthur exact-target repository и AFK cutoff repository теперь проходят через один helper, сохраняя свои predicates.
+
+Добавлен `tests/test_storage_librarian_claim_serialization.py`, который фиксирует общий advisory gate, one-running predicate, exact Arthur target и AFK cutoff. Existing settings/contracts обновлены на CPU-safe timeout floor. Runbook исправлен: hierarchical chunking теперь описан как действующий bounded path с canonical hard cap `132096` chars для `8192/384`, `12` chunks и `13` inference calls, а не как отсутствующая возможность.
 
 ### Миграции и совместимость
 
-SQL migration не планируется. Persistent schema и historical rows не меняются.
+SQL migration отсутствует. Persistent schema, analyzer version, existing jobs/analyses, chunk limits, model selection и retry budget не меняются. `STORAGE_LIBRARIAN_AUTO_ENQUEUE=false` для Arthur сохраняется. Historical queue rows не reset/re-enqueue этим PR.
 
 ### Проверки
 
-Будет заполнено после реализации и CI.
+Focused regression tests и full required GitHub CI должны пройти на PR exact head. Production live verification не выполняется этим PR.
 
 ### PR и commit
 
-Будет заполнено после открытия PR.
+PR будет открыт из `fix/storage-librarian-cpu-runtime` в protected `main`; exact head и terminal CI будут зафиксированы перед merge.
 
 ### Незавершённое
 
-Production rollout и повторный controlled large hierarchical acceptance остаются отдельным шагом после merge.
+Production rollout и повторный controlled large hierarchical acceptance остаются отдельным шагом после merge. Отдельные production defects `enqueue_object()` reset semantics и Arthur report publication `chat not found` не входят в этот hotfix.
 
 ### Следующий шаг
 
-Реализовать timeout и shared claim serialization, прогнать required CI, затем squash-merge при зелёном exact head.
+Открыть PR, получить terminal success required CI на exact head, перевести worklog в `завершено`, затем squash-merge без bypass/force.
