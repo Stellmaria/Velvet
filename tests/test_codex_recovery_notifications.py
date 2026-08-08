@@ -212,7 +212,7 @@ class CodexRecoveryNotificationTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("/rate-limits", source)
 
     def test_main_bot_bootstrap_reuses_existing_bot_transport(self) -> None:
-        source = Path("velvet_bot/app/codex_recovery_bootstrap.py").read_text(
+        source = Path("velvet_bot/app/codex_recovery_worker.py").read_text(
             encoding="utf-8"
         )
         self.assertIn("await bot.send_message", source)

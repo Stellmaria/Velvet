@@ -8,6 +8,7 @@ from aiogram.exceptions import TelegramAPIError
 
 from velvet_bot.app.ai_usage import build_audited_ai_usage_service
 from velvet_bot.app.commands import install_command_menus
+from velvet_bot.app.codex_recovery_worker import register_codex_recovery_worker
 from velvet_bot.app.dispatcher import build_dispatcher
 from velvet_bot.app.save_sessions import SaveUploadSessions
 from velvet_bot.app.workers import build_worker_manager
@@ -204,7 +205,7 @@ async def run_application() -> None:
             system_service=system_service,
             diagnostic_service=diagnostic_service,
         )
-
+        register_codex_recovery_worker(bot=bot, settings=settings, manager=worker_manager)
         bot_info = await bot.get_me()
         bot_username = bot_info.username or ""
 

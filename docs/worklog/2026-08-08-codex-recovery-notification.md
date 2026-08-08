@@ -48,11 +48,11 @@ Main bot уже получает `CODEX_LIMITS_BASE_URL` и `CODEX_LIMITS_API_KE
 
 ### Фактически сделано
 
-- Добавлен transport-agnostic `CodexRecoveryNotificationMonitor` и bounded app adapter `velvet_bot/app/codex_recovery_bootstrap.py`.
+- Добавлен transport-agnostic `CodexRecoveryNotificationMonitor` и app-layer registration helper `velvet_bot/app/codex_recovery_worker.py`.
 - Monitor использует существующие `CODEX_LIMITS_BASE_URL` и `CODEX_LIMITS_API_KEY`, читает только coder capabilities и не делает собственных live quota probes. Service layer не импортирует `aiogram`; Telegram transport остаётся в app layer.
 - Pool-level limited/recovery state хранится атомарно в `/app/runtime/codex-recovery-notifications.json` с mode `0600`; recovery event durably claim-ится до вызова Telegram Bot API.
 - Одна recovery generation объединяет Velvet и Max: уведомление отправляется только после успешного recovery state обоих project и затем помечается persistent dedupe marker.
-- Получателем является primary owner numeric chat id; при отсутствии numeric owner используется существующий log chat. App adapter отправляет через тот же `Bot`, который уже передан canonical `build_worker_manager`; новый bot/token/service не создаётся.
+- Получателем является primary owner numeric chat id; при отсутствии numeric owner используется существующий log chat. Bootstrap передаёт уже созданные `bot`, `settings` и `worker_manager` в registration helper; новый bot/token/service не создаётся.
 - Добавлены regression tests для single-send, restart dedupe, staggered Velvet/Max recovery, probe error, startup без previous limit, manual hold, отсутствия `/rate-limits` в monitor path и проверки reuse существующего bot transport.
 
 ### Миграции и совместимость
@@ -62,7 +62,7 @@ SQL migrations отсутствуют. Формат `/opt/codex-runs/codex-avail
 ### Проверки
 
 - Изолированный state-machine smoke: `RECOVERY_DEDUPE_OK`.
-- Architecture preflight-driven refactor: service transport-agnostic, `velvet_bot/app/workers.py` восстановлен до canonical main blob, новые exemptions не добавляются.
+- Architecture preflight-driven refactor: service transport-agnostic, `velvet_bot/app/workers.py` и `velvet_bot/app/composition.py` остаются canonical main, registration идёт через bounded app helper без monkeypatch/sentinel; новые exemptions не добавляются.
 - Startup false-positive smoke: `NO_STARTUP_FALSE_POSITIVE_OK`.
 - Probe-error smoke: `PROBE_ERROR_NO_NOTIFY_OK`.
 - Delivery failure smoke: dedupe marker сохраняется до Telegram send и restart не повторяет claimed event.
