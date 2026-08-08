@@ -238,13 +238,14 @@ class StorageLibrarianRepository:
             )
         return result.endswith(" 1")
 
-    async def _claim_next(
+    async def claim_matching(
         self,
         worker_id: str,
         *,
         target_object_id: int | None = None,
         min_object_id: int | None = None,
     ) -> LibrarianJob | None:
+        """Claim one matching job through the shared cross-process claim gate."""
         async with self._database.acquire() as connection:
             async with connection.transaction():
                 await connection.execute(
@@ -303,7 +304,7 @@ class StorageLibrarianRepository:
         )
 
     async def claim_next(self, worker_id: str) -> LibrarianJob | None:
-        return await self._claim_next(worker_id)
+        return await self.claim_matching(worker_id)
 
     async def load_object(self, object_id: int) -> LibrarianObject | None:
         async with self._database.acquire() as connection:
