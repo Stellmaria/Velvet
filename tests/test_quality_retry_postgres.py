@@ -20,6 +20,7 @@ class QualityRetryPostgreSQLTests(unittest.IsolatedAsyncioTestCase):
             await connection.execute(
                 """
                 TRUNCATE
+                    media_ai_quality_queue_plans,
                     media_ai_quality_checks,
                     media_ai_profiles,
                     media_files,
@@ -31,7 +32,7 @@ class QualityRetryPostgreSQLTests(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self) -> None:
         await self.database.close()
 
-    async def test_retry_resets_not_null_analysis_to_empty_json(self) -> None:
+    async def test_quality_error_plan_never_resets_semantic_profile(self) -> None:
         character_id, _ = await self.database.create_character(
             "Retry test",
             created_by=1,
@@ -80,11 +81,40 @@ class QualityRetryPostgreSQLTests(unittest.IsolatedAsyncioTestCase):
                 """,
                 media.media_id,
             )
+            await connection.execute(
+                """
+                INSERT INTO media_ai_quality_checks (
+                    media_id,
+                    status,
+                    error_message,
+                    attempt_count
+                )
+                VALUES ($1::BIGINT, 'skipped', 'quality failed', 1)
+                """,
+                media.media_id,
+            )
 
-        count = await QualityOperationsRepository(self.database).retry_errors()
+        repository = QualityOperationsRepository(self.database)
+        plan = await repository.plan_errors(requested_by=77, limit=10)
+
+        self.assertEqual((media.media_id,), plan.media_ids)
+        async with self.database._require_pool().acquire() as connection:
+            before_start = await connection.fetchrow(
+                """
+                SELECT status, queue_plan_id
+                FROM media_ai_quality_checks
+                WHERE media_id = $1::BIGINT
+                """,
+                media.media_id,
+            )
+        self.assertEqual("skipped", before_start["status"])
+        self.assertIsNone(before_start["queue_plan_id"])
+
+        started = await repository.start_plan(plan.plan_id, requested_by=77)
+        self.assertEqual(1, started)
 
         async with self.database._require_pool().acquire() as connection:
-            row = await connection.fetchrow(
+            semantic = await connection.fetchrow(
                 """
                 SELECT
                     status,
@@ -98,15 +128,26 @@ class QualityRetryPostgreSQLTests(unittest.IsolatedAsyncioTestCase):
                 """,
                 media.media_id,
             )
+            quality = await connection.fetchrow(
+                """
+                SELECT status, attempt_count, queue_plan_id, error_message
+                FROM media_ai_quality_checks
+                WHERE media_id = $1::BIGINT
+                """,
+                media.media_id,
+            )
 
-        self.assertEqual(1, count)
-        self.assertIsNotNone(row)
-        self.assertEqual("pending", row["status"])
-        self.assertEqual("{}", row["analysis_text"])
-        self.assertIsNone(row["semantic_text"])
-        self.assertIsNone(row["error_message"])
-        self.assertEqual(0, row["attempt_count"])
-        self.assertIsNone(row["analyzed_at"])
+        self.assertEqual("error", semantic["status"])
+        self.assertEqual('{"summary": "stale"}', semantic["analysis_text"])
+        self.assertEqual("stale semantic text", semantic["semantic_text"])
+        self.assertEqual("provider failed", semantic["error_message"])
+        self.assertEqual(4, semantic["attempt_count"])
+        self.assertIsNotNone(semantic["analyzed_at"])
+
+        self.assertEqual("pending", quality["status"])
+        self.assertEqual(0, quality["attempt_count"])
+        self.assertEqual(plan.plan_id, quality["queue_plan_id"])
+        self.assertIsNone(quality["error_message"])
 
 
 if __name__ == "__main__":

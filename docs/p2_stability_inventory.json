@@ -6,10 +6,10 @@
   "broad_exception_approved": 111,
   "broad_exception_unresolved": 0,
   "broad_exception_unresolved_files": 0,
-  "callback_total": 132,
+  "callback_total": 133,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
-  "guarded_callback_total": 44,
+  "guarded_callback_total": 43,
   "delegated_callback_total": 11,
   "next_slice": null,
   "broad_exceptions": [
@@ -648,7 +648,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py",
       "function": "handle_quality_upload_reply",
-      "line": 322,
+      "line": 369,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "compensate-manual-quality-job"
@@ -1455,8 +1455,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py",
       "function": "handle_quality_operations_menu",
-      "line": 248,
-      "ack_line": 254,
+      "line": 295,
+      "ack_line": 301,
       "pre_ack_awaits": 0,
       "total_awaits": 3,
       "risk": "early_ack"
@@ -1464,8 +1464,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py",
       "function": "handle_quality_upload_start",
-      "line": 261,
-      "ack_line": 263,
+      "line": 308,
+      "ack_line": 310,
       "pre_ack_awaits": 0,
       "total_awaits": 4,
       "risk": "early_ack"
@@ -1473,26 +1473,35 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py",
       "function": "handle_quality_recent",
-      "line": 328,
-      "ack_line": 334,
-      "pre_ack_awaits": 1,
-      "total_awaits": 3,
-      "risk": "guarded_ack"
+      "line": 375,
+      "ack_line": 381,
+      "pre_ack_awaits": 0,
+      "total_awaits": 4,
+      "risk": "early_ack"
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py",
       "function": "handle_quality_retry_errors",
-      "line": 340,
-      "ack_line": 346,
+      "line": 394,
+      "ack_line": 400,
+      "pre_ack_awaits": 0,
+      "total_awaits": 4,
+      "risk": "early_ack"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py",
+      "function": "handle_quality_plan_start",
+      "line": 413,
+      "ack_line": 425,
       "pre_ack_awaits": 1,
-      "total_awaits": 3,
+      "total_awaits": 4,
       "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py",
       "function": "handle_quality_run",
-      "line": 352,
-      "ack_line": 357,
+      "line": 433,
+      "ack_line": 438,
       "pre_ack_awaits": 0,
       "total_awaits": 5,
       "risk": "early_ack"

@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_from": "working-tree",
-  "production_module_count": 658,
-  "production_loc": 144651,
+  "generated_from": "p1-package-architecture-baseline",
+  "production_module_count": 656,
+  "production_loc": 144455,
   "layer_counts": {
     "application": 22,
-    "composition": 62,
+    "composition": 61,
     "core": 8,
     "domain": 187,
     "infrastructure": 33,
     "other": 1,
     "presentation": 218,
     "root": 114,
-    "service": 9,
+    "service": 8,
     "worker": 4
   },
   "root_module_count": 113,
@@ -1801,10 +1801,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/quality_operations.py:055152223fb22dd7",
+      "id": "database-acquire-outside-persistence:velvet_bot/quality_operations.py:8e143539a87dcfa6",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/quality_operations.py",
-      "fingerprint": "055152223fb22dd73a37732a41eb255a0527b941c860ad8e74ad29e0177f5b82",
+      "fingerprint": "8e143539a87dcfa6586f934c332ac8105ebf26883c8beba135e8c81305528b4d",
       "summary": "2 acquire calls outside persistence",
       "details": {
         "count": 2,
@@ -1812,8 +1812,8 @@
           "self._database.acquire"
         ],
         "owners": [
-          "enqueue_recent",
-          "retry_errors"
+          "_create_plan",
+          "start_plan"
         ]
       }
     },
@@ -6101,20 +6101,18 @@
       }
     },
     {
-      "id": "sql-outside-persistence:velvet_bot/quality_operations.py:9779d0f8ec2c8768",
+      "id": "sql-outside-persistence:velvet_bot/quality_operations.py:c338a93ad0a2ff27",
       "category": "sql-outside-persistence",
       "path": "velvet_bot/quality_operations.py",
-      "fingerprint": "9779d0f8ec2c8768c8ae182f9d1a8d4f487f8d7e9ca9aaeea7c32a584f4a5f0b",
-      "summary": "3 SQL literals outside persistence",
+      "fingerprint": "c338a93ad0a2ff279e22e9f6ad838f0205245f29723f327d9f14e21a53ddd193",
+      "summary": "2 SQL literals outside persistence",
       "details": {
-        "count": 3,
+        "count": 2,
         "keywords": [
-          "SELECT",
-          "UPDATE"
+          "SELECT"
         ],
         "owners": [
-          "enqueue_recent",
-          "retry_errors"
+          "<module>"
         ]
       }
     },
@@ -10694,7 +10692,7 @@
       "module": "velvet_bot.app.bootstrap",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 323,
+      "loc": 322,
       "function_count": 5,
       "class_count": 0,
       "handler_count": 0,
@@ -10702,7 +10700,6 @@
       "branch_count": 19,
       "internal_imports": [
         "velvet_bot.app.ai_usage",
-        "velvet_bot.app.codex_recovery_worker",
         "velvet_bot.app.commands",
         "velvet_bot.app.dispatcher",
         "velvet_bot.app.save_sessions",
@@ -10739,7 +10736,7 @@
       "install_definitions": [],
       "install_calls": [
         {
-          "line": 263,
+          "line": 262,
           "call": "install_command_menus"
         }
       ],
@@ -10749,27 +10746,22 @@
       "polling_values": [],
       "worker_registrations": [
         {
-          "line": 196,
+          "line": 195,
           "owner": "run_application",
           "call": "build_worker_manager"
         },
         {
-          "line": 208,
-          "owner": "run_application",
-          "call": "register_codex_recovery_worker"
-        },
-        {
-          "line": 296,
+          "line": 295,
           "owner": "run_application",
           "call": "worker_manager.start_all"
         },
         {
-          "line": 90,
+          "line": 89,
           "owner": "_close_application_resources",
           "call": "worker_manager.stop_all"
         },
         {
-          "line": 283,
+          "line": 282,
           "owner": "run_application",
           "call": "worker_manager.registered_names"
         }
@@ -10875,49 +10867,6 @@
           }
         }
       ]
-    },
-    {
-      "path": "velvet_bot/app/codex_recovery_worker.py",
-      "module": "velvet_bot.app.codex_recovery_worker",
-      "layer": "composition",
-      "target_package": "composition",
-      "loc": 58,
-      "function_count": 3,
-      "class_count": 0,
-      "handler_count": 0,
-      "max_function_length": 31,
-      "branch_count": 4,
-      "internal_imports": [
-        "velvet_bot.core.config",
-        "velvet_bot.services.codex_recovery_notifications",
-        "velvet_bot.workers"
-      ],
-      "external_import_count": 3,
-      "aiogram_imports": [
-        "aiogram"
-      ],
-      "sql_literal_count": 0,
-      "database_acquire_count": 0,
-      "foreign_assignment_targets": [],
-      "dynamic_import_count": 0,
-      "any_count": 0,
-      "cast_count": 0,
-      "type_ignore_count": 0,
-      "method_assign_ignore_count": 0,
-      "install_definitions": [],
-      "install_calls": [],
-      "installed_sentinel_count": 0,
-      "package_getattr": false,
-      "env_reads": [],
-      "polling_values": [],
-      "worker_registrations": [
-        {
-          "line": 48,
-          "owner": "register_codex_recovery_worker",
-          "call": "PeriodicWorkerSpec"
-        }
-      ],
-      "violations": []
     },
     {
       "path": "velvet_bot/app/commands.py",
@@ -31619,12 +31568,12 @@
       "module": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_operations",
       "layer": "presentation",
       "target_package": "presentation",
-      "loc": 383,
-      "function_count": 14,
+      "loc": 465,
+      "function_count": 16,
       "class_count": 1,
-      "handler_count": 6,
-      "max_function_length": 64,
-      "branch_count": 26,
+      "handler_count": 7,
+      "max_function_length": 73,
+      "branch_count": 29,
       "internal_imports": [
         "velvet_bot.ai_job_runtime",
         "velvet_bot.ai_quality",
@@ -31668,17 +31617,17 @@
       ],
       "worker_registrations": [
         {
-          "line": 238,
+          "line": 285,
           "owner": "_show_menu",
           "call": "worker_manager.snapshot"
         },
         {
-          "line": 359,
+          "line": 441,
           "owner": "handle_quality_run",
           "call": "worker_manager.run_now"
         },
         {
-          "line": 177,
+          "line": 178,
           "owner": "build_quality_operations_menu",
           "call": "_worker_text"
         }
@@ -39236,18 +39185,18 @@
       "module": "velvet_bot.quality_operations",
       "layer": "root",
       "target_package": "application/<bounded-use-case>",
-      "loc": 102,
-      "function_count": 4,
-      "class_count": 1,
+      "loc": 279,
+      "function_count": 8,
+      "class_count": 2,
       "handler_count": 0,
-      "max_function_length": 44,
-      "branch_count": 1,
+      "max_function_length": 37,
+      "branch_count": 3,
       "internal_imports": [
         "velvet_bot.database"
       ],
-      "external_import_count": 1,
+      "external_import_count": 3,
       "aiogram_imports": [],
-      "sql_literal_count": 3,
+      "sql_literal_count": 2,
       "database_acquire_count": 2,
       "foreign_assignment_targets": [],
       "dynamic_import_count": 0,
@@ -39264,28 +39213,26 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "sql-outside-persistence:velvet_bot/quality_operations.py:9779d0f8ec2c8768",
+          "id": "sql-outside-persistence:velvet_bot/quality_operations.py:c338a93ad0a2ff27",
           "category": "sql-outside-persistence",
           "path": "velvet_bot/quality_operations.py",
-          "fingerprint": "9779d0f8ec2c8768c8ae182f9d1a8d4f487f8d7e9ca9aaeea7c32a584f4a5f0b",
-          "summary": "3 SQL literals outside persistence",
+          "fingerprint": "c338a93ad0a2ff279e22e9f6ad838f0205245f29723f327d9f14e21a53ddd193",
+          "summary": "2 SQL literals outside persistence",
           "details": {
-            "count": 3,
+            "count": 2,
             "keywords": [
-              "SELECT",
-              "UPDATE"
+              "SELECT"
             ],
             "owners": [
-              "enqueue_recent",
-              "retry_errors"
+              "<module>"
             ]
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/quality_operations.py:055152223fb22dd7",
+          "id": "database-acquire-outside-persistence:velvet_bot/quality_operations.py:8e143539a87dcfa6",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/quality_operations.py",
-          "fingerprint": "055152223fb22dd73a37732a41eb255a0527b941c860ad8e74ad29e0177f5b82",
+          "fingerprint": "8e143539a87dcfa6586f934c332ac8105ebf26883c8beba135e8c81305528b4d",
           "summary": "2 acquire calls outside persistence",
           "details": {
             "count": 2,
@@ -39293,8 +39240,8 @@
               "self._database.acquire"
             ],
             "owners": [
-              "enqueue_recent",
-              "retry_errors"
+              "_create_plan",
+              "start_plan"
             ]
           }
         }
@@ -40200,48 +40147,6 @@
       "installed_sentinel_count": 0,
       "package_getattr": false,
       "env_reads": [],
-      "polling_values": [],
-      "worker_registrations": [],
-      "violations": []
-    },
-    {
-      "path": "velvet_bot/services/codex_recovery_notifications.py",
-      "module": "velvet_bot.services.codex_recovery_notifications",
-      "layer": "service",
-      "target_package": "service",
-      "loc": 396,
-      "function_count": 18,
-      "class_count": 4,
-      "handler_count": 0,
-      "max_function_length": 55,
-      "branch_count": 32,
-      "internal_imports": [],
-      "external_import_count": 14,
-      "aiogram_imports": [],
-      "sql_literal_count": 0,
-      "database_acquire_count": 0,
-      "foreign_assignment_targets": [],
-      "dynamic_import_count": 0,
-      "any_count": 0,
-      "cast_count": 1,
-      "type_ignore_count": 0,
-      "method_assign_ignore_count": 0,
-      "install_definitions": [],
-      "install_calls": [],
-      "installed_sentinel_count": 0,
-      "package_getattr": false,
-      "env_reads": [
-        {
-          "line": 370,
-          "owner": "build_codex_recovery_notification_monitor",
-          "call": "os.getenv"
-        },
-        {
-          "line": 371,
-          "owner": "build_codex_recovery_notification_monitor",
-          "call": "os.getenv"
-        }
-      ],
       "polling_values": [],
       "worker_registrations": [],
       "violations": []
