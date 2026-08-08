@@ -28,11 +28,12 @@ logger = logging.getLogger(__name__)
 _COMMANDS = (
     BotCommand(command="start", description="Назначение Arthur"),
     BotCommand(command="status", description="Сервисы и модель"),
+    BotCommand(command="archive", description="Запуск/остановка архива"),
     BotCommand(command="analyze", description="Анализ Storage ID"),
     BotCommand(command="result", description="Сохранённый результат"),
     BotCommand(command="ask", description="Вопрос по индексу"),
     BotCommand(command="digest", description="Сводка анализов"),
-    BotCommand(command="queue", description="Manual queue"),
+    BotCommand(command="queue", description="Storage queue"),
     BotCommand(command="download", description="Скачать Storage ID"),
     BotCommand(command="help", description="Команды и ограничения"),
 )
@@ -54,6 +55,7 @@ async def run_arthur() -> None:
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     heartbeat_task: asyncio.Task[None] | None = None
+    application: ArthurLibrarianApplication | None = None
     try:
         await database.initialize()
         identity = await bot.get_me()
@@ -88,6 +90,8 @@ async def run_arthur() -> None:
             allowed_updates=dispatcher.resolve_used_update_types(),
         )
     finally:
+        if application is not None:
+            await application.shutdown()
         if heartbeat_task is not None:
             heartbeat_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):

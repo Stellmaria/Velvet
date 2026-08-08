@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass
 
 import aiohttp
+import asyncpg
 
 from velvet_bot.application.storage_librarian import (
     LibrarianReportPublisher,
@@ -28,12 +30,24 @@ from velvet_bot.infrastructure.telegram.arthur_storage_gateway import (
     ArthurStorageGatewayClient,
 )
 
+logger = logging.getLogger(__name__)
+_ARCHIVE_BATCH_SIZE = 1
+
 
 @dataclass(frozen=True, slots=True)
 class ArthurAnalysisOutcome:
     object_id: int
     job: dict[str, object] | None
     analysis: dict[str, object] | None
+
+
+@dataclass(frozen=True, slots=True)
+class ArthurArchiveStatus:
+    active: bool
+    stopping: bool
+    counts: dict[str, int]
+    analyzer_version: str
+    last_error: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,6 +104,11 @@ class ArthurLibrarianApplication:
             timeout_seconds=librarian_settings.run_timeout_seconds,
         )
         self._report_publisher = report_publisher
+        self._analysis_lock = asyncio.Lock()
+        self._archive_control_lock = asyncio.Lock()
+        self._archive_stop_event = asyncio.Event()
+        self._archive_task: asyncio.Task[None] | None = None
+        self._archive_last_error: str | None = None
 
     def _service(
         self,
@@ -164,25 +183,123 @@ class ArthurLibrarianApplication:
     async def analyze(self, object_id: int) -> ArthurAnalysisOutcome:
         if not self.librarian_settings.enabled:
             raise StorageLibrarianError("Storage Librarian disabled.")
-        queued = await self.repository.enqueue_object(
-            object_id,
-            settings=self.librarian_settings,
-            priority=1_000_000,
-        )
-        if not queued:
-            raise StorageLibrarianError(f"Storage #{object_id} unavailable or running.")
-        processed = await self._service(
-            target_object_id=object_id
-        ).process_once(auto_enqueue=False)
-        if not processed:
-            raise StorageLibrarianError(
-                f"Storage #{object_id} could not be claimed for manual analysis."
+        async with self._analysis_lock:
+            queued = await self.repository.enqueue_object(
+                object_id,
+                settings=self.librarian_settings,
+                priority=1_000_000,
             )
+            if not queued:
+                raise StorageLibrarianError(
+                    f"Storage #{object_id} unavailable or running."
+                )
+            processed = await self._service(
+                target_object_id=object_id
+            ).process_once(auto_enqueue=False)
+            if not processed:
+                raise StorageLibrarianError(
+                    f"Storage #{object_id} could not be claimed for manual analysis."
+                )
         return ArthurAnalysisOutcome(
             object_id=object_id,
             job=await self.repository.job_status(object_id),
             analysis=await self.repository.analysis_by_object_id(object_id),
         )
+
+    async def _archive_loop(self, stop_event: asyncio.Event) -> None:
+        service = self._service()
+        try:
+            while not stop_event.is_set():
+                try:
+                    queued = await self.repository.enqueue_pending(
+                        settings=self.librarian_settings,
+                        limit=_ARCHIVE_BATCH_SIZE,
+                    )
+                    if stop_event.is_set():
+                        break
+                    async with self._analysis_lock:
+                        if stop_event.is_set():
+                            break
+                        processed = await service.process_once(auto_enqueue=False)
+                    self._archive_last_error = None
+                    if queued or processed:
+                        logger.info(
+                            "Arthur archive cycle queued=%s processed=%s analyzer=%s",
+                            queued,
+                            processed,
+                            self.librarian_settings.analyzer_version,
+                        )
+                except asyncio.CancelledError:
+                    raise
+                except (
+                    StorageLibrarianError,
+                    asyncpg.PostgresError,
+                    aiohttp.ClientError,
+                    OSError,
+                    ValueError,
+                    TimeoutError,
+                ) as error:
+                    self._archive_last_error = str(error)[:1200] or type(error).__name__
+                    logger.warning("Arthur archive cycle failed: %s", error)
+                if stop_event.is_set():
+                    break
+                try:
+                    await asyncio.wait_for(
+                        stop_event.wait(),
+                        timeout=self.librarian_settings.scan_interval_seconds,
+                    )
+                except TimeoutError:
+                    pass
+        finally:
+            async with self._archive_control_lock:
+                if self._archive_task is asyncio.current_task():
+                    self._archive_task = None
+
+    async def start_archive(self) -> bool:
+        if not self.librarian_settings.enabled:
+            raise StorageLibrarianError("Storage Librarian disabled.")
+        async with self._archive_control_lock:
+            task = self._archive_task
+            if task is not None and not task.done():
+                return False
+            stop_event = asyncio.Event()
+            self._archive_stop_event = stop_event
+            self._archive_last_error = None
+            self._archive_task = asyncio.create_task(
+                self._archive_loop(stop_event),
+                name="arthur-full-archive",
+            )
+            return True
+
+    async def stop_archive(self) -> bool:
+        async with self._archive_control_lock:
+            task = self._archive_task
+            if task is None or task.done():
+                return False
+            self._archive_stop_event.set()
+            return True
+
+    async def archive_status(self) -> ArthurArchiveStatus:
+        async with self._archive_control_lock:
+            task = self._archive_task
+            active = task is not None and not task.done()
+            stopping = active and self._archive_stop_event.is_set()
+            last_error = self._archive_last_error
+        return ArthurArchiveStatus(
+            active=active,
+            stopping=stopping,
+            counts=await self.repository.counts(),
+            analyzer_version=self.librarian_settings.analyzer_version,
+            last_error=last_error,
+        )
+
+    async def shutdown(self) -> None:
+        async with self._archive_control_lock:
+            task = self._archive_task
+            if task is None or task.done():
+                return
+            self._archive_stop_event.set()
+        await task
 
     async def result(self, object_id: int) -> ArthurAnalysisOutcome:
         return ArthurAnalysisOutcome(
@@ -221,6 +338,7 @@ class ArthurLibrarianApplication:
 
 __all__ = (
     "ArthurAnalysisOutcome",
+    "ArthurArchiveStatus",
     "ArthurLibrarianApplication",
     "ArthurServiceHealth",
     "ArthurStorageLibrarianService",
