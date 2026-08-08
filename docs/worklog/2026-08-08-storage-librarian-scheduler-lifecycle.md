@@ -44,8 +44,8 @@ Production diagnostics подтвердили, что основной bot healt
 
 ### Критерии готовности
 
-- `bootstrap.run_application()` вызывает `start_storage_librarian(bot, database)` до polling.
-- cleanup вызывает `stop_storage_librarian()` до закрытия зависимостей.
+- Application lifecycle запускает Storage Librarian background scheduler до polling.
+- Cleanup останавливает scheduler до закрытия зависимостей.
 - full-archive selection не выбирает existing queued/running/failed jobs как кандидатов для нового enqueue.
 - stale completed/skipped analysis по-прежнему может быть requeued новой analyzer version.
 - Existing fail-closed text-context policy, encryption, size and allowed-kind boundaries не меняются.
@@ -63,9 +63,12 @@ Production diagnostics подтвердили, что основной bot healt
 
 ### Фактически сделано
 
-- `velvet_bot/app/bootstrap.py` теперь владеет lifecycle Storage Librarian background scheduler: start перед polling, stop перед teardown зависимостей.
+- `velvet_bot/app/bootstrap.py` теперь владеет lifecycle Storage Librarian background scheduler через bounded start/stop helpers: start перед polling, stop перед teardown зависимостей.
+- Новый lifecycle wiring не увеличивает существующий architectural monolithic-function fingerprint `velvet_bot/app/bootstrap.py`; max function остаётся 181 строка.
 - `StorageLibrarianRepository.enqueue_pending()` учитывает существующую job до `LIMIT`: новые объекты допускаются без job, stale completed/skipped допускаются для re-analysis, queued/running/failed не блокируют продвижение к следующим объектам.
 - Regression test фиксирует оба production failure modes.
+- Generated package architecture baseline обновлён до `production_loc=144224`; violation count остаётся 523, новый architecture debt не добавлен.
+- Временный workflow, использованный только для детерминированной генерации inventory, удалён из feature branch до финального CI.
 
 ### Миграции и совместимость
 
@@ -73,19 +76,27 @@ SQL migrations отсутствуют. Таблицы и env schema не мен�
 
 ### Проверки
 
-Protected CI будет запущен на PR head после публикации ветки. Production evidence уже подтверждает исходную проблему: local Ollama доступен, full-archive env активен, но job activity отсутствует после включения scheduler flags.
+Initial PR head подтвердил `type check`, project notes, branch protection, Docker build и security supply chain. Первый tests run упал только на stale architecture/P2 generated contracts после первоначального более длинного lifecycle wiring.
+
+После рефакторинга lifecycle wiring возвращён к прежнему bootstrap fingerprint и без нового exception boundary. Package architecture inventory регенерирован штатным `scripts/inventory_package_architecture.py`: 656 production modules, 144224 LOC, 523 violations, bootstrap max function 181 и прежний exemption fingerprint.
+
+Финальный protected CI должен пройти на exact head после этого worklog commit.
 
 ### PR и commit
 
-PR и финальный head будут зафиксированы после создания pull request и terminal success required checks.
+- PR: `#722` — `Fix Storage Librarian full-archive scheduler lifecycle`.
+- Ветка: `fix/storage-librarian-scheduler-lifecycle`.
+- Initial PR head: `7534a6074a80a5ad6586c0e16e7cecb01f88c880`.
+- Generated-baseline head: `ba06d19c72fc298ce1d3b9eb45ee5a6c074ef53f`.
+- Финальный PR head и squash merge SHA будут зафиксированы после terminal success required checks.
 
 ### Незавершённое
 
-- Protected CI ещё не завершён.
+- Финальный protected CI ещё не завершён.
 - PR ещё не merged.
 - Production ещё не получил application image с lifecycle hotfix.
 - Production full archive flags остаются включены, но до rollout нового image scheduler фактически не стартует.
 
 ### Следующий шаг
 
-Создать PR, дождаться terminal success required CI, синхронизировать с актуальным `main` при необходимости, выполнить merge без bypass, затем доставить exact source + verified immutable image на production и подтвердить движение `telegram_storage_analysis_jobs` и уменьшение remaining count.
+Дождаться terminal success required CI на exact PR head, при необходимости синхронизировать ветку с актуальным `main`, выполнить squash merge без bypass, затем доставить exact source + verified immutable image на production и подтвердить движение `telegram_storage_analysis_jobs` и уменьшение remaining count.
