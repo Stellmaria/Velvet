@@ -3,7 +3,7 @@
 - Дата: `2026-08-08`
 - ID: `krita-headless-server-bridge-20260808`
 - Линия/фаза: `Velvet / Krita / production server hotfix`
-- Статус: `готово к CI`
+- Статус: `частично`
 - Ветка: `fix/krita-headless-bridge`
 - Базовый commit: `8b160db820592c36f51da491b0525754f6954bdf`
 
