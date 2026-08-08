@@ -34,14 +34,21 @@ class ServerHousekeepingContractTests(unittest.TestCase):
         self.assertNotIn("image prune", self.prune)
         self.assertNotIn("volume prune", self.prune)
 
-    def test_prune_service_runs_unprivileged_and_shares_host_tmp(self) -> None:
+    def test_prune_service_runs_unprivileged_with_dedicated_docker_config(self) -> None:
         self.assertIn("User=velvet", self.service)
         self.assertIn("Group=velvet", self.service)
         self.assertIn("ExecStart=/usr/bin/bash /srv/velvet/deploy/server/prune-build-cache.sh", self.service)
         self.assertIn("Environment=VELVET_BUILD_CACHE_PRUNE_AGE=168h", self.service)
+        self.assertIn(
+            "Environment=DOCKER_CONFIG=/srv/velvet/data/runtime/docker-config",
+            self.service,
+        )
         self.assertIn("NoNewPrivileges=true", self.service)
         self.assertIn("ProtectSystem=strict", self.service)
-        self.assertIn("ReadWritePaths=/tmp", self.service)
+        self.assertIn(
+            "ReadWritePaths=/srv/velvet/data/runtime/docker-config /tmp",
+            self.service,
+        )
         self.assertNotIn("PrivateTmp=true", self.service)
         self.assertNotIn("User=root", self.service)
 
@@ -52,7 +59,12 @@ class ServerHousekeepingContractTests(unittest.TestCase):
         self.assertIn("Unit=velvet-build-cache-prune.service", self.timer)
         self.assertIn("WantedBy=timers.target", self.timer)
 
-    def test_installer_only_enables_timer(self) -> None:
+    def test_installer_prepares_docker_config_and_only_enables_timer(self) -> None:
+        self.assertIn('DOCKER_CONFIG_DIR="$APP_DIR/data/runtime/docker-config"', self.installer)
+        self.assertIn(
+            'install -d -m 0700 -o velvet -g velvet "$DOCKER_CONFIG_DIR"',
+            self.installer,
+        )
         self.assertIn("install -m 0644", self.installer)
         self.assertIn("systemctl daemon-reload", self.installer)
         self.assertIn(
