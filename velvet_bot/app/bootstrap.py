@@ -37,6 +37,24 @@ def _build_bot(settings: Settings) -> ProtectedMediaBot:
     )
 
 
+async def _start_background_workers(
+    bot: ProtectedMediaBot,
+    database: Database,
+    worker_manager: WorkerManager,
+) -> None:
+    from velvet_bot.presentation.telegram.storage_librarian import start_storage_librarian
+
+    await start_storage_librarian(bot, database)
+    await worker_manager.start_all()
+
+
+async def _stop_background_workers(worker_manager: WorkerManager) -> None:
+    from velvet_bot.presentation.telegram.storage_librarian import stop_storage_librarian
+
+    await stop_storage_librarian()
+    await worker_manager.stop_all()
+
+
 async def _probe_analytics_channels(
     *,
     bot: ProtectedMediaBot,
@@ -84,18 +102,9 @@ async def _close_application_resources(
     database: Database,
 ) -> None:
     """Release every acquired resource even when another cleanup step fails."""
-    from velvet_bot.presentation.telegram.storage_librarian import (
-        stop_storage_librarian,
-    )
-
-    try:
-        await stop_storage_librarian()
-    except Exception:  # p2-approved-boundary: isolate-storage-librarian-shutdown
-        logger.exception("Could not stop Storage Librarian background scheduler")
-
     if worker_manager is not None:
         try:
-            await worker_manager.stop_all()
+            await _stop_background_workers(worker_manager)
         except Exception:  # p2-approved-boundary: isolate-worker-shutdown
             logger.exception("Could not stop all background workers")
 
@@ -301,12 +310,7 @@ async def run_application() -> None:
             diagnostic_bundles="enabled",
         )
 
-        from velvet_bot.presentation.telegram.storage_librarian import (
-            start_storage_librarian,
-        )
-
-        await start_storage_librarian(bot, database)
-        await worker_manager.start_all()
+        await _start_background_workers(bot, database, worker_manager)
         await bundle.dispatcher.start_polling(
             bot,
             allowed_updates=allowed_updates,
