@@ -3,7 +3,7 @@
 - Дата: 2026-08-08
 - ID: `2026-08-08-vl-typed-failures`
 - Линия/фаза: Velvet AI / VL production safety / transport lifecycle
-- Статус: `готово к merge после required CI`
+- Статус: `частично`
 - Ветка: `fix/vl-typed-failures`
 - Базовый commit: `86b276120fd7e260a16a78d83154c2ddaeac83bf`
 
@@ -91,7 +91,7 @@ DB migration в этом slice нет. Typed exceptions наследуются �
 - первый preflight выявил три unclassified root modules; они перемещены в существующие domain/service package layers вместо расширения root debt;
 - regression fixture `CalibratedAITerminalSkipLoggingTests` обновлён под новый `background_enabled` contract;
 - package architecture inventory/exemptions пересобраны штатным workflow в commit `f8a68788fa1eab10a1f91f9e5fd4d7f1c006915b`;
-- generated bot commit не запускает нормальный required CI, поэтому этот owner-authored commit является финальным CI trigger на итоговом tree;
+- generated bot commit не запускает нормальный required CI, поэтому owner-authored финальный commit запускает required checks на итоговом tree;
 - required project CI должен быть зелёным на финальном head до merge.
 
 ### PR и commit
