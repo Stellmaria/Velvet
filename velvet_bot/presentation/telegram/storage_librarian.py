@@ -16,6 +16,7 @@ from velvet_bot.application.storage_librarian import StorageLibrarianService
 from velvet_bot.database import Database
 from velvet_bot.domains.telegram_storage.librarian_afk_repository import (
     StorageLibrarianAfkRepository,
+    recover_stale_running_jobs,
 )
 from velvet_bot.domains.telegram_storage.librarian_models import (
     StorageLibrarianError,
@@ -39,6 +40,7 @@ from velvet_bot.infrastructure.telegram.storage_librarian_reports import (
 logger = logging.getLogger(__name__)
 _scheduler_task: asyncio.Task[None] | None = None
 _background_tasks: set[asyncio.Task[None]] = set()
+_STALE_RUNNING_SECONDS = 15 * 60
 
 
 def _env_enabled(name: str, default: bool = False) -> bool:
@@ -158,6 +160,18 @@ async def _librarian_scheduler_loop(
     service.repository = repository
     while True:
         try:
+            requeued, failed = await recover_stale_running_jobs(
+                database,
+                stale_after_seconds=_STALE_RUNNING_SECONDS,
+            )
+            if requeued or failed:
+                logger.warning(
+                    "Storage Librarian stale running recovery "
+                    "requeued=%s failed=%s stale_after=%ss",
+                    requeued,
+                    failed,
+                    _STALE_RUNNING_SECONDS,
+                )
             if full_archive:
                 queued = await repository.enqueue_pending(
                     settings=settings,

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 661,
-  "production_loc": 145572,
+  "production_loc": 145632,
   "layer_counts": {
     "application": 22,
     "composition": 62,
@@ -21344,12 +21344,12 @@
       "module": "velvet_bot.domains.telegram_storage.librarian_afk_repository",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 61,
-      "function_count": 2,
+      "loc": 107,
+      "function_count": 3,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 37,
-      "branch_count": 2,
+      "max_function_length": 44,
+      "branch_count": 3,
       "internal_imports": [
         "velvet_bot.database",
         "velvet_bot.domains.telegram_storage.librarian_models",
@@ -21357,8 +21357,8 @@
       ],
       "external_import_count": 1,
       "aiogram_imports": [],
-      "sql_literal_count": 1,
-      "database_acquire_count": 1,
+      "sql_literal_count": 2,
+      "database_acquire_count": 2,
       "foreign_assignment_targets": [],
       "dynamic_import_count": 0,
       "any_count": 0,
@@ -36683,12 +36683,12 @@
       "module": "velvet_bot.presentation.telegram.storage_librarian",
       "layer": "presentation",
       "target_package": "presentation",
-      "loc": 531,
+      "loc": 545,
       "function_count": 16,
       "class_count": 0,
       "handler_count": 0,
       "max_function_length": 86,
-      "branch_count": 42,
+      "branch_count": 43,
       "internal_imports": [
         "velvet_bot.application.storage_librarian",
         "velvet_bot.database",
@@ -36721,17 +36721,17 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 66,
+          "line": 68,
           "owner": "_auto_allowed_kinds",
           "call": "os.getenv"
         },
         {
-          "line": 58,
+          "line": 60,
           "owner": "_env_int",
           "call": "os.getenv"
         },
         {
-          "line": 45,
+          "line": 47,
           "owner": "_env_enabled",
           "call": "os.getenv"
         }
