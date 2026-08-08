@@ -12,6 +12,7 @@ TIMER_SOURCE="$APP_DIR/deploy/systemd/velvet-build-cache-prune.timer"
 SERVICE_TARGET="/etc/systemd/system/velvet-build-cache-prune.service"
 TIMER_TARGET="/etc/systemd/system/velvet-build-cache-prune.timer"
 PRUNE_SCRIPT="$APP_DIR/deploy/server/prune-build-cache.sh"
+DOCKER_CONFIG_DIR="$APP_DIR/data/runtime/docker-config"
 
 for path in "$SERVICE_SOURCE" "$TIMER_SOURCE" "$PRUNE_SCRIPT"; do
   if [[ ! -f "$path" ]]; then
@@ -28,6 +29,7 @@ if [[ ! -x /usr/bin/docker ]]; then
   exit 2
 fi
 
+install -d -m 0700 -o velvet -g velvet "$DOCKER_CONFIG_DIR"
 install -m 0644 "$SERVICE_SOURCE" "$SERVICE_TARGET"
 install -m 0644 "$TIMER_SOURCE" "$TIMER_TARGET"
 systemctl daemon-reload
