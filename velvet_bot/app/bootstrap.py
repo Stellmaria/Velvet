@@ -7,8 +7,8 @@ from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError
 
 from velvet_bot.app.ai_usage import build_audited_ai_usage_service
-from velvet_bot.app.commands import install_command_menus
 from velvet_bot.app.codex_recovery_worker import register_codex_recovery_worker
+from velvet_bot.app.commands import install_command_menus
 from velvet_bot.app.dispatcher import build_dispatcher
 from velvet_bot.app.save_sessions import SaveUploadSessions
 from velvet_bot.app.workers import build_worker_manager
@@ -36,6 +36,24 @@ def _build_bot(settings: Settings) -> ProtectedMediaBot:
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
         unprotected_private_user_ids=settings.allowed_user_ids,
     )
+
+
+async def _start_background_workers(
+    bot: ProtectedMediaBot,
+    database: Database,
+    worker_manager: WorkerManager,
+) -> None:
+    from velvet_bot.presentation.telegram.storage_librarian import start_storage_librarian
+
+    await start_storage_librarian(bot, database)
+    await worker_manager.start_all()
+
+
+async def _stop_background_workers(worker_manager: WorkerManager) -> None:
+    from velvet_bot.presentation.telegram.storage_librarian import stop_storage_librarian
+
+    await stop_storage_librarian()
+    await worker_manager.stop_all()
 
 
 async def _probe_analytics_channels(
@@ -87,7 +105,7 @@ async def _close_application_resources(
     """Release every acquired resource even when another cleanup step fails."""
     if worker_manager is not None:
         try:
-            await worker_manager.stop_all()
+            await _stop_background_workers(worker_manager)
         except Exception:  # p2-approved-boundary: isolate-worker-shutdown
             logger.exception("Could not stop all background workers")
 
@@ -206,6 +224,7 @@ async def run_application() -> None:
             diagnostic_service=diagnostic_service,
         )
         register_codex_recovery_worker(bot=bot, settings=settings, manager=worker_manager)
+
         bot_info = await bot.get_me()
         bot_username = bot_info.username or ""
 
@@ -293,7 +312,7 @@ async def run_application() -> None:
             diagnostic_bundles="enabled",
         )
 
-        await worker_manager.start_all()
+        await _start_background_workers(bot, database, worker_manager)
         await bundle.dispatcher.start_polling(
             bot,
             allowed_updates=allowed_updates,
