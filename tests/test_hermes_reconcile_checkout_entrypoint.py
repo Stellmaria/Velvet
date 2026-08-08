@@ -137,6 +137,16 @@ class HermesReconcileCheckoutEntrypointTests(unittest.TestCase):
             read_write_line.split(),
         )
 
+    def test_installer_verifies_reconcile_client_as_hermes_data_owner(self) -> None:
+        installer = INSTALLER.read_text(encoding="utf-8")
+
+        self.assertIn('--user "$hermes_uid:$hermes_gid"', installer)
+        self.assertIn('-e EXPECTED_UID="$hermes_uid"', installer)
+        self.assertIn('-e EXPECTED_GID="$hermes_gid"', installer)
+        self.assertIn('test "$(id -u)" = "$EXPECTED_UID"', installer)
+        self.assertIn('test "$(id -g)" = "$EXPECTED_GID"', installer)
+        self.assertNotIn('test "$(id -u)" = "10000"', installer)
+
 
 if __name__ == "__main__":
     unittest.main()
