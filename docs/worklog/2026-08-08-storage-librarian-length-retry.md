@@ -65,6 +65,14 @@ Retry output budget также не может отбирать место у in
 - HTTP response/decode вынесен в отдельный helper, чтобы `run()` оставался внутри architecture function-size contract;
 - hard input guard больше не сообщает устаревшее `Chunking is not implemented`, поскольку chunking уже находится в `main`.
 
+### Миграции и совместимость
+
+- миграции базы данных и изменения persistent schema не требуются;
+- публичные Telegram и Storage Librarian интерфейсы не меняются;
+- существующий bounded chunking из #736 сохраняется без изменения лимитов входа;
+- abnormal `done_reason`, кроме `length`, сохраняют прежнюю terminal semantics;
+- historical failed jobs автоматически не пере-enqueue, поэтому rollout не создаёт скрытую повторную обработку старых объектов.
+
 ### Проверки
 
 - GitHub runner: CPython `3.13.14`, зависимости установлены из `requirements.lock` с `--require-hashes`;
@@ -80,10 +88,19 @@ Retry output budget также не может отбирать место у in
 - validation scope guard подтвердил ровно четыре runner-generated изменения: Ollama client, два architecture inventory файла и pinned LOC contract;
 - временный validation workflow удалён из feature-ветки после успешной проверки.
 
+### PR и commit
+
+- PR: `#737 Bound Storage Librarian retries for Ollama length completions`;
+- feature head до финального worklog-fix: `69ca66c041220c2f54e1f6854973dddb462766b5`;
+- финальный worklog-contract fix добавлен отдельным commit в ту же feature-ветку;
+- merge допускается только после полного required CI на обновлённом exact head и проверки `behind_by=0`.
+
 ### Незавершённое
 
-- создать отдельный PR после финальной проверки состава diff;
-- дождаться required PR CI и review/merge gate;
-- после отдельного разрешения выполнить production rollout;
-- повторно проверить реальные Storage Librarian jobs, включая сценарии, ранее падавшие на `done_reason=length`;
+- дождаться required PR CI и merge gate на финальном head;
+- после отдельного production rollout повторно проверить реальные Storage Librarian jobs, включая сценарии, ранее падавшие на `done_reason=length`;
 - historical failed jobs не пере-enqueue автоматически в рамках этого изменения.
+
+### Следующий шаг
+
+После зелёного CI выполнить squash-merge PR #737 в `main` с exact-head guard. Production rollout и acceptance-проверка остаются отдельной операционной стадией после merge.
