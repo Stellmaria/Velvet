@@ -90,7 +90,7 @@ data_dir="${deployment_settings[0]}"
 krita_server_enabled="${deployment_settings[1]}"
 docker_config="${DOCKER_CONFIG:-$data_dir/runtime/docker-config}"
 export DOCKER_CONFIG="$docker_config"
-export COMPOSE_BAKE="${COMPOSE_BAKE:-false}"
+export COMPOSE_BAKE="${COMPOSE_BAKE:-true}"
 if [[ -n "$IMAGE_OVERRIDE" ]]; then
   export VELVET_IMAGE="$IMAGE_OVERRIDE"
 fi
