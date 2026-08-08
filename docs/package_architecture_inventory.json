@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 661,
-  "production_loc": 146413,
+  "production_loc": 146496,
   "layer_counts": {
     "application": 22,
     "composition": 62,
@@ -12576,12 +12576,12 @@
       "module": "velvet_bot.application.arthur_librarian",
       "layer": "application",
       "target_package": "application",
-      "loc": 345,
+      "loc": 362,
       "function_count": 17,
       "class_count": 5,
       "handler_count": 0,
-      "max_function_length": 48,
-      "branch_count": 24,
+      "max_function_length": 58,
+      "branch_count": 26,
       "internal_imports": [
         "velvet_bot.application.storage_librarian",
         "velvet_bot.core.config.arthur",
@@ -12592,7 +12592,7 @@
         "velvet_bot.infrastructure.ai.storage_librarian_ollama",
         "velvet_bot.infrastructure.telegram.arthur_storage_gateway"
       ],
-      "external_import_count": 6,
+      "external_import_count": 7,
       "aiogram_imports": [],
       "sql_literal_count": 0,
       "database_acquire_count": 0,
@@ -21115,21 +21115,21 @@
       "module": "velvet_bot.domains.telegram_storage.arthur_repository",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 68,
-      "function_count": 3,
+      "loc": 118,
+      "function_count": 5,
       "class_count": 1,
       "handler_count": 0,
       "max_function_length": 29,
-      "branch_count": 2,
+      "branch_count": 7,
       "internal_imports": [
         "velvet_bot.database",
         "velvet_bot.domains.telegram_storage.librarian_models",
         "velvet_bot.domains.telegram_storage.librarian_repository"
       ],
-      "external_import_count": 1,
+      "external_import_count": 3,
       "aiogram_imports": [],
-      "sql_literal_count": 2,
-      "database_acquire_count": 2,
+      "sql_literal_count": 6,
+      "database_acquire_count": 4,
       "foreign_assignment_targets": [],
       "dynamic_import_count": 0,
       "any_count": 0,
@@ -22115,20 +22115,20 @@
       "module": "velvet_bot.domains.vision_batches.worker",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 275,
+      "loc": 291,
       "function_count": 9,
       "class_count": 2,
       "handler_count": 0,
       "max_function_length": 63,
-      "branch_count": 18,
+      "branch_count": 19,
       "internal_imports": [
         "velvet_bot.ai_vision",
         "velvet_bot.core.ai_budget",
         "velvet_bot.core.config",
         "velvet_bot.database",
         "velvet_bot.domains.ai_usage",
+        "velvet_bot.domains.telegram_storage.arthur_repository",
         "velvet_bot.domains.telegram_storage.librarian_models",
-        "velvet_bot.domains.telegram_storage.librarian_repository",
         "velvet_bot.domains.vision_batches.service",
         "velvet_bot.domains.vision_batches.store",
         "velvet_bot.domains.vision_routing",
@@ -22137,7 +22137,7 @@
         "velvet_bot.local_ai_runtime",
         "velvet_bot.workers.adaptive"
       ],
-      "external_import_count": 10,
+      "external_import_count": 11,
       "aiogram_imports": [
         "aiogram"
       ],
@@ -22155,7 +22155,7 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 44,
+          "line": 45,
           "owner": "_env_enabled",
           "call": "os.getenv"
         }
@@ -22163,22 +22163,22 @@
       "polling_values": [],
       "worker_registrations": [
         {
-          "line": 159,
+          "line": 175,
           "owner": "_empty_result",
           "call": "WorkerIterationResult"
         },
         {
-          "line": 199,
+          "line": 215,
           "owner": "process_once",
           "call": "WorkerIterationResult"
         },
         {
-          "line": 198,
+          "line": 214,
           "owner": "process_once",
           "call": "WorkerIterationResult"
         },
         {
-          "line": 222,
+          "line": 238,
           "owner": "process_once",
           "call": "WorkerIterationResult"
         }

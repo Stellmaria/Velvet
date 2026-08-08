@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 
 import aiohttp
@@ -206,7 +207,11 @@ class ArthurLibrarianApplication:
             analysis=await self.repository.analysis_by_object_id(object_id),
         )
 
-    async def _archive_loop(self, stop_event: asyncio.Event) -> None:
+    async def _archive_loop(
+        self,
+        stop_event: asyncio.Event,
+        archive_phase: AbstractAsyncContextManager[None],
+    ) -> None:
         service = self._service()
         try:
             while not stop_event.is_set():
@@ -251,9 +256,15 @@ class ArthurLibrarianApplication:
                 except TimeoutError:
                     pass
         finally:
-            async with self._archive_control_lock:
-                if self._archive_task is asyncio.current_task():
-                    self._archive_task = None
+            try:
+                await archive_phase.__aexit__(None, None, None)
+            except (asyncpg.PostgresError, OSError, RuntimeError) as error:
+                self._archive_last_error = str(error)[:1200] or type(error).__name__
+                logger.error("Arthur archive lease release failed: %s", error)
+            finally:
+                async with self._archive_control_lock:
+                    if self._archive_task is asyncio.current_task():
+                        self._archive_task = None
 
     async def start_archive(self) -> bool:
         if not self.librarian_settings.enabled:
@@ -263,12 +274,18 @@ class ArthurLibrarianApplication:
             if task is not None and not task.done():
                 return False
             stop_event = asyncio.Event()
+            archive_phase = self.repository.full_archive_phase()
+            await archive_phase.__aenter__()
             self._archive_stop_event = stop_event
             self._archive_last_error = None
-            self._archive_task = asyncio.create_task(
-                self._archive_loop(stop_event),
-                name="arthur-full-archive",
-            )
+            try:
+                self._archive_task = asyncio.create_task(
+                    self._archive_loop(stop_event, archive_phase),
+                    name="arthur-full-archive",
+                )
+            except BaseException:
+                await archive_phase.__aexit__(None, None, None)
+                raise
             return True
 
     async def stop_archive(self) -> bool:

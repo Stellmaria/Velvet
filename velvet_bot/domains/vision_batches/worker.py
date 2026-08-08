@@ -9,6 +9,7 @@ from functools import partial
 from typing import Any
 from uuid import UUID
 
+import asyncpg
 from aiogram import Bot
 
 from velvet_bot.ai_vision import VisionAnalysisError, VisionProviderUnavailable
@@ -16,10 +17,10 @@ from velvet_bot.core.ai_budget import AIBudgetScope
 from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
 from velvet_bot.domains.ai_usage import AITaskQueueService, AIUsageService
-from velvet_bot.domains.telegram_storage.librarian_models import StorageLibrarianSettings
-from velvet_bot.domains.telegram_storage.librarian_repository import (
-    StorageLibrarianRepository,
+from velvet_bot.domains.telegram_storage.arthur_repository import (
+    ArthurStorageLibrarianRepository,
 )
+from velvet_bot.domains.telegram_storage.librarian_models import StorageLibrarianSettings
 from velvet_bot.domains.vision_batches.service import VISION_BATCH_TASK_TYPE
 from velvet_bot.domains.vision_batches.store import VisionBatchRepository
 from velvet_bot.domains.vision_routing import build_vision_cascade_router
@@ -50,9 +51,22 @@ def _env_enabled(name: str, default: bool = False) -> bool:
 async def storage_librarian_full_archive_has_priority(database: Database) -> bool:
     """Keep automatic VL behind the explicitly enabled Arthur full-archive phase."""
 
-    if not _env_enabled("STORAGE_LIBRARIAN_AUTO_ENQUEUE", False):
-        return False
-    if not _env_enabled("STORAGE_LIBRARIAN_AUTO_BACKFILL", False):
+    legacy_archive = _env_enabled(
+        "STORAGE_LIBRARIAN_AUTO_ENQUEUE", False
+    ) and _env_enabled("STORAGE_LIBRARIAN_AUTO_BACKFILL", False)
+    repository = ArthurStorageLibrarianRepository(database)
+    if legacy_archive:
+        archive_active = True
+    else:
+        try:
+            archive_active = await repository.full_archive_phase_active()
+        except (asyncpg.PostgresError, OSError, RuntimeError) as error:
+            logger.error(
+                "Arthur archive priority lease probe failed closed: %s",
+                error,
+            )
+            return True
+    if not archive_active:
         return False
 
     try:
@@ -64,12 +78,14 @@ async def storage_librarian_full_archive_has_priority(database: Database) -> boo
         )
         return True
     if not settings.enabled:
-        return False
+        logger.error(
+            "Arthur archive priority gate failed closed: local Librarian config is disabled"
+        )
+        return True
     if not settings.allowed_kinds:
         logger.error("Storage Librarian priority gate failed closed: empty allowed_kinds")
         return True
 
-    repository = StorageLibrarianRepository(database)
     counts = await repository.counts()
     if counts.get("running", 0) > 0 or counts.get("queued", 0) > 0:
         return True
@@ -77,7 +93,7 @@ async def storage_librarian_full_archive_has_priority(database: Database) -> boo
     # Probe the exact existing full-archive eligibility query with a hard limit of
     # one. If work remains, queue exactly one Arthur item and keep VL closed. The
     # next gate iteration sees that queued/running item and cannot grow the queue
-    # during the Librarian scheduler's idle interval.
+    # during either the legacy scheduler or Arthur's explicit archive idle interval.
     enqueued = await repository.enqueue_pending(settings=settings, limit=1)
     return enqueued > 0
 
