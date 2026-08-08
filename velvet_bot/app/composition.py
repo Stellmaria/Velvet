@@ -211,9 +211,11 @@ def build_application_composition() -> ApplicationComposition:
 
 
 async def run_application() -> None:
-    # Install the optional worker only when the application is actually started.
+    # Install optional worker wrappers only when the application is actually started.
     # Importing velvet_bot.app remains side-effect free for tests and domain code.
+    from velvet_bot.app.codex_recovery_bootstrap import install_codex_recovery_bootstrap
     from velvet_bot.app.gpt_image_2_bootstrap import install_gpt_image_2_bootstrap
 
+    install_codex_recovery_bootstrap()
     install_gpt_image_2_bootstrap()
     await build_application_composition().run()

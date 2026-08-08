@@ -11,9 +11,8 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Mapping
-
-from aiogram import Bot
+from collections.abc import Awaitable, Callable, Mapping
+from typing import cast
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +159,7 @@ async def fetch_codex_availability_snapshot(
 
 
 SnapshotFetcher = Callable[[str], Awaitable[CodexAvailabilitySnapshot]]
+NotificationSender = Callable[[int, str], Awaitable[None]]
 
 
 class CodexRecoveryNotificationStore:
@@ -167,7 +167,7 @@ class CodexRecoveryNotificationStore:
         self.path = path
 
     @staticmethod
-    def _default_state() -> dict[str, Any]:
+    def _default_state() -> dict[str, object]:
         return {
             "version": 1,
             "active_limit_event_id": None,
@@ -177,7 +177,7 @@ class CodexRecoveryNotificationStore:
             "last_notified_at": None,
         }
 
-    def load(self) -> dict[str, Any]:
+    def load(self) -> dict[str, object]:
         if not self.path.is_file():
             return self._default_state()
         try:
@@ -188,7 +188,8 @@ class CodexRecoveryNotificationStore:
             ) from error
         if not isinstance(payload, dict) or payload.get("version") != 1:
             raise CodexRecoveryStateError("Неизвестная версия Codex recovery notification state")
-        return {**self._default_state(), **payload}
+        loaded = cast(dict[str, object], payload)
+        return {**self._default_state(), **loaded}
 
     def save(self, state: Mapping[str, object]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -246,7 +247,7 @@ def _render_recovery_message(snapshots: tuple[CodexAvailabilitySnapshot, ...]) -
     plan = next((item.plan_type for item in snapshots if item.plan_type), None)
     lines = [
         "Codex снова доступен.",
-        "Лимит подписки восстановлен, primary Codex routing включсн.",
+        "Лимит подписки восстановлен, primary Codex routing включён.",
     ]
     details: list[str] = []
     recovered_label = _format_epoch(recovered_at)
@@ -267,7 +268,7 @@ class CodexRecoveryNotificationMonitor:
     def __init__(
         self,
         *,
-        bot: Bot,
+        send_notification: NotificationSender,
         owner_chat_id: int,
         fetch_snapshot: SnapshotFetcher,
         state_path: Path = _DEFAULT_STATE_PATH,
@@ -275,7 +276,7 @@ class CodexRecoveryNotificationMonitor:
     ) -> None:
         if not projects:
             raise ValueError("Codex recovery monitor требует хотя бы один project")
-        self._bot = bot
+        self._send_notification = send_notification
         self._owner_chat_id = int(owner_chat_id)
         self._fetch_snapshot = fetch_snapshot
         self._projects = tuple(dict.fromkeys(projects))
@@ -352,17 +353,16 @@ class CodexRecoveryNotificationMonitor:
             state["active_limit_observed_at"] = None
             state["active_limit_checked_at"] = None
             self._store.save(state)
-            await self._bot.send_message(
-                chat_id=self._owner_chat_id,
-                text=_render_recovery_message(snapshots),
-                disable_web_page_preview=True,
+            await self._send_notification(
+                self._owner_chat_id,
+                _render_recovery_message(snapshots),
             )
             return 1
 
 
 def build_codex_recovery_notification_monitor(
     *,
-    bot: Bot,
+    send_notification: NotificationSender,
     owner_chat_id: int | None,
 ) -> CodexRecoveryNotificationMonitor | None:
     if owner_chat_id is None:
@@ -380,7 +380,7 @@ def build_codex_recovery_notification_monitor(
         )
 
     return CodexRecoveryNotificationMonitor(
-        bot=bot,
+        send_notification=send_notification,
         owner_chat_id=owner_chat_id,
         fetch_snapshot=fetch,
     )

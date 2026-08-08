@@ -6,6 +6,7 @@
 - Статус: `завершено`
 - Ветка: `feat/codex-recovery-notification`
 - Базовый commit: `8b160db820592c36f51da491b0525754f6954bdf`
+- Синхронизированный main: `fa360df542e7dcc44ce2f98eb44580548055ad41`
 
 ## Перед началом
 
@@ -15,7 +16,7 @@
 
 ### Исходный контекст
 
-Dynamic Codex availability gate уже является единственным routing authority для Velvet coder, Max coder и GPT Image 2. Coder runtime выполняѵт startup probe, обязательный пятичасовой watcher и дополнительный reset-time probe, а `GET /v1/capabilities` публикует безопасный persisted `routing.codex_availability` без дополнительного quota request.
+Dynamic Codex availability gate уже является единственным routing authority для Velvet coder, Max coder и GPT Image 2. Coder runtime выполняет startup probe, обязательный пятичасовой watcher и дополнительный reset-time probe, а `GET /v1/capabilities` публикует безопасный persisted `routing.codex_availability` без дополнительного quota request.
 
 Main bot уже получает `CODEX_LIMITS_BASE_URL` и `CODEX_LIMITS_API_KEY`, а `bootstrap.py` создаёт один основной `ProtectedMediaBot` и передаёт его в централизованный `WorkerManager`. Поэтому recovery notification должна использовать этот bot/application path и не создавать отдельный Telegram token, process или quota watcher.
 
@@ -47,12 +48,12 @@ Main bot уже получает `CODEX_LIMITS_BASE_URL` и `CODEX_LIMITS_API_KE
 
 ### Фактически сделано
 
-- Добавлен `CodexRecoveryNotificationMonitor` в main Velvet application.
-- Monitor использует существующие `CODEX_LIMITS_BASE_URL` и `CODEX_LIMITS_API_KEY`, читает только coder capabilities и не делает собственных live quota probes.
+- Добавлен transport-agnostic `CodexRecoveryNotificationMonitor` и bounded app adapter `velvet_bot/app/codex_recovery_bootstrap.py`.
+- Monitor использует существующие `CODEX_LIMITS_BASE_URL` и `CODEX_LIMITS_API_KEY`, читает только coder capabilities и не делает собственных live quota probes. Service layer не импортирует `aiogram`; Telegram transport остаётся в app layer.
 - Pool-level limited/recovery state хранится атомарно в `/app/runtime/codex-recovery-notifications.json` с mode `0600`; recovery event durably claim-ится до вызова Telegram Bot API.
 - Одна recovery generation объединяет Velvet и Max: уведомление отправляется только после успешного recovery state обоих project и затем помечается persistent dedupe marker.
-- Получателем является primary owner numeric chat id; при отсутствии numeric owner используется существующий log chat. Отправка идёт через тот же `Bot`, который создаёт основной application bootstrap.
-- Добавлены regression tests для single-send, restart dedupe, staggered Velvet/Max recovery, probe error, startup без previous limit, manual hold и проверки отсутствия `/rate-limits` в monitor path.
+- Получателем является primary owner numeric chat id; при отсутствии numeric owner используется существующий log chat. App adapter отправляет через тот же `Bot`, который уже передан canonical `build_worker_manager`; новый bot/token/service не создаётся.
+- Добавлены regression tests для single-send, restart dedupe, staggered Velvet/Max recovery, probe error, startup без previous limit, manual hold, отсутствия `/rate-limits` в monitor path и проверки reuse существующего bot transport.
 
 ### Миграции и совместимость
 
@@ -61,6 +62,7 @@ SQL migrations отсутствуют. Формат `/opt/codex-runs/codex-avail
 ### Проверки
 
 - Изолированный state-machine smoke: `RECOVERY_DEDUPE_OK`.
+- Architecture preflight-driven refactor: service transport-agnostic, `velvet_bot/app/workers.py` восстановлен до canonical main blob, новые exemptions не добавляются.
 - Startup false-positive smoke: `NO_STARTUP_FALSE_POSITIVE_OK`.
 - Probe-error smoke: `PROBE_ERROR_NO_NOTIFY_OK`.
 - Delivery failure smoke: dedupe marker сохраняется до Telegram send и restart не повторяет claimed event.
@@ -70,7 +72,8 @@ SQL migrations отсутствуют. Формат `/opt/codex-runs/codex-avail
 
 - Ветка: `feat/codex-recovery-notification`
 - Base: `8b160db820592c36f51da491b0525754f6954bdf`
-- PR и exact tested head фиксируются GitHub после публикации этого focused diff.
+- PR: `#719`
+- Exact tested head фиксируется GitHub после финального architecture-fix commit; старые green checks после изменения head не переиспользуются.
 - Merge разрешён только при `behind_by=0` и terminal success всех шести protected checks.
 
 ### Незавершённое
@@ -84,4 +87,4 @@ SQL migrations отсутствуют. Формат `/opt/codex-runs/codex-avail
 
 ### Следующий шаг
 
-Открыть focused PR, дождаться terminal success всех required checks, проверить актуальный main drift/behind status и merge только exact tested head. Production rollout выполнять отдельно по canonical contract после merge.
+Дождаться terminal success всех required checks на финальном head PR #719, проверить актуальный main drift/behind status и merge только exact tested head. Production rollout выполнять отдельно по canonical contract после merge.

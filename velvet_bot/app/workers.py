@@ -52,9 +52,6 @@ from velvet_bot.infrastructure.transient_connections import (
 from velvet_bot.local_ai_runtime import get_local_ai_lock
 from velvet_bot.quality_calibration import QualityCalibrationRepository
 from velvet_bot.resilient_ai_quality import ResilientAIQualityRepository
-from velvet_bot.services.codex_recovery_notifications import (
-    build_codex_recovery_notification_monitor,
-)
 from velvet_bot.services.diagnostic_bundle import DiagnosticBundleService
 from velvet_bot.services.system_health import SystemHealthService
 from velvet_bot.services.workspace_qwen_quality import WorkspaceQwenQualityService
@@ -95,14 +92,6 @@ def _ai_cache_chat_id(settings: Settings) -> int | None:
         return int(settings.log_chat_id)
     if settings.allowed_user_ids:
         return min(settings.allowed_user_ids)
-    return None
-
-
-def _codex_recovery_chat_id(settings: Settings) -> int | None:
-    if settings.allowed_user_ids:
-        return min(settings.allowed_user_ids)
-    if settings.log_chat_id is not None:
-        return int(settings.log_chat_id)
     return None
 
 
@@ -169,20 +158,6 @@ def build_worker_manager(
             runner=partial(_recover_stale_ai_tasks, active_task_queue_service),
         )
     )
-    if settings is not None:
-        codex_recovery_monitor = build_codex_recovery_notification_monitor(
-            bot=bot,
-            owner_chat_id=_codex_recovery_chat_id(settings),
-        )
-        if codex_recovery_monitor is not None:
-            manager.register(
-                PeriodicWorkerSpec(
-                    name="codex-recovery-notifications",
-                    description="Уведомление владельцу о восстановлении Codex quota",
-                    interval_seconds=60,
-                    runner=codex_recovery_monitor.process_once,
-                )
-            )
     if active_kie_settings.enabled:
         if active_kie_settings.api_key is None:
             raise RuntimeError("Kie включён без API key.")

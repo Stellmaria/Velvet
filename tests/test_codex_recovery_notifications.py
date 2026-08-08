@@ -11,16 +11,15 @@ from velvet_bot.services.codex_recovery_notifications import (
 )
 
 
-class FakeBot:
+class FakeSender:
     def __init__(self) -> None:
         self.messages: list[dict[str, object]] = []
         self.error: Exception | None = None
 
-    async def send_message(self, **kwargs: object) -> object:
+    async def __call__(self, chat_id: int, text: str) -> None:
         if self.error is not None:
             raise self.error
-        self.messages.append(dict(kwargs))
-        return object()
+        self.messages.append({"chat_id": chat_id, "text": text})
 
 
 class SnapshotSource:
@@ -68,7 +67,7 @@ class CodexRecoveryNotificationTests(unittest.IsolatedAsyncioTestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.state_path = Path(self.directory.name) / "codex-recovery.json"
-        self.bot = FakeBot()
+        self.sender = FakeSender()
         self.source = SnapshotSource({
             "velvet": limited("velvet"),
             "max": limited("max"),
@@ -76,7 +75,7 @@ class CodexRecoveryNotificationTests(unittest.IsolatedAsyncioTestCase):
 
     def monitor(self) -> CodexRecoveryNotificationMonitor:
         return CodexRecoveryNotificationMonitor(
-            bot=self.bot,  # type: ignore[arg-type]
+            send_notification=self.sender,
             owner_chat_id=123,
             fetch_snapshot=self.source,
             state_path=self.state_path,
@@ -85,22 +84,22 @@ class CodexRecoveryNotificationTests(unittest.IsolatedAsyncioTestCase):
     async def test_limit_then_live_recovery_sends_once_and_persists_dedupe(self) -> None:
         monitor = self.monitor()
         self.assertEqual(0, await monitor.process_once())
-        self.assertEqual([], self.bot.messages)
+        self.assertEqual([], self.sender.messages)
 
         self.source.values = {
             "velvet": available("velvet", 2_000),
             "max": available("max", 2_001),
         }
         self.assertEqual(1, await monitor.process_once())
-        self.assertEqual(1, len(self.bot.messages))
-        text = str(self.bot.messages[0]["text"])
+        self.assertEqual(1, len(self.sender.messages))
+        text = str(self.sender.messages[0]["text"])
         self.assertIn("Codex снова доступен", text)
         self.assertIn("primary Codex routing включён", text)
         self.assertIn("План: Plus", text)
 
         restarted = self.monitor()
         self.assertEqual(0, await restarted.process_once())
-        self.assertEqual(1, len(self.bot.messages))
+        self.assertEqual(1, len(self.sender.messages))
         persisted = json.loads(self.state_path.read_text(encoding="utf-8"))
         self.assertIsNotNone(persisted["last_notified_event_id"])
         self.assertIsNone(persisted["active_limit_event_id"])
@@ -112,7 +111,7 @@ class CodexRecoveryNotificationTests(unittest.IsolatedAsyncioTestCase):
             "velvet": available("velvet", 2_000),
             "max": available("max", 2_001),
         }
-        self.bot.error = RuntimeError("telegram unavailable")
+        self.sender.error = RuntimeError("telegram unavailable")
         with self.assertRaisesRegex(RuntimeError, "telegram unavailable"):
             await monitor.process_once()
 
@@ -120,10 +119,10 @@ class CodexRecoveryNotificationTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(persisted["last_notified_event_id"])
         self.assertIsNone(persisted["active_limit_event_id"])
 
-        self.bot.error = None
+        self.sender.error = None
         restarted = self.monitor()
         self.assertEqual(0, await restarted.process_once())
-        self.assertEqual([], self.bot.messages)
+        self.assertEqual([], self.sender.messages)
 
     async def test_waits_until_both_projects_confirm_recovery(self) -> None:
         monitor = self.monitor()
@@ -133,11 +132,11 @@ class CodexRecoveryNotificationTests(unittest.IsolatedAsyncioTestCase):
             "max": limited("max", 1_100),
         }
         self.assertEqual(0, await monitor.process_once())
-        self.assertEqual([], self.bot.messages)
+        self.assertEqual([], self.sender.messages)
 
         self.source.values["max"] = available("max", 2_100)
         self.assertEqual(1, await monitor.process_once())
-        self.assertEqual(1, len(self.bot.messages))
+        self.assertEqual(1, len(self.sender.messages))
 
     async def test_probe_error_never_confirms_recovery(self) -> None:
         monitor = self.monitor()
@@ -160,7 +159,7 @@ class CodexRecoveryNotificationTests(unittest.IsolatedAsyncioTestCase):
             "max": available("max", 2_001),
         }
         self.assertEqual(0, await monitor.process_once())
-        self.assertEqual([], self.bot.messages)
+        self.assertEqual([], self.sender.messages)
 
     async def test_startup_available_without_proven_limit_does_not_notify(self) -> None:
         self.source.values = {
@@ -168,7 +167,7 @@ class CodexRecoveryNotificationTests(unittest.IsolatedAsyncioTestCase):
             "max": available("max"),
         }
         self.assertEqual(0, await self.monitor().process_once())
-        self.assertEqual([], self.bot.messages)
+        self.assertEqual([], self.sender.messages)
         self.assertFalse(self.state_path.exists())
 
     async def test_manual_hold_clear_without_subscription_limit_does_not_notify(self) -> None:
@@ -193,7 +192,7 @@ class CodexRecoveryNotificationTests(unittest.IsolatedAsyncioTestCase):
             "max": available("max", 2_000),
         }
         self.assertEqual(0, await monitor.process_once())
-        self.assertEqual([], self.bot.messages)
+        self.assertEqual([], self.sender.messages)
 
     async def test_recovery_must_be_newer_than_limited_probe(self) -> None:
         monitor = self.monitor()
@@ -203,7 +202,7 @@ class CodexRecoveryNotificationTests(unittest.IsolatedAsyncioTestCase):
             "max": available("max", 1_000),
         }
         self.assertEqual(0, await monitor.process_once())
-        self.assertEqual([], self.bot.messages)
+        self.assertEqual([], self.sender.messages)
 
     def test_monitor_reads_persisted_capabilities_not_rate_limits(self) -> None:
         source = Path("velvet_bot/services/codex_recovery_notifications.py").read_text(
@@ -211,6 +210,14 @@ class CodexRecoveryNotificationTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertIn("/capabilities", source)
         self.assertNotIn("/rate-limits", source)
+
+    def test_main_bot_bootstrap_reuses_existing_bot_transport(self) -> None:
+        source = Path("velvet_bot/app/codex_recovery_bootstrap.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("await bot.send_message", source)
+        self.assertNotIn("Bot(token=", source)
+        self.assertNotIn("BOT_TOKEN", source)
 
 
 if __name__ == "__main__":
