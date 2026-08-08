@@ -29,6 +29,7 @@ from velvet_bot.infrastructure.ai.storage_librarian_ollama import (
 from velvet_bot.infrastructure.telegram.arthur_storage_gateway import (
     ArthurStorageGatewayClient,
 )
+from velvet_bot.local_ai_runtime import set_storage_librarian_archive_phase_enabled
 
 logger = logging.getLogger(__name__)
 _ARCHIVE_BATCH_SIZE = 1
@@ -254,6 +255,7 @@ class ArthurLibrarianApplication:
             async with self._archive_control_lock:
                 if self._archive_task is asyncio.current_task():
                     self._archive_task = None
+                    set_storage_librarian_archive_phase_enabled(False)
 
     async def start_archive(self) -> bool:
         if not self.librarian_settings.enabled:
@@ -269,6 +271,7 @@ class ArthurLibrarianApplication:
                 self._archive_loop(stop_event),
                 name="arthur-full-archive",
             )
+            set_storage_librarian_archive_phase_enabled(True)
             return True
 
     async def stop_archive(self) -> bool:
