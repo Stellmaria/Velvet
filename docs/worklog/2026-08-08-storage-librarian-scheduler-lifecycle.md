@@ -80,7 +80,7 @@ Initial PR head подтвердил `type check`, project notes, branch protect
 
 После рефакторинга lifecycle wiring возвращён к прежнему bootstrap fingerprint и без нового exception boundary. Package architecture inventory регенерирован штатным `scripts/inventory_package_architecture.py`: 656 production modules, 144224 LOC, 523 violations, bootstrap max function 181 и прежний exemption fingerprint.
 
-Финальный protected CI должен пройти на exact head после этого worklog commit.
+После merge актуального `main` все четыре test shards прошли; integrated regeneration подтвердил те же `production_loc=144224` и `violation_count=523`, а временный refresh workflow удалил только себя. Финальный обычный PR CI запускается на чистом integrated head.
 
 ### PR и commit
 
@@ -88,6 +88,7 @@ Initial PR head подтвердил `type check`, project notes, branch protect
 - Ветка: `fix/storage-librarian-scheduler-lifecycle`.
 - Initial PR head: `7534a6074a80a5ad6586c0e16e7cecb01f88c880`.
 - Generated-baseline head: `ba06d19c72fc298ce1d3b9eb45ee5a6c074ef53f`.
+- Integrated main parent: `f0223d62a5b9039fa92c7d50929418d92fdf2f43`.
 - Финальный PR head и squash merge SHA будут зафиксированы после terminal success required checks.
 
 ### Незавершённое
