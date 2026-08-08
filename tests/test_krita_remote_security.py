@@ -85,6 +85,7 @@ class KritaRemoteSecurityTests(unittest.IsolatedAsyncioTestCase):
         report = ValidationReport()
         _validate_krita_remote(
             {
+                "KRITA_WATERMARK_ENABLED": "true",
                 "KRITA_REMOTE_WORKER_ENABLED": "true",
                 "KRITA_REMOTE_WORKER_TOKEN": "x" * 32,
                 "KRITA_REMOTE_BIND_HOST": "0.0.0.0",
@@ -99,6 +100,7 @@ class KritaRemoteSecurityTests(unittest.IsolatedAsyncioTestCase):
         report = ValidationReport()
         _validate_krita_remote(
             {
+                "KRITA_WATERMARK_ENABLED": "true",
                 "KRITA_REMOTE_WORKER_ENABLED": "true",
                 "KRITA_REMOTE_WORKER_TOKEN": "x" * 32,
                 "KRITA_REMOTE_BIND_HOST": "127.0.0.1",

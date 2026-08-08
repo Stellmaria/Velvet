@@ -256,9 +256,7 @@ class VelvetLogoExtension(Extension):
             if document is None:
                 raise RuntimeError(f"Krita не открыла файл: {source_path}")
             opened_by_bridge = True
-            window = Krita.instance().activeWindow()
-            if window is not None:
-                window.addView(document)
+            document.waitForDone()
 
             if request.get("remove_only"):
                 self._remove_layers(document)
@@ -275,6 +273,7 @@ class VelvetLogoExtension(Extension):
             if response_path is not None:
                 self._write_response(response_path, response)
             if opened_by_bridge and document is not None:
+                document.waitForDone()
                 document.setModified(False)
                 document.close()
 
@@ -321,7 +320,8 @@ class VelvetLogoExtension(Extension):
             raise RuntimeError("Krita не смогла импортировать SVG логотипа.")
         layer.setOpacity(round(255 * settings["opacity"] / 100.0))
         layer.setLocked(settings["lock"])
-        document.setActiveNode(layer)
+        if Krita.instance().activeDocument() == document:
+            document.setActiveNode(layer)
         document.setModified(True)
         document.refreshProjection()
 
