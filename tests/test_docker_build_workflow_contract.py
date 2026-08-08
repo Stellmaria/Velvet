@@ -20,13 +20,57 @@ class DockerBuildWorkflowContractTests(unittest.TestCase):
         )
         self.assertIn("cancel-in-progress: true", self.workflow)
 
-    def test_build_has_a_bounded_timeout(self) -> None:
-        self.assertIn("timeout-minutes: 40", self.workflow)
+    def test_build_jobs_have_bounded_timeouts(self) -> None:
+        self.assertGreaterEqual(self.workflow.count("timeout-minutes: 40"), 5)
+        self.assertIn("timeout-minutes: 2", self.workflow)
 
     def test_workflow_changes_trigger_the_docker_build(self) -> None:
         self.assertGreaterEqual(
             self.workflow.count('- ".github/workflows/docker-build.yml"'),
             2,
+        )
+
+    def test_heavy_docker_surfaces_run_as_parallel_jobs(self) -> None:
+        for job in (
+            "build-velvet",
+            "build-supervisor",
+            "build-vision",
+            "build-krita",
+            "build-hermes",
+        ):
+            self.assertIn(f"  {job}:\n", self.workflow)
+            self.assertIn("needs: changes", self.workflow)
+
+        self.assertIn(
+            "if: needs.changes.outputs.docker_velvet == 'true'",
+            self.workflow,
+        )
+        self.assertIn(
+            "if: needs.changes.outputs.docker_krita == 'true'",
+            self.workflow,
+        )
+        self.assertIn(
+            "if: needs.changes.outputs.docker_hermes == 'true'",
+            self.workflow,
+        )
+
+    def test_required_build_check_is_a_fail_closed_aggregator(self) -> None:
+        self.assertIn("  build:\n    name: build\n    if: always()", self.workflow)
+        for job in (
+            "changes",
+            "validate",
+            "build-velvet",
+            "build-supervisor",
+            "build-vision",
+            "build-krita",
+            "build-hermes",
+        ):
+            self.assertIn(f"      - {job}\n", self.workflow)
+        self.assertIn('test "$CHANGES_RESULT" = "success"', self.workflow)
+        self.assertIn('test "$VALIDATE_RESULT" = "success"', self.workflow)
+        self.assertIn(
+            'test "$result" = "success" || test "$result" = "skipped"',
+            self.workflow,
         )
 
 
