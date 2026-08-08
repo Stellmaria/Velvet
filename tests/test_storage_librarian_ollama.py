@@ -110,7 +110,7 @@ class StorageLibrarianSettingsRegressionTests(unittest.TestCase):
         self.assertEqual(16384, settings.vision_context_length)
         self.assertEqual(640, settings.vision_max_output_tokens)
         self.assertEqual("5m", settings.ollama_keep_alive)
-        self.assertEqual(180, settings.run_timeout_seconds)
+        self.assertEqual(720, settings.run_timeout_seconds)
         self.assertEqual("velvet-librarian:qwen3-4b-text:v4", settings.analyzer_version)
         self.assertNotEqual("true", os.getenv("STORAGE_LIBRARIAN_AUTO_ENQUEUE", "false"))
 
@@ -136,6 +136,16 @@ class StorageLibrarianSettingsRegressionTests(unittest.TestCase):
         self.assertEqual(12288, settings.vision_context_length)
         self.assertEqual(512, settings.vision_max_output_tokens)
         self.assertEqual("2m", settings.ollama_keep_alive)
+        self.assertEqual(720, settings.run_timeout_seconds)
+
+    def test_run_timeout_can_be_raised_above_cpu_floor(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS": "900"},
+            clear=True,
+        ):
+            settings = _settings()
+        self.assertEqual(900, settings.run_timeout_seconds)
 
 
 class OllamaStorageAnalysisClientTests(unittest.IsolatedAsyncioTestCase):
