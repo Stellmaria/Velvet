@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from contextlib import suppress
+from functools import partial
 from typing import Any
 from uuid import UUID
 
@@ -13,6 +15,9 @@ from velvet_bot.core.ai_budget import AIBudgetScope
 from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
 from velvet_bot.domains.ai_usage import AITaskQueueService, AIUsageService
+from velvet_bot.domains.local_inference_priority import (
+    storage_librarian_full_archive_has_priority,
+)
 from velvet_bot.domains.vision_batches.service import VISION_BATCH_TASK_TYPE
 from velvet_bot.domains.vision_batches.store import VisionBatchRepository
 from velvet_bot.domains.vision_routing import build_vision_cascade_router
@@ -24,6 +29,7 @@ from velvet_bot.domains.vision_routing.integration import (
 from velvet_bot.infrastructure.postgres.ai_task_wakeup_repository import (
     PostgresAITaskQueueDiagnostics,
 )
+from velvet_bot.local_ai_runtime import get_local_ai_lock
 from velvet_bot.workers.adaptive import (
     WorkerIterationOutcome,
     WorkerIterationResult,
@@ -87,37 +93,54 @@ class VisionBatchQueueConsumer:
         queue_service: AITaskQueueService,
         processor: TargetedVisionService,
         diagnostics: PostgresAITaskQueueDiagnostics | None = None,
+        priority_gate: Callable[[], Awaitable[bool]] | None = None,
+        local_ai_lock: asyncio.Lock | None = None,
         worker_id: str = "vision-semantic-batch",
         heartbeat_seconds: int = 60,
     ) -> None:
         self._queue = queue_service
         self._processor = processor
         self._diagnostics = diagnostics
+        self._priority_gate = priority_gate
+        self._local_ai_lock = local_ai_lock
         self._worker_id = worker_id
         self._heartbeat_seconds = max(15, int(heartbeat_seconds))
 
+    async def _empty_result(self) -> WorkerIterationResult:
+        oldest_age = (
+            await self._diagnostics.oldest_queued_age_seconds()
+            if self._diagnostics is not None
+            else None
+        )
+        return WorkerIterationResult(
+            WorkerIterationOutcome.EMPTY,
+            oldest_queued_age_seconds=oldest_age,
+        )
+
     async def process_once(self) -> WorkerIterationResult:
+        if self._priority_gate is not None and await self._priority_gate():
+            logger.info(
+                "VL batch deferred: Storage Librarian full-archive has local inference priority"
+            )
+            return await self._empty_result()
+
         task = await self._queue.claim_next(
             worker_id=self._worker_id,
             scopes=(AIBudgetScope.VISION,),
             task_types=(VISION_BATCH_TASK_TYPE,),
         )
         if task is None:
-            oldest_age = (
-                await self._diagnostics.oldest_queued_age_seconds()
-                if self._diagnostics is not None
-                else None
-            )
-            return WorkerIterationResult(
-                WorkerIterationOutcome.EMPTY,
-                oldest_queued_age_seconds=oldest_age,
-            )
+            return await self._empty_result()
         heartbeat = asyncio.create_task(self._heartbeat(task.id))
         try:
             media_id = int(task.payload.get("media_id") or 0)
             if media_id <= 0:
                 raise ValueError("AI-задача не содержит корректный media_id.")
-            result = await self._processor.process_media_id(media_id)
+            if self._local_ai_lock is None:
+                result = await self._processor.process_media_id(media_id)
+            else:
+                async with self._local_ai_lock:
+                    result = await self._processor.process_media_id(media_id)
             completed = await self._queue.complete(
                 task_id=task.id,
                 worker_id=self._worker_id,
@@ -196,6 +219,8 @@ def build_vision_batch_consumer(
         queue_service=queue_service,
         processor=processor,
         diagnostics=PostgresAITaskQueueDiagnostics(database),
+        priority_gate=partial(storage_librarian_full_archive_has_priority, database),
+        local_ai_lock=get_local_ai_lock(),
     )
 
 
