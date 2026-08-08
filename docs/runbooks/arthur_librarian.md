@@ -22,11 +22,15 @@ the Arthur Telegram bot.
   `/analyze` request.
 - Archive and manual `/analyze` inference share one application lock, so Arthur
   does not intentionally run two local Storage analyses in parallel.
-- While `/archive start` owns the explicit full-archive phase, automatic VL uses
-  the same repository-backed priority contract as the legacy full-archive mode:
-  existing queued/running Storage work blocks VL before claim, then a bounded
-  `enqueue_pending(limit=1)` probe checks for residual eligible archive work.
-  Automatic VL opens only when counts are empty and that probe returns zero.
+- `/archive start` holds one PostgreSQL session advisory lock for the archive
+  phase. The main Velvet bot probes the same lock before automatic VL claims,
+  which makes Arthur/VL priority cross-container without Docker lifecycle control
+  or a persistent mutable `active=true` row.
+- While that archive lease is held, automatic VL uses the same repository-backed
+  priority contract as the legacy full-archive mode: existing queued/running
+  Storage work blocks VL before claim, then a bounded `enqueue_pending(limit=1)`
+  probe checks for residual eligible archive work. Automatic VL opens only when
+  counts are empty and that probe returns zero.
 
 ## Required secrets
 
@@ -85,18 +89,19 @@ analysis.
 
 The archive loop may remain active after the current backlog is exhausted so it
 can notice later eligible Storage objects. This does not keep automatic VL closed
-forever: the VL gate opens when Storage counts are empty and the bounded residual
-probe returns zero. If new Storage work appears later, the next VL gate iteration
-closes again before another claim. A VL inference that already started is not
-preempted.
+forever: while the advisory lease is held, the VL gate opens when Storage counts
+are empty and the bounded residual probe returns zero. If new Storage work appears
+later, the next VL gate iteration closes again before another claim. A VL
+inference that already started is not preempted.
 
 `/archive stop` is cooperative. It does not cancel Ollama in the middle of an
 object and does not mutate Docker state. If an object is currently running,
 Arthur finishes that object and then exits the archive loop. Queue rows and
 stored analyses remain in PostgreSQL, so `/archive start` can resume later. The
-Arthur archive phase signal remains set until that task actually exits, so an
+PostgreSQL archive lease remains held until that task actually exits, so an
 automatic VL claim cannot be released merely because stop was requested while
-Ollama is still processing the current object.
+Ollama is still processing the current object. If the Arthur DB session dies,
+PostgreSQL releases the advisory lock automatically.
 
 `/archive status` shows whether the loop is running, stopping or stopped,
 current queue counters, analyzer version and the last loop-level error if one
