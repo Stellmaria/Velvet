@@ -350,11 +350,12 @@ async def handle_quality_upload_reply(
     try:
         await tracker.stage("downloading")
         source = await _download_image(bot, file_id)
+        vision_key = settings.ai_vision_api_key
         client = QualityVisionClient(
             provider=settings.ai_vision_provider,
             base_url=settings.ai_vision_base_url,
             model=settings.ai_vision_model,
-            api_key=settings.ai_vision_api_key,
+            api_key=vision_key,
             timeout_seconds=settings.ai_vision_timeout_seconds,
         )
         await tracker.stage("analyzing")
