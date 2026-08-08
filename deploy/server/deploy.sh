@@ -117,6 +117,7 @@ normalize_backup_permissions() {
     echo "Normalized bot-readable permissions for $normalized backup artifact(s)."
   fi
 }
+
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
   echo "Tracked working tree changes detected; deployment aborted." >&2
   git status --short >&2
