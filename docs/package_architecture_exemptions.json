@@ -1165,7 +1165,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/quality_operations.py:055152223fb22dd7",
+      "id": "database-acquire-outside-persistence:velvet_bot/quality_operations.py:8e143539a87dcfa6",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -5355,7 +5355,7 @@
       "issue": "#463"
     },
     {
-      "id": "sql-outside-persistence:velvet_bot/quality_operations.py:9779d0f8ec2c8768",
+      "id": "sql-outside-persistence:velvet_bot/quality_operations.py:c338a93ad0a2ff27",
       "owner": "root-module-migration",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [

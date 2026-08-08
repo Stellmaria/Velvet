@@ -7,9 +7,9 @@ AST-инвентаризация широких исключений и callback
 - raw broad exceptions: **111** в **61** файлах;
 - approved boundaries: **111**;
 - unresolved broad exceptions: **0** в **0** файлах;
-- callback handlers: **132**;
+- callback handlers: **133**;
 - late/missing callbacks: **0**;
-- guarded callbacks: **44**;
+- guarded callbacks: **43**;
 - delegated callbacks: **11**.
 
 ## Approved broad boundaries
@@ -93,7 +93,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:577` `handle_public_download`: report-public-download-failure.
 - `velvet_bot/presentation/telegram/routers/publication/center.py:587` `handle_publication_callback`: report-publication-failure.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/backup_center.py:393` `handle_backup_callback`: report-backup-callback-failure.
-- `velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py:322` `handle_quality_upload_reply`: compensate-manual-quality-job.
+- `velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py:369` `handle_quality_upload_reply`: compensate-manual-quality-job.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_set_ai.py:478` `handle_set_analyze`: compensate-set-analysis-callback-job.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_set_ai.py:571` `handle_set_analysis_command`: compensate-set-analysis-command-job.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai.py:351` `handle_prompt_check_reply`: compensate-prompt-result-job.

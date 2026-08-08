@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 656,
-  "production_loc": 144224,
+  "production_loc": 144455,
   "layer_counts": {
     "application": 22,
     "composition": 61,
@@ -327,10 +327,10 @@
   },
   "violations": [
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/ai_jobs.py:c27013e3a363a01e",
+      "id": "database-acquire-outside-persistence:velvet_bot/ai_jobs.py:d79e8863a4f7b800",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/ai_jobs.py",
-      "fingerprint": "c27013e3a363a01e5e6c943f55259818e96a235b62577de7fd45b33930f0e01e",
+      "fingerprint": "d79e8863a4f7b800b94cbcc0692df26217d430fd9a04f090a5556c6a8f24457f",
       "summary": "7 acquire calls outside persistence",
       "details": {
         "count": 7,
@@ -349,10 +349,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/ai_quality.py:420c593c7c3f61b8",
+      "id": "database-acquire-outside-persistence:velvet_bot/ai_quality.py:2850a6dd2b759ce7",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/ai_quality.py",
-      "fingerprint": "420c593c7c3f61b8abf8e302ce663fcb28764e2e00e5f3a7e7dbfe79d8fc983c",
+      "fingerprint": "2850a6dd2b759ce7c5c9d065bba70d7ebd39a9e3a5359cfc25380d46b59e6681",
       "summary": "8 acquire calls outside persistence",
       "details": {
         "count": 8,
@@ -372,10 +372,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/ai_quality_schema_compat.py:812529774d831a82",
+      "id": "database-acquire-outside-persistence:velvet_bot/ai_quality_schema_compat.py:4856456e79d9b06c",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/ai_quality_schema_compat.py",
-      "fingerprint": "812529774d831a824fab8424487451e01726c024f3549f12f909c092c5bcbcc4",
+      "fingerprint": "4856456e79d9b06cdc996b5765e31c7f1eb6a846f2b016a51c343cd33897e8ed",
       "summary": "2 acquire calls outside persistence",
       "details": {
         "count": 2,
@@ -389,10 +389,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/ai_vision.py:fc932cd059ae0ecd",
+      "id": "database-acquire-outside-persistence:velvet_bot/ai_vision.py:2f1090eecb207ddc",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/ai_vision.py",
-      "fingerprint": "fc932cd059ae0ecd23d4589e1f99d89ae4304f10088f2708cd08f53a79f51871",
+      "fingerprint": "2f1090eecb207ddc136efb28f163bd27395661e654a0cab7660cc8c450ed6ccd",
       "summary": "4 acquire calls outside persistence",
       "details": {
         "count": 4,
@@ -408,10 +408,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/alias_management.py:d3d0da6c1e0f1ae7",
+      "id": "database-acquire-outside-persistence:velvet_bot/alias_management.py:5742990623da58b5",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/alias_management.py",
-      "fingerprint": "d3d0da6c1e0f1ae77b5a967e16f6fa3728f458eeae3697cb6e4cf837028f0a9c",
+      "fingerprint": "5742990623da58b52ebe379c27aa71fc463685963d3b7e80096a5749a0ebb982",
       "summary": "2 acquire calls outside persistence",
       "details": {
         "count": 2,
@@ -425,10 +425,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/analytics_dashboard.py:b27929d1090cbf0b",
+      "id": "database-acquire-outside-persistence:velvet_bot/analytics_dashboard.py:40e1cc0997a3d1b2",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/analytics_dashboard.py",
-      "fingerprint": "b27929d1090cbf0b8627dc422ae51af39d167c33be772243fcefa84bf20f5e33",
+      "fingerprint": "40e1cc0997a3d1b2100da6c6ec37b94db053f92572cded98878fdd9614d47cee",
       "summary": "8 acquire calls outside persistence",
       "details": {
         "count": 8,
@@ -448,10 +448,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/analytics_reactions.py:1ad72937f01ee1e1",
+      "id": "database-acquire-outside-persistence:velvet_bot/analytics_reactions.py:cb04a6f464f0c917",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/analytics_reactions.py",
-      "fingerprint": "1ad72937f01ee1e17a440f8a45f5edf7a57ec437fcb25c049854fa429b4ffb97",
+      "fingerprint": "cb04a6f464f0c9176941cdee3e1313db2bcb6f0715257bbc10748f0584c03337",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -464,10 +464,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/analytics_review.py:13a5ff4f56d3c37c",
+      "id": "database-acquire-outside-persistence:velvet_bot/analytics_review.py:2c434ebda1317909",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/analytics_review.py",
-      "fingerprint": "13a5ff4f56d3c37c4e81ec86edd3f296572b121ab83da8cd228e938b9f515512",
+      "fingerprint": "2c434ebda1317909db6800479be3b891efea6edef48dfc6333c4b35c78fa47a2",
       "summary": "9 acquire calls outside persistence",
       "details": {
         "count": 9,
@@ -487,10 +487,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/app/auf_photo_model_modes.py:8e2d81879dbb2b4b",
+      "id": "database-acquire-outside-persistence:velvet_bot/app/auf_photo_model_modes.py:3e7ec2173bf7cadb",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/app/auf_photo_model_modes.py",
-      "fingerprint": "8e2d81879dbb2b4b68771a132b2ca1fd5b8eb4072fb13864d1962944adabc273",
+      "fingerprint": "3e7ec2173bf7cadb2ccf5360ea71885348d4ec12d12eac8bf88281b69ce645cb",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -503,10 +503,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/app/auf_reference_privacy_install.py:f4e87eec7f67ae73",
+      "id": "database-acquire-outside-persistence:velvet_bot/app/auf_reference_privacy_install.py:2f7de10b9338c009",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/app/auf_reference_privacy_install.py",
-      "fingerprint": "f4e87eec7f67ae734377b2771fe973c3ac88347ba7e2b882bba0d543d7115167",
+      "fingerprint": "2f7de10b9338c009504a8d9d892f4a95dd7b1c1e6739370fda21c09ade9a35c3",
       "summary": "2 acquire calls outside persistence",
       "details": {
         "count": 2,
@@ -520,10 +520,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/app/public_notifications.py:32b4fea30f2a34e1",
+      "id": "database-acquire-outside-persistence:velvet_bot/app/public_notifications.py:6b014a6f4c0dfb07",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/app/public_notifications.py",
-      "fingerprint": "32b4fea30f2a34e1317e278ef533de0d7436a8bc98a95a942de5363d1fc052bd",
+      "fingerprint": "6b014a6f4c0dfb07b45a43227bae47dab68449cd9e8f18ca8e2775ab57abbfed",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -536,10 +536,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/application/workspace_tasks.py:4baf3d17b6ea8e10",
+      "id": "database-acquire-outside-persistence:velvet_bot/application/workspace_tasks.py:7113302df6a9e380",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/application/workspace_tasks.py",
-      "fingerprint": "4baf3d17b6ea8e10d50309e0f581378b16fafd5697879842d6582f81c799513b",
+      "fingerprint": "7113302df6a9e3803b610b56c52728ffb913a7a85cdf7ad76b0eb7e34e909c42",
       "summary": "3 acquire calls outside persistence",
       "details": {
         "count": 3,
@@ -554,10 +554,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/archive_topic_links.py:0b885dbf9ccb61fe",
+      "id": "database-acquire-outside-persistence:velvet_bot/archive_topic_links.py:572a062375a65705",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/archive_topic_links.py",
-      "fingerprint": "0b885dbf9ccb61fe04e2e6d5822c5deaeeef90ab1dd978593e28c066573b5f18",
+      "fingerprint": "572a062375a65705ad71ca20099cf9fcd31b6ae7fd6f0b37f3dc155ddbce5861",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -570,10 +570,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/backup_runtime.py:61b45885f50f4752",
+      "id": "database-acquire-outside-persistence:velvet_bot/backup_runtime.py:38c2a76d7545f420",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/backup_runtime.py",
-      "fingerprint": "61b45885f50f4752f6659d26f95eb62c047577e5034ebb7de80588c06a8870e3",
+      "fingerprint": "38c2a76d7545f42083188d248ccec00bb19a47c7ec1045964e49d17e495e7b38",
       "summary": "2 acquire calls outside persistence",
       "details": {
         "count": 2,
@@ -587,10 +587,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/backup_service.py:f0815c4fea41714a",
+      "id": "database-acquire-outside-persistence:velvet_bot/backup_service.py:421dc0191516d0c3",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/backup_service.py",
-      "fingerprint": "f0815c4fea41714a2bdbaf024d1dbfadebf46abef2b935b974c2428d7ff56eba",
+      "fingerprint": "421dc0191516d0c325da4bb30a11f654945cc15da249f41c7905ee295899f051",
       "summary": "15 acquire calls outside persistence",
       "details": {
         "count": 15,
@@ -616,10 +616,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/channel_analytics.py:e979fcb6e22c1379",
+      "id": "database-acquire-outside-persistence:velvet_bot/channel_analytics.py:625d54bb9f9a3234",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/channel_analytics.py",
-      "fingerprint": "e979fcb6e22c137916bee05badcf2455077a14fbb0cd5910f9018e6d7585e1ba",
+      "fingerprint": "625d54bb9f9a3234196b7d6efb6f1550f9d9b3b81880058312f88422fb98dd40",
       "summary": "8 acquire calls outside persistence",
       "details": {
         "count": 8,
@@ -639,10 +639,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/character_aliases.py:35edf6cb4cb208c7",
+      "id": "database-acquire-outside-persistence:velvet_bot/character_aliases.py:8baa25158d631851",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/character_aliases.py",
-      "fingerprint": "35edf6cb4cb208c7f725d1d09a7537b2ebc2aac3bc41025e40efdc00f630d735",
+      "fingerprint": "8baa25158d631851d46c562a12a92ad9907784f47801879c6abb80f7c2fec208",
       "summary": "5 acquire calls outside persistence",
       "details": {
         "count": 5,
@@ -659,10 +659,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/character_renaming.py:f005db22bd67ae75",
+      "id": "database-acquire-outside-persistence:velvet_bot/character_renaming.py:4bd5bdcdf1576df1",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/character_renaming.py",
-      "fingerprint": "f005db22bd67ae756495d742544faf8da932ec66bd9177f4e9e00b540ea36818",
+      "fingerprint": "4bd5bdcdf1576df15316ec04aba773769e0ce37e705ae13bfba8c9ff3f1e17e5",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -675,10 +675,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/character_resolution.py:8aa20432642ca09b",
+      "id": "database-acquire-outside-persistence:velvet_bot/character_resolution.py:096b1ab08a241dd2",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/character_resolution.py",
-      "fingerprint": "8aa20432642ca09b131998f8a379b077f8edff0825dad77666f2334c2d68f55c",
+      "fingerprint": "096b1ab08a241dd2ee0bd51aa9d257b2ead27d246f860223e8283cd4e402df3b",
       "summary": "2 acquire calls outside persistence",
       "details": {
         "count": 2,
@@ -692,10 +692,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/discussion_thread_links.py:086f867ff013a19f",
+      "id": "database-acquire-outside-persistence:velvet_bot/discussion_thread_links.py:53de0416726cec9e",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/discussion_thread_links.py",
-      "fingerprint": "086f867ff013a19f422bc030304b2c4a42437fd2d0c0902e336efeb93cab91b5",
+      "fingerprint": "53de0416726cec9e76a07b9645780d1f599001658fe647e4eced96900c0d226c",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -708,10 +708,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/ai_usage/ledger.py:9886f9f8b17ae0e3",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/ai_usage/ledger.py:7ce03a3f71953f0b",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/ai_usage/ledger.py",
-      "fingerprint": "9886f9f8b17ae0e3d72724467dae085c9eff4e4acdd2509544f66ccf5c56c481",
+      "fingerprint": "7ce03a3f71953f0b752765eb11a5d91e79dadb292054654c45d9ac751129ed93",
       "summary": "9 acquire calls outside persistence",
       "details": {
         "count": 9,
@@ -732,10 +732,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/ai_usage/tasks.py:4b14154669b01e86",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/ai_usage/tasks.py:6566a08e8b2e7779",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/ai_usage/tasks.py",
-      "fingerprint": "4b14154669b01e86fa14170171c890918b4db9fe1231663d929df03da61877c5",
+      "fingerprint": "6566a08e8b2e7779d9ede4490542277d6ec90c2e661a541c6a1d54deb00f52e1",
       "summary": "12 acquire calls outside persistence",
       "details": {
         "count": 12,
@@ -759,10 +759,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_runtime/dispatcher.py:2ac3a5398b72a835",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_runtime/dispatcher.py:d22840bbc1ff3f04",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/auf_runtime/dispatcher.py",
-      "fingerprint": "2ac3a5398b72a8357640b1a44ba832e4942401efe6b939c086af2483c0e22a56",
+      "fingerprint": "d22840bbc1ff3f042f913f1dafb3fa71f516dd4f7c45654a4cb70b6e08c3979b",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -775,10 +775,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_runtime/queue.py:8c153ea20210c55f",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_runtime/queue.py:6b85d7d4bc6399e3",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/auf_runtime/queue.py",
-      "fingerprint": "8c153ea20210c55f370082e1162b954e3205e7ca7de0386d0a2a2c4c6b567270",
+      "fingerprint": "6b85d7d4bc6399e3186156d2f99472141a0c260525dc0893f7f401b41ec5ac32",
       "summary": "5 acquire calls outside persistence",
       "details": {
         "count": 5,
@@ -795,10 +795,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/charged_queue.py:84bcaa52458b4963",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/charged_queue.py:036da8a405748180",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/auf_wallet/charged_queue.py",
-      "fingerprint": "84bcaa52458b496300194d72c88d965a7abf9ce2b24b5aa8c53883baf6fbb215",
+      "fingerprint": "036da8a40574818045b5e06981e016ba768051ec47b9d7b645ea7db376a76f08",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -811,10 +811,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/economics.py:16a439a1983f0b9d",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/economics.py:fcf305e82309e555",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/auf_wallet/economics.py",
-      "fingerprint": "16a439a1983f0b9d4847838b1a57fa6f989cf5cf870c5a18bceb77313a216ff6",
+      "fingerprint": "fcf305e82309e55585934ff990be8556ae5ece8d839f02d8a3a29d21797e6237",
       "summary": "2 acquire calls outside persistence",
       "details": {
         "count": 2,
@@ -828,10 +828,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/package_pricing.py:e3edf80c193028e5",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/package_pricing.py:21c51ccd29ad0a72",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/auf_wallet/package_pricing.py",
-      "fingerprint": "e3edf80c193028e59d03139c5d12bb26838f4e94e0ad794625dc6b5359d92a21",
+      "fingerprint": "21c51ccd29ad0a728fdcd4e51e61898578abc32ab91abef8321a924a2603816c",
       "summary": "2 acquire calls outside persistence",
       "details": {
         "count": 2,
@@ -845,10 +845,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:374253b817082e4b",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:f81ba6fb84bb3db8",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/auf_wallet/pricing.py",
-      "fingerprint": "374253b817082e4bd5ba783fbb4e71dfb2734ba0cc632b3195aa8cd6f0ac4437",
+      "fingerprint": "f81ba6fb84bb3db853c9c8db2a05ffef945ccf35607af0f148e4212460159b09",
       "summary": "4 acquire calls outside persistence",
       "details": {
         "count": 4,
@@ -864,10 +864,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/purchase.py:187ad7fa8964f44a",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/purchase.py:d3cc41288af5fd1d",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/auf_wallet/purchase.py",
-      "fingerprint": "187ad7fa8964f44ac17c597b92be275f44553345897c8f066640c3043785ee63",
+      "fingerprint": "d3cc41288af5fd1dd05d987f115053e6387d1b7a99586172e7c55320b2bf8c2e",
       "summary": "9 acquire calls outside persistence",
       "details": {
         "count": 9,
@@ -888,10 +888,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/media_generation/task_queue.py:0e863495475d8d3b",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/media_generation/task_queue.py:6f33519fde8df698",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/media_generation/task_queue.py",
-      "fingerprint": "0e863495475d8d3b1c508fae6af54e99d21337193143b06c88f1ab1ea936ea3e",
+      "fingerprint": "6f33519fde8df6987fab7e2984188d5bbaf668a50389bbed1f57a0b27be3c510",
       "summary": "5 acquire calls outside persistence",
       "details": {
         "count": 5,
@@ -908,10 +908,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/media_rework/manual.py:7bc8a11db3fa92ef",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/media_rework/manual.py:b7df0adb6e2e9ef7",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/media_rework/manual.py",
-      "fingerprint": "7bc8a11db3fa92ef5247d8560b32875a4dfd448de35d721dba367003ea374940",
+      "fingerprint": "b7df0adb6e2e9ef7a209719bcb13f91aa7f5b925dcbc99fd65a2b7c5204c7645",
       "summary": "2 acquire calls outside persistence",
       "details": {
         "count": 2,
@@ -925,10 +925,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/public_archive/story_catalog.py:f3beda1aece1e0da",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/public_archive/story_catalog.py:703cd2beaeeb67c2",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/public_archive/story_catalog.py",
-      "fingerprint": "f3beda1aece1e0da573fead1bae43576115fe536b73e338525fd46972accb75a",
+      "fingerprint": "703cd2beaeeb67c2b604f577e329f501a1ccda6f45f5b9eb5d3467c47a759417",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -941,10 +941,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/roleplay/storage.py:83f65ad47f37cd1d",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/roleplay/storage.py:025f586762ba6177",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/roleplay/storage.py",
-      "fingerprint": "83f65ad47f37cd1d70b470dfd4ae292337b8c41bf6fe86d88fc330cf138881ea",
+      "fingerprint": "025f586762ba617730494f1737788d9d26488fb3e4eb238b7b7bd8a9598ad9c5",
       "summary": "10 acquire calls outside persistence",
       "details": {
         "count": 10,
@@ -966,10 +966,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/telegram_storage/service.py:422c13a6a9566b3e",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/telegram_storage/service.py:d3b13479a63b6957",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/telegram_storage/service.py",
-      "fingerprint": "422c13a6a9566b3ebd15ed0a130b90cbe08dcec10476836826a0fab51b5cb302",
+      "fingerprint": "d3b13479a63b69571bf0bbfb1151fc8965e2edb20728dbe240e47076d19a8478",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -982,10 +982,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/user_registry.py:55bbc3262c884297",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/user_registry.py:dcca5619edd4e4bf",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/user_registry.py",
-      "fingerprint": "55bbc3262c8842978e9b8fbe73b3b862b200f77de2f21a914c29fa18bcbce2e9",
+      "fingerprint": "dcca5619edd4e4bfa2f4dea2de3038d2229085b611e2b9fe073cfa425d1a340a",
       "summary": "5 acquire calls outside persistence",
       "details": {
         "count": 5,
@@ -1002,10 +1002,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/vision_routing/cache.py:b7be158a1a143cce",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/vision_routing/cache.py:34245690cda804bc",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/vision_routing/cache.py",
-      "fingerprint": "b7be158a1a143cceca1c28f94f9177fd950ffc4d353dd1f5e75e4ab9ba6e40e6",
+      "fingerprint": "34245690cda804bcf0ca9961b5170b3811bc03e0658b356be8218ae44880658d",
       "summary": "3 acquire calls outside persistence",
       "details": {
         "count": 3,
@@ -1020,10 +1020,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/vision_routing/integration.py:0565fddeabd665ed",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/vision_routing/integration.py:b9a0ba05611488ab",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/vision_routing/integration.py",
-      "fingerprint": "0565fddeabd665ede66591be636761053ab2973d291ff3fae256dc719f113068",
+      "fingerprint": "b9a0ba05611488abf62d1df9eb15de5993c57c6ed0c4d128409e140d2c2d20f8",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1036,10 +1036,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/watermark/remote_worker.py:da174b51f93b4efd",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/watermark/remote_worker.py:8edc2451c868149d",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/watermark/remote_worker.py",
-      "fingerprint": "da174b51f93b4efdc365c7483f1869a2faa91a4fc3eda6236bfb3eca31cc35de",
+      "fingerprint": "8edc2451c868149d316de145b587b5daf4b7f339bd9657de4820514d8122bf26",
       "summary": "7 acquire calls outside persistence",
       "details": {
         "count": 7,
@@ -1058,10 +1058,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/administration.py:95d1f8c5d190fbed",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/administration.py:ca02aeeb3a9fd10b",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/workspaces/administration.py",
-      "fingerprint": "95d1f8c5d190fbedf5993647e59bd09df09af8b38c45cda161c46ac838659f32",
+      "fingerprint": "ca02aeeb3a9fd10b92ead99cae7efcbb604addf663fbf953ec4d42acdd1e4d3c",
       "summary": "8 acquire calls outside persistence",
       "details": {
         "count": 8,
@@ -1081,10 +1081,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/analytics_access.py:7294bfabb94b63f0",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/analytics_access.py:5b010d0a521b0e32",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/workspaces/analytics_access.py",
-      "fingerprint": "7294bfabb94b63f0cc6fd79c5b94a4af3a68fce48c544a3cf23ee34a395005d2",
+      "fingerprint": "5b010d0a521b0e32e624040887a4a7567ca607f4f31e740fdde04c236b74df1d",
       "summary": "3 acquire calls outside persistence",
       "details": {
         "count": 3,
@@ -1099,10 +1099,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/analytics_ingest.py:4c6973198cfc3e3c",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/analytics_ingest.py:1d2fd5bba471cd2a",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/workspaces/analytics_ingest.py",
-      "fingerprint": "4c6973198cfc3e3c70fed8d1ab93d9d49917d73a14521d0860278ef071bbf624",
+      "fingerprint": "1d2fd5bba471cd2a9d688308257fb6b9b062856414ae84432df174da07e8e6a0",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1115,10 +1115,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/character_directory.py:fb94715bdc08a8f2",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/character_directory.py:ff1e365ef3b3aa1b",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/workspaces/character_directory.py",
-      "fingerprint": "fb94715bdc08a8f23cb85ccbb4dd9a881787a2dc7e5968d97178d68eac7bde7c",
+      "fingerprint": "ff1e365ef3b3aa1ba04be0bb3514f2251b7729f31a644c02dac806a01445c57c",
       "summary": "5 acquire calls outside persistence",
       "details": {
         "count": 5,
@@ -1135,10 +1135,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/character_management.py:7df957418c083930",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/character_management.py:7ac6dcf5e2bcd7d1",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/workspaces/character_management.py",
-      "fingerprint": "7df957418c083930f41e728a5cec2ed1b84a6e8e32951216bfcfc9183cd5e671",
+      "fingerprint": "7ac6dcf5e2bcd7d126073a52344d02de06fbc5ae395684f51401be5e7c7c2078",
       "summary": "12 acquire calls outside persistence",
       "details": {
         "count": 12,
@@ -1162,10 +1162,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/character_topics.py:e8fd48a31e48c2d8",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/character_topics.py:cf031e7cbef5d6ad",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/workspaces/character_topics.py",
-      "fingerprint": "e8fd48a31e48c2d8a73bcddf77fd6c58815fd58f5ca34e21c8f13326bdf30f72",
+      "fingerprint": "cf031e7cbef5d6adaaaf796ae0a9b4bb66777c101874cb9122ac373a2fa51c99",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1178,10 +1178,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/media_preferences.py:6b9aa66db54eee46",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/media_preferences.py:9da9eee5e7bdd928",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/workspaces/media_preferences.py",
-      "fingerprint": "6b9aa66db54eee46d3ff3f54ddd15ae26a01986669a287686cc2d714c54c1416",
+      "fingerprint": "9da9eee5e7bdd9280a2c7f597c7eac2e8fbcb0999782bce1c11c5e4ffea0dc5a",
       "summary": "2 acquire calls outside persistence",
       "details": {
         "count": 2,
@@ -1195,10 +1195,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/onboarding.py:3d4ecf2b32b54cf7",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/onboarding.py:9e95b4a0f4154a41",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/workspaces/onboarding.py",
-      "fingerprint": "3d4ecf2b32b54cf7e0dc3ba07fde2bbde495156fb0d15dc9b32ac38adf86f7ff",
+      "fingerprint": "9e95b4a0f4154a41a32aeb53cf361b00c1ab60d72af8361fa8249fe65cf32877",
       "summary": "11 acquire calls outside persistence",
       "details": {
         "count": 11,
@@ -1221,10 +1221,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/publication_access.py:cb4a1e29bb2d704e",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/publication_access.py:3375b2ef86dc6773",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/workspaces/publication_access.py",
-      "fingerprint": "cb4a1e29bb2d704e9765692eb4e0a3d99d4960e83fb56d5585c88486e2a807f7",
+      "fingerprint": "3375b2ef86dc6773db980e2e886cd01d181a73a45905d37c565d16170e7d61df",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1237,10 +1237,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/reference_access.py:588ac68fa5070d59",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/reference_access.py:af14c5d22c8592d7",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/workspaces/reference_access.py",
-      "fingerprint": "588ac68fa5070d59b8493c06ea38f74d381d0af919bc79d8408211890a0cd029",
+      "fingerprint": "af14c5d22c8592d78e4a321ce3119c37eb9435fa6ffbdc0f4d5e7bc6d919325a",
       "summary": "2 acquire calls outside persistence",
       "details": {
         "count": 2,
@@ -1254,10 +1254,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/watermark_assets.py:d7aef2e8a7e7fa33",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/watermark_assets.py:ebc5ab4f98d267ce",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/workspaces/watermark_assets.py",
-      "fingerprint": "d7aef2e8a7e7fa3334deb2bae358686bf114ecfe11cef57ce9f58bd32c2951d9",
+      "fingerprint": "ebc5ab4f98d267cebfa2492088f2c54eb7fb571e29195f9a8b96a569fa6eb18c",
       "summary": "3 acquire calls outside persistence",
       "details": {
         "count": 3,
@@ -1272,10 +1272,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/watermark_templates.py:54fae3e0ede4aa67",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/watermark_templates.py:ba051c7ce96ab993",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/workspaces/watermark_templates.py",
-      "fingerprint": "54fae3e0ede4aa67299dd6a687c58450bf6d6acef32448fed72104f40891c542",
+      "fingerprint": "ba051c7ce96ab9936e2eb8277421d4204049cd20aa91dce211a859902c1cb602",
       "summary": "3 acquire calls outside persistence",
       "details": {
         "count": 3,
@@ -1290,10 +1290,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/error_center.py:94d6b8c0ad92fabf",
+      "id": "database-acquire-outside-persistence:velvet_bot/error_center.py:65911e89f84a1028",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/error_center.py",
-      "fingerprint": "94d6b8c0ad92fabfeccf4206dbf382bb09f31feedd3bae3cc7f8a2c97d472085",
+      "fingerprint": "65911e89f84a10287d5247760bfad602fb7d604ff03c4ffc0e729fee0c38b242",
       "summary": "9 acquire calls outside persistence",
       "details": {
         "count": 9,
@@ -1314,10 +1314,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/media_sets.py:d0c98dacf35a1fcb",
+      "id": "database-acquire-outside-persistence:velvet_bot/media_sets.py:c5a4567b0a5bcbfb",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/media_sets.py",
-      "fingerprint": "d0c98dacf35a1fcbc07a5a4ceebe6ed4aad8bca181b2cf7941cc9579bd0e0b0b",
+      "fingerprint": "c5a4567b0a5bcbfbd5d665eb5627dfe064d97ffce76f7d6384d85f42c59dfba5",
       "summary": "9 acquire calls outside persistence",
       "details": {
         "count": 9,
@@ -1337,10 +1337,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/ollama_vision.py:75a349fe702c5447",
+      "id": "database-acquire-outside-persistence:velvet_bot/ollama_vision.py:98397abb4843daef",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/ollama_vision.py",
-      "fingerprint": "75a349fe702c5447183a964df2387117d16760d199873460406a397b62827522",
+      "fingerprint": "98397abb4843daef48f87f5787eac8d8b7696ca2745d7f6fde1decdc26b50c76",
       "summary": "2 acquire calls outside persistence",
       "details": {
         "count": 2,
@@ -1353,10 +1353,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/palette_composition_reports.py:f47aacbdcddc4cb6",
+      "id": "database-acquire-outside-persistence:velvet_bot/palette_composition_reports.py:441cc1a2fde0b902",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/palette_composition_reports.py",
-      "fingerprint": "f47aacbdcddc4cb6f2cbe29a0fa4ec3652f73b93fa1db4204d136a9c36cfd338",
+      "fingerprint": "441cc1a2fde0b9024b7eb4f8331d71d9556cf1efff82f5b7c9e804432f8443ed",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1369,10 +1369,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/archive/save.py:16b321b005b0ee97",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/archive/save.py:de617f98ec2c12a2",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/routers/archive/save.py",
-      "fingerprint": "16b321b005b0ee9721de63eb34203b05c7579a1a11ff320f28794fa7fba9c1a7",
+      "fingerprint": "de617f98ec2c12a22386f479024bd20abea30235abf61b00fd218146113c4a81",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1385,10 +1385,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/core_operations_controllers/watermark.py:4a63b29f3505bb1b",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/core_operations_controllers/watermark.py:6355d358959a07d0",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/routers/core_operations_controllers/watermark.py",
-      "fingerprint": "4a63b29f3505bb1bbaa6485e21c001218eecff314a6eaf9b626d0327773b4ba8",
+      "fingerprint": "6355d358959a07d0ddbe92e7de4bc3a97444addbe3fccd7ee19a282f36c40d76",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1401,10 +1401,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf.py:880af1a37422285a",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf.py:810dc857727fb7cd",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/routers/workspace_auf.py",
-      "fingerprint": "880af1a37422285a16affc17c7926353e7c46e7fb8799f5ab93d079c1bfb2ab9",
+      "fingerprint": "810dc857727fb7cdbc05eb9721e23af118ce9bde18e955c4c6645b40fdc1c614",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1417,10 +1417,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_balance.py:7c679e7d98e923f3",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_balance.py:03e2ed0354c8d304",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/routers/workspace_auf_balance.py",
-      "fingerprint": "7c679e7d98e923f32bc1bac786fe0ff7f7cc759bf4f4f5519dd0d93c93019721",
+      "fingerprint": "03e2ed0354c8d304e94adc853d64d4025af113281e7d31a8a16997f3655c3d99",
       "summary": "5 acquire calls outside persistence",
       "details": {
         "count": 5,
@@ -1438,10 +1438,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:f8715b2ab9fb49f5",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:8e002641a39fc608",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/routers/workspace_auf_photo.py",
-      "fingerprint": "f8715b2ab9fb49f538babcedbd4ef09ad285ebecb2caf507a8a8a1a8b9dd8cfb",
+      "fingerprint": "8e002641a39fc608982c21df904e2d1b0e4e656e1acc689e4ac827a79dcbdb51",
       "summary": "5 acquire calls outside persistence",
       "details": {
         "count": 5,
@@ -1458,10 +1458,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_video.py:880af1a37422285a",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_video.py:810dc857727fb7cd",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/routers/workspace_auf_video.py",
-      "fingerprint": "880af1a37422285a16affc17c7926353e7c46e7fb8799f5ab93d079c1bfb2ab9",
+      "fingerprint": "810dc857727fb7cdbc05eb9721e23af118ce9bde18e955c4c6645b40fdc1c614",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1474,10 +1474,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:ea889cf94b297b1e",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:636d174f57897ecb",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py",
-      "fingerprint": "ea889cf94b297b1e07828c72a0315d594e8cb8b33e1490fb86f908f5dbd1e940",
+      "fingerprint": "636d174f57897ecb1516e3442cf3fed4cd36474d8d202ed3fe40cc040612029a",
       "summary": "2 acquire calls outside persistence",
       "details": {
         "count": 2,
@@ -1491,10 +1491,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_character_management.py:9109b0c0eddb3f0e",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_character_management.py:080162e66f62e43d",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/routers/workspace_character_management.py",
-      "fingerprint": "9109b0c0eddb3f0e3b90937685fe503ba1b18dbfc7a7f032883a1ca909b778ff",
+      "fingerprint": "080162e66f62e43d6d5d46f971add4dfc601f17b8797c3794505485473379f13",
       "summary": "2 acquire calls outside persistence",
       "details": {
         "count": 2,
@@ -1508,10 +1508,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_character_pickers.py:c9903d77dc436b28",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_character_pickers.py:f7bf56af24f0ce92",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/routers/workspace_character_pickers.py",
-      "fingerprint": "c9903d77dc436b28cfe77554652e12a655b107b61437a4fd0c7453fa7703b6fc",
+      "fingerprint": "f7bf56af24f0ce9269d28447b251c622b21b1ac139ff9b1e8fec66db888df485",
       "summary": "6 acquire calls outside persistence",
       "details": {
         "count": 6,
@@ -1529,10 +1529,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_character_topic_creation.py:211455d1d4262d46",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_character_topic_creation.py:c7e91f16f470c762",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/routers/workspace_character_topic_creation.py",
-      "fingerprint": "211455d1d4262d466138929049b6e107b4c46eefe5e8c012139a00fb9a791773",
+      "fingerprint": "c7e91f16f470c762da3b32b3bd370ec8ec9929b6cd2148520addd69f6144fe0c",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1545,10 +1545,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_owner_controls.py:def5993693e3dd3e",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_owner_controls.py:8fd06eab6e7fe2e1",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
-      "fingerprint": "def5993693e3dd3e69f86a6d722cfe7e597315822921a2f359dd7de385356e5e",
+      "fingerprint": "8fd06eab6e7fe2e1f5f67877f5a9b2f904adc8ebc07c93044ebcc4e65c59ff7c",
       "summary": "3 acquire calls outside persistence",
       "details": {
         "count": 3,
@@ -1563,10 +1563,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_taxonomy_admin.py:70b013d67271b43c",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_taxonomy_admin.py:b5a09aa068bee445",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/routers/workspace_taxonomy_admin.py",
-      "fingerprint": "70b013d67271b43c63273f80ba994045514da93ea2588daca3d5fdcb23041b09",
+      "fingerprint": "b5a09aa068bee4452d6fd5030f5e877bf17fd8e3ea3645fa826526734aea739d",
       "summary": "5 acquire calls outside persistence",
       "details": {
         "count": 5,
@@ -1583,10 +1583,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_team.py:02233bf77576dea9",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_team.py:9376c3eee4774933",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/routers/workspace_team.py",
-      "fingerprint": "02233bf77576dea98463bb58e5936f866fab95e325399464cb2adb14f16a56e9",
+      "fingerprint": "9376c3eee477493358b2cf065e4fff70a973ebc0b42979b86bd82f9bd08c874f",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1599,10 +1599,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_watermark.py:02233bf77576dea9",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_watermark.py:9376c3eee4774933",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/routers/workspace_watermark.py",
-      "fingerprint": "02233bf77576dea98463bb58e5936f866fab95e325399464cb2adb14f16a56e9",
+      "fingerprint": "9376c3eee477493358b2cf065e4fff70a973ebc0b42979b86bd82f9bd08c874f",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1615,10 +1615,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_watermark_templates.py:be219f8fb8f3870c",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_watermark_templates.py:4b00dc34b7b87e0b",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/routers/workspace_watermark_templates.py",
-      "fingerprint": "be219f8fb8f3870cfa1eec97f471580b988cb7a554cd57d883a6dffbbd6ab77f",
+      "fingerprint": "4b00dc34b7b87e0b829fb7fea535e7a295ca584f5d4362d6e7b4ee8ed02a8e68",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1631,10 +1631,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/storage_center.py:81dbf0f9a60f60b4",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/storage_center.py:7607a2cbbd087a41",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/storage_center.py",
-      "fingerprint": "81dbf0f9a60f60b4bd57fd183a080f7b772e960c4628dded7fdb348d922da91c",
+      "fingerprint": "7607a2cbbd087a413d02e55c6629471f3b056b2abaa47db617a843d0abc99ab8",
       "summary": "2 acquire calls outside persistence",
       "details": {
         "count": 2,
@@ -1648,10 +1648,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/workspace_archive_dashboard.py:7d7d34269e050c4a",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/workspace_archive_dashboard.py:c8e81d88253c54ad",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/workspace_archive_dashboard.py",
-      "fingerprint": "7d7d34269e050c4ab435417ddcbf83a275d859fcb815ee7e01dcda9163183d6f",
+      "fingerprint": "c8e81d88253c54ad240f551d08a236e25fddec35ba4e5b865dafa78cf7bacaa4",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1664,10 +1664,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/workspace_deletion_controller.py:c43ee3cce1550ed3",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/workspace_deletion_controller.py:c3ed7193b0760162",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/workspace_deletion_controller.py",
-      "fingerprint": "c43ee3cce1550ed3d2aa91ae642a40a06e992790f29398c0105eb949b0edddae",
+      "fingerprint": "c3ed7193b0760162d90f55e300534fcf9ac0e49252236997987b1e6fc1879c93",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1680,10 +1680,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/workspace_reference_dashboard.py:ef0e1f62557963c8",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/workspace_reference_dashboard.py:3d84f03c2d22fc10",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/presentation/telegram/workspace_reference_dashboard.py",
-      "fingerprint": "ef0e1f62557963c88f2147e35a7c11f6da28072c077f32818174dba9aa27b5ee",
+      "fingerprint": "3d84f03c2d22fc10657d56944303106c12ad0f902f72ceee0ebaa05e6135d9e2",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1696,10 +1696,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/prompt_result_reports.py:f47aacbdcddc4cb6",
+      "id": "database-acquire-outside-persistence:velvet_bot/prompt_result_reports.py:441cc1a2fde0b902",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/prompt_result_reports.py",
-      "fingerprint": "f47aacbdcddc4cb6f2cbe29a0fa4ec3652f73b93fa1db4204d136a9c36cfd338",
+      "fingerprint": "441cc1a2fde0b9024b7eb4f8331d71d9556cf1efff82f5b7c9e804432f8443ed",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1712,10 +1712,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/public_catalog.py:f833b91ad6ef249e",
+      "id": "database-acquire-outside-persistence:velvet_bot/public_catalog.py:7c8ba522c67429a4",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/public_catalog.py",
-      "fingerprint": "f833b91ad6ef249ec1ffb912fdb55582abaa6801ec0287aa6e3a9a9feddd7557",
+      "fingerprint": "7c8ba522c67429a441dbe397c9502a5fd23e2ee3d3ee7a4c6d896cf3ab26b83b",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1728,10 +1728,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/public_directory.py:1f72da18985282b6",
+      "id": "database-acquire-outside-persistence:velvet_bot/public_directory.py:e542c8238aba8658",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/public_directory.py",
-      "fingerprint": "1f72da18985282b668f97e2e266b12f3ed0110ebdea2c36571742f8a213bb8cb",
+      "fingerprint": "e542c8238aba86585b9045d4de42c139e738ef220b850a310528626e3b36fd9b",
       "summary": "4 acquire calls outside persistence",
       "details": {
         "count": 4,
@@ -1747,10 +1747,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/public_media_lookup.py:71a1d22abdf1f598",
+      "id": "database-acquire-outside-persistence:velvet_bot/public_media_lookup.py:286f4a4a73d0b393",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/public_media_lookup.py",
-      "fingerprint": "71a1d22abdf1f5983ae7c4a49feb01495fe44958216d29563a00bc6a81f3dc9b",
+      "fingerprint": "286f4a4a73d0b393fd283f317351ec3a6162c1aa1c70ebe74377d1fb121460bf",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1763,10 +1763,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/quality_audit.py:4c82fce9f720a393",
+      "id": "database-acquire-outside-persistence:velvet_bot/quality_audit.py:a81887f0a0c6c4a3",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/quality_audit.py",
-      "fingerprint": "4c82fce9f720a393f7a2bd1033acb5b8239a2dc5a695875b46f948ead5980e17",
+      "fingerprint": "a81887f0a0c6c4a33fd2189951c6d6d2184baa28fa8152b7f5ed637a532c45ea",
       "summary": "5 acquire calls outside persistence",
       "details": {
         "count": 5,
@@ -1783,10 +1783,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/quality_calibration.py:1cd3378e8fa72b88",
+      "id": "database-acquire-outside-persistence:velvet_bot/quality_calibration.py:3ec80d4bf2f47dbf",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/quality_calibration.py",
-      "fingerprint": "1cd3378e8fa72b880109b4a457df60877d952be51f7776dc18e51a18ef00e000",
+      "fingerprint": "3ec80d4bf2f47dbf386b8f294dd6d440cdaa0bbea9ed573a8bf520bc7a947bcd",
       "summary": "3 acquire calls outside persistence",
       "details": {
         "count": 3,
@@ -1801,10 +1801,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/quality_operations.py:d0db06e6e1dabdc4",
+      "id": "database-acquire-outside-persistence:velvet_bot/quality_operations.py:8e143539a87dcfa6",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/quality_operations.py",
-      "fingerprint": "d0db06e6e1dabdc493cf437dee300d6e2144221322aeb732e0c782af5acfea57",
+      "fingerprint": "8e143539a87dcfa6586f934c332ac8105ebf26883c8beba135e8c81305528b4d",
       "summary": "2 acquire calls outside persistence",
       "details": {
         "count": 2,
@@ -1812,16 +1812,16 @@
           "self._database.acquire"
         ],
         "owners": [
-          "enqueue_recent",
-          "retry_errors"
+          "_create_plan",
+          "start_plan"
         ]
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/quality_set_audit_compat.py:a6727ccb96e00668",
+      "id": "database-acquire-outside-persistence:velvet_bot/quality_set_audit_compat.py:f8da1789f869f790",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/quality_set_audit_compat.py",
-      "fingerprint": "a6727ccb96e0066845e63cb8b1ff2b752d9071ba476ea1cda6a4d9e9816ce62e",
+      "fingerprint": "f8da1789f869f790a41e645c283f203cca202da99147935ffb7c03684fe3f951",
       "summary": "2 acquire calls outside persistence",
       "details": {
         "count": 2,
@@ -1835,10 +1835,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/reference_comparison_reports.py:f47aacbdcddc4cb6",
+      "id": "database-acquire-outside-persistence:velvet_bot/reference_comparison_reports.py:441cc1a2fde0b902",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/reference_comparison_reports.py",
-      "fingerprint": "f47aacbdcddc4cb6f2cbe29a0fa4ec3652f73b93fa1db4204d136a9c36cfd338",
+      "fingerprint": "441cc1a2fde0b9024b7eb4f8331d71d9556cf1efff82f5b7c9e804432f8443ed",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1851,10 +1851,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/resilient_ai_quality.py:5c0ebb8008e54187",
+      "id": "database-acquire-outside-persistence:velvet_bot/resilient_ai_quality.py:b58ee315355f5de1",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/resilient_ai_quality.py",
-      "fingerprint": "5c0ebb8008e54187bf1e450b90d661adebf8113629ade6fb928f80f74d7f4ac0",
+      "fingerprint": "b58ee315355f5de12e28cdafd4f19f04b30ce86aca20e5e5eb0a13fca7cc249c",
       "summary": "3 acquire calls outside persistence",
       "details": {
         "count": 3,
@@ -1868,10 +1868,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/resilient_ai_vision.py:5c0ebb8008e54187",
+      "id": "database-acquire-outside-persistence:velvet_bot/resilient_ai_vision.py:b58ee315355f5de1",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/resilient_ai_vision.py",
-      "fingerprint": "5c0ebb8008e54187bf1e450b90d661adebf8113629ade6fb928f80f74d7f4ac0",
+      "fingerprint": "b58ee315355f5de12e28cdafd4f19f04b30ce86aca20e5e5eb0a13fca7cc249c",
       "summary": "3 acquire calls outside persistence",
       "details": {
         "count": 3,
@@ -1885,10 +1885,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/runtime_stability.py:f27f02b7df2e53e3",
+      "id": "database-acquire-outside-persistence:velvet_bot/runtime_stability.py:4aff8ceaa4bbdc2f",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/runtime_stability.py",
-      "fingerprint": "f27f02b7df2e53e31d52d3abc861d1caa070b28895929bb1c5dc872d146dcd42",
+      "fingerprint": "4aff8ceaa4bbdc2f674565b515a05fae3cd2a4fab927f0477c95af57260bccb9",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -1901,10 +1901,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/telegram_export_import.py:cdc1bc36ccafd29d",
+      "id": "database-acquire-outside-persistence:velvet_bot/telegram_export_import.py:e9c8531061d3b723",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/telegram_export_import.py",
-      "fingerprint": "cdc1bc36ccafd29dfe38151f55e9d2313d13a3f27d610dc5365615d742a062df",
+      "fingerprint": "e9c8531061d3b723db62920c52daba410bd60e79f3557e7fa78fdd97fb1675c5",
       "summary": "4 acquire calls outside persistence",
       "details": {
         "count": 4,
@@ -1920,10 +1920,10 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/velvet_formatting_reports.py:f47aacbdcddc4cb6",
+      "id": "database-acquire-outside-persistence:velvet_bot/velvet_formatting_reports.py:441cc1a2fde0b902",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/velvet_formatting_reports.py",
-      "fingerprint": "f47aacbdcddc4cb6f2cbe29a0fa4ec3652f73b93fa1db4204d136a9c36cfd338",
+      "fingerprint": "441cc1a2fde0b9024b7eb4f8331d71d9556cf1efff82f5b7c9e804432f8443ed",
       "summary": "1 acquire calls outside persistence",
       "details": {
         "count": 1,
@@ -2232,10 +2232,10 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_cancel_ui_install.py:104ec99151d65751",
+      "id": "dynamic-import:velvet_bot/app/auf_cancel_ui_install.py:e9c8aa36634e8f47",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_cancel_ui_install.py",
-      "fingerprint": "104ec99151d65751e50c158db344fe0cb2e2000b486b1490a4759142650bf024",
+      "fingerprint": "e9c8aa36634e8f477529ea63f820c43c624ed78c839efa39b1f00cfd53eed564",
       "summary": "2 dynamic imports",
       "details": {
         "count": 2,
@@ -2245,10 +2245,10 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_charged_queue_install.py:36827ffcdd532802",
+      "id": "dynamic-import:velvet_bot/app/auf_charged_queue_install.py:1401fe820cb1f721",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_charged_queue_install.py",
-      "fingerprint": "36827ffcdd532802d1df32530d131290cd331925e073f10c56b2a985c120e9b2",
+      "fingerprint": "1401fe820cb1f721b1ba9779f8d4fe19f7859e6b0b6803562f9c22ad7425d5c9",
       "summary": "4 dynamic imports",
       "details": {
         "count": 4,
@@ -2258,10 +2258,10 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_generation_price_privacy_install.py:ff39fbb314fce0c3",
+      "id": "dynamic-import:velvet_bot/app/auf_generation_price_privacy_install.py:ccdc8b049e5603e9",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_generation_price_privacy_install.py",
-      "fingerprint": "ff39fbb314fce0c323bd1a3881a297243018ed3d67b8da16320dfa7937cddff5",
+      "fingerprint": "ccdc8b049e5603e9e678eafb228f1c35c186c85f598b7253c0e7c08ca743bb1c",
       "summary": "5 dynamic imports",
       "details": {
         "count": 5,
@@ -2271,10 +2271,10 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_generation_receipt_install.py:2c9ce2412dae8035",
+      "id": "dynamic-import:velvet_bot/app/auf_generation_receipt_install.py:bbf88cd493d8d670",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_generation_receipt_install.py",
-      "fingerprint": "2c9ce2412dae803546c3eb4fba1ec9d7bc316bd47f90bb47defe8aefdbeb20da",
+      "fingerprint": "bbf88cd493d8d670402b061e71e53ec566afac418fae744c71a1e55d577a3271",
       "summary": "2 dynamic imports",
       "details": {
         "count": 2,
@@ -2284,10 +2284,10 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_gpt_image_2_install.py:1b4c6b015dc436c5",
+      "id": "dynamic-import:velvet_bot/app/auf_gpt_image_2_install.py:1496f28fe33e2fb8",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_gpt_image_2_install.py",
-      "fingerprint": "1b4c6b015dc436c5f2cbace38da5ead6548636bf62766378fd61e27c28d60a55",
+      "fingerprint": "1496f28fe33e2fb88de2e1f68af6f7eda3d36237aacbdfe5c3f9c59bbfd3b5cf",
       "summary": "2 dynamic imports",
       "details": {
         "count": 2,
@@ -2297,10 +2297,10 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_margin_dashboard_install.py:b0be3ae05b737c5d",
+      "id": "dynamic-import:velvet_bot/app/auf_margin_dashboard_install.py:c57d54375959a6ea",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_margin_dashboard_install.py",
-      "fingerprint": "b0be3ae05b737c5d31d97f5c0d67a6f9e10ab6e2becab182d94f2bb30c8286c4",
+      "fingerprint": "c57d54375959a6ea17854551e7e25edb15528fcbd371336ae5d6707119ef5888",
       "summary": "2 dynamic imports",
       "details": {
         "count": 2,
@@ -2310,10 +2310,10 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_owner_cost_privacy/install.py:899fd76cb0fdb65c",
+      "id": "dynamic-import:velvet_bot/app/auf_owner_cost_privacy/install.py:7d2dd2251f31655f",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_owner_cost_privacy/install.py",
-      "fingerprint": "899fd76cb0fdb65caf2757c505e0caddf34fddf55f17e3843c3c3d24ded35bf2",
+      "fingerprint": "7d2dd2251f31655f1db52534662d5586d2e43dd683d289b7d1db23108fea0e8c",
       "summary": "3 dynamic imports",
       "details": {
         "count": 3,
@@ -2323,10 +2323,10 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_owner_pricing_ui_install.py:4edb9ee28ebd4255",
+      "id": "dynamic-import:velvet_bot/app/auf_owner_pricing_ui_install.py:c005c43b86ad256c",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_owner_pricing_ui_install.py",
-      "fingerprint": "4edb9ee28ebd42557862902a55d40db307e9cabda45d84596c53deb3613f5035",
+      "fingerprint": "c005c43b86ad256cc9cdf645047dabcaa690c1eb73a8fa227e116e6adf281d63",
       "summary": "7 dynamic imports",
       "details": {
         "count": 7,
@@ -2336,10 +2336,10 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_photo_model_modes.py:ba057cbaa90d80e4",
+      "id": "dynamic-import:velvet_bot/app/auf_photo_model_modes.py:b558de02bcaa1699",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_photo_model_modes.py",
-      "fingerprint": "ba057cbaa90d80e4e493c9945a2e7460751ccae78459baf47298269bdf1eb71b",
+      "fingerprint": "b558de02bcaa1699dd9016fb9180d3e5bd17e2a1a2c752f86cf8cc9f527bbe4e",
       "summary": "5 dynamic imports",
       "details": {
         "count": 5,
@@ -2349,10 +2349,10 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_photo_ratio_callback_fix.py:7b1f46cc80b86e68",
+      "id": "dynamic-import:velvet_bot/app/auf_photo_ratio_callback_fix.py:5b77f3b426acf231",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_photo_ratio_callback_fix.py",
-      "fingerprint": "7b1f46cc80b86e68d58bfbb07c2460b989f1b545db75dff51939ab6b05840331",
+      "fingerprint": "5b77f3b426acf231b09bf0e5c44f8578d39be90f4d27717f365e2d1503fb1a2a",
       "summary": "3 dynamic imports",
       "details": {
         "count": 3,
@@ -2362,10 +2362,10 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_photo_ui_install.py:be55fd3963194e77",
+      "id": "dynamic-import:velvet_bot/app/auf_photo_ui_install.py:7f8feebb74d34b68",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_photo_ui_install.py",
-      "fingerprint": "be55fd3963194e77488050fd988f02912ad62b6c44d468f601b04a124f07bafc",
+      "fingerprint": "7f8feebb74d34b68b5bba278aa2ec738c6d70bb69984c5d4cbfa96ff05f4a366",
       "summary": "1 dynamic imports",
       "details": {
         "count": 1,
@@ -2375,10 +2375,10 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_reconciliation_install.py:ef8d0bb1396104ed",
+      "id": "dynamic-import:velvet_bot/app/auf_reconciliation_install.py:6bb88abee33707cc",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_reconciliation_install.py",
-      "fingerprint": "ef8d0bb1396104ed11e3a4da5dbb0141eca14827776c55e6c56bab43fc80cd87",
+      "fingerprint": "6bb88abee33707cc3e4df18e3177fb48a4245f033980d8b98643da47fafb2a25",
       "summary": "2 dynamic imports",
       "details": {
         "count": 2,
@@ -2388,10 +2388,10 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_runtime_install.py:89dd4fc204bfbb86",
+      "id": "dynamic-import:velvet_bot/app/auf_runtime_install.py:5a5a4e383d28a6fe",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_runtime_install.py",
-      "fingerprint": "89dd4fc204bfbb86feb8019fd19cc6c1f202e2e507e79f6524324ca5cb715a11",
+      "fingerprint": "5a5a4e383d28a6fe9f7909baf5ecf77d6158e3b5a915d90ba7e819a4ee0016f2",
       "summary": "2 dynamic imports",
       "details": {
         "count": 2,
@@ -2401,10 +2401,10 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_user_portal_install.py:32d3a30d5f52d954",
+      "id": "dynamic-import:velvet_bot/app/auf_user_portal_install.py:b78b51271d775ca4",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_user_portal_install.py",
-      "fingerprint": "32d3a30d5f52d9548cabfc1e77060eed41a9ea3ec55adaa3dbd773f5da26a576",
+      "fingerprint": "b78b51271d775ca467b7c83210119a1e50da96e988b22c3af419aec178cecc5a",
       "summary": "1 dynamic imports",
       "details": {
         "count": 1,
@@ -2414,10 +2414,10 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_wallet_ui_install.py:40c9b4cfd7376f35",
+      "id": "dynamic-import:velvet_bot/app/auf_wallet_ui_install.py:2327b3a3e7561f5c",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_wallet_ui_install.py",
-      "fingerprint": "40c9b4cfd7376f35187220ae77c63c02f5d89abe3cede25135e3e81586294d77",
+      "fingerprint": "2327b3a3e7561f5c226a660e80908790652d756828d86f07b1114e8f20fefdf0",
       "summary": "1 dynamic imports",
       "details": {
         "count": 1,
@@ -2427,10 +2427,10 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_workspace_ui_install.py:8db5969ac94258bc",
+      "id": "dynamic-import:velvet_bot/app/auf_workspace_ui_install.py:94aa8f1ac8f3966e",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_workspace_ui_install.py",
-      "fingerprint": "8db5969ac94258bcbc0d3b45331f09b97005fc51e14d1caebd987f293260901f",
+      "fingerprint": "94aa8f1ac8f3966e959cfbc2cda55a372706d4dd59cb0308da3e99bbee3833e7",
       "summary": "3 dynamic imports",
       "details": {
         "count": 3,
@@ -2440,10 +2440,10 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/media_delivery_ui_install.py:944186e5de8c82f4",
+      "id": "dynamic-import:velvet_bot/app/media_delivery_ui_install.py:1404f1bad2d1b010",
       "category": "dynamic-import",
       "path": "velvet_bot/app/media_delivery_ui_install.py",
-      "fingerprint": "944186e5de8c82f4e659836bee4c8cf8af2b54609586271282d152bc8ac1938b",
+      "fingerprint": "1404f1bad2d1b010b7f39e77072e108d4813d4e999a03a9f7b142e8223299e94",
       "summary": "3 dynamic imports",
       "details": {
         "count": 3,
@@ -6101,20 +6101,18 @@
       }
     },
     {
-      "id": "sql-outside-persistence:velvet_bot/quality_operations.py:9779d0f8ec2c8768",
+      "id": "sql-outside-persistence:velvet_bot/quality_operations.py:c338a93ad0a2ff27",
       "category": "sql-outside-persistence",
       "path": "velvet_bot/quality_operations.py",
-      "fingerprint": "9779d0f8ec2c8768c8ae182f9d1a8d4f487f8d7e9ca9aaeea7c32a584f4a5f0b",
-      "summary": "3 SQL literals outside persistence",
+      "fingerprint": "c338a93ad0a2ff279e22e9f6ad838f0205245f29723f327d9f14e21a53ddd193",
+      "summary": "2 SQL literals outside persistence",
       "details": {
-        "count": 3,
+        "count": 2,
         "keywords": [
-          "SELECT",
-          "UPDATE"
+          "SELECT"
         ],
         "owners": [
-          "enqueue_recent",
-          "retry_errors"
+          "<module>"
         ]
       }
     },
@@ -7658,10 +7656,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/ai_jobs.py:c27013e3a363a01e",
+          "id": "database-acquire-outside-persistence:velvet_bot/ai_jobs.py:d79e8863a4f7b800",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/ai_jobs.py",
-          "fingerprint": "c27013e3a363a01e5e6c943f55259818e96a235b62577de7fd45b33930f0e01e",
+          "fingerprint": "d79e8863a4f7b800b94cbcc0692df26217d430fd9a04f090a5556c6a8f24457f",
           "summary": "7 acquire calls outside persistence",
           "details": {
             "count": 7,
@@ -7790,10 +7788,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/ai_quality.py:420c593c7c3f61b8",
+          "id": "database-acquire-outside-persistence:velvet_bot/ai_quality.py:2850a6dd2b759ce7",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/ai_quality.py",
-          "fingerprint": "420c593c7c3f61b8abf8e302ce663fcb28764e2e00e5f3a7e7dbfe79d8fc983c",
+          "fingerprint": "2850a6dd2b759ce7c5c9d065bba70d7ebd39a9e3a5359cfc25380d46b59e6681",
           "summary": "8 acquire calls outside persistence",
           "details": {
             "count": 8,
@@ -7890,10 +7888,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/ai_quality_schema_compat.py:812529774d831a82",
+          "id": "database-acquire-outside-persistence:velvet_bot/ai_quality_schema_compat.py:4856456e79d9b06c",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/ai_quality_schema_compat.py",
-          "fingerprint": "812529774d831a824fab8424487451e01726c024f3549f12f909c092c5bcbcc4",
+          "fingerprint": "4856456e79d9b06cdc996b5765e31c7f1eb6a846f2b016a51c343cd33897e8ed",
           "summary": "2 acquire calls outside persistence",
           "details": {
             "count": 2,
@@ -8001,10 +7999,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/ai_vision.py:fc932cd059ae0ecd",
+          "id": "database-acquire-outside-persistence:velvet_bot/ai_vision.py:2f1090eecb207ddc",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/ai_vision.py",
-          "fingerprint": "fc932cd059ae0ecd23d4589e1f99d89ae4304f10088f2708cd08f53a79f51871",
+          "fingerprint": "2f1090eecb207ddc136efb28f163bd27395661e654a0cab7660cc8c450ed6ccd",
           "summary": "4 acquire calls outside persistence",
           "details": {
             "count": 4,
@@ -8082,10 +8080,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/alias_management.py:d3d0da6c1e0f1ae7",
+          "id": "database-acquire-outside-persistence:velvet_bot/alias_management.py:5742990623da58b5",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/alias_management.py",
-          "fingerprint": "d3d0da6c1e0f1ae77b5a967e16f6fa3728f458eeae3697cb6e4cf837028f0a9c",
+          "fingerprint": "5742990623da58b52ebe379c27aa71fc463685963d3b7e80096a5749a0ebb982",
           "summary": "2 acquire calls outside persistence",
           "details": {
             "count": 2,
@@ -8192,10 +8190,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/analytics_dashboard.py:b27929d1090cbf0b",
+          "id": "database-acquire-outside-persistence:velvet_bot/analytics_dashboard.py:40e1cc0997a3d1b2",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/analytics_dashboard.py",
-          "fingerprint": "b27929d1090cbf0b8627dc422ae51af39d167c33be772243fcefa84bf20f5e33",
+          "fingerprint": "40e1cc0997a3d1b2100da6c6ec37b94db053f92572cded98878fdd9614d47cee",
           "summary": "8 acquire calls outside persistence",
           "details": {
             "count": 8,
@@ -8265,10 +8263,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/analytics_reactions.py:1ad72937f01ee1e1",
+          "id": "database-acquire-outside-persistence:velvet_bot/analytics_reactions.py:cb04a6f464f0c917",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/analytics_reactions.py",
-          "fingerprint": "1ad72937f01ee1e17a440f8a45f5edf7a57ec437fcb25c049854fa429b4ffb97",
+          "fingerprint": "cb04a6f464f0c9176941cdee3e1313db2bcb6f0715257bbc10748f0584c03337",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -8345,10 +8343,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/analytics_review.py:13a5ff4f56d3c37c",
+          "id": "database-acquire-outside-persistence:velvet_bot/analytics_review.py:2c434ebda1317909",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/analytics_review.py",
-          "fingerprint": "13a5ff4f56d3c37c4e81ec86edd3f296572b121ab83da8cd228e938b9f515512",
+          "fingerprint": "2c434ebda1317909db6800479be3b891efea6edef48dfc6333c4b35c78fa47a2",
           "summary": "9 acquire calls outside persistence",
           "details": {
             "count": 9,
@@ -8691,10 +8689,10 @@
           }
         },
         {
-          "id": "dynamic-import:velvet_bot/app/auf_cancel_ui_install.py:104ec99151d65751",
+          "id": "dynamic-import:velvet_bot/app/auf_cancel_ui_install.py:e9c8aa36634e8f47",
           "category": "dynamic-import",
           "path": "velvet_bot/app/auf_cancel_ui_install.py",
-          "fingerprint": "104ec99151d65751e50c158db344fe0cb2e2000b486b1490a4759142650bf024",
+          "fingerprint": "e9c8aa36634e8f477529ea63f820c43c624ed78c839efa39b1f00cfd53eed564",
           "summary": "2 dynamic imports",
           "details": {
             "count": 2,
@@ -8773,10 +8771,10 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "dynamic-import:velvet_bot/app/auf_charged_queue_install.py:36827ffcdd532802",
+          "id": "dynamic-import:velvet_bot/app/auf_charged_queue_install.py:1401fe820cb1f721",
           "category": "dynamic-import",
           "path": "velvet_bot/app/auf_charged_queue_install.py",
-          "fingerprint": "36827ffcdd532802d1df32530d131290cd331925e073f10c56b2a985c120e9b2",
+          "fingerprint": "1401fe820cb1f721b1ba9779f8d4fe19f7859e6b0b6803562f9c22ad7425d5c9",
           "summary": "4 dynamic imports",
           "details": {
             "count": 4,
@@ -8843,10 +8841,10 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "dynamic-import:velvet_bot/app/auf_generation_price_privacy_install.py:ff39fbb314fce0c3",
+          "id": "dynamic-import:velvet_bot/app/auf_generation_price_privacy_install.py:ccdc8b049e5603e9",
           "category": "dynamic-import",
           "path": "velvet_bot/app/auf_generation_price_privacy_install.py",
-          "fingerprint": "ff39fbb314fce0c323bd1a3881a297243018ed3d67b8da16320dfa7937cddff5",
+          "fingerprint": "ccdc8b049e5603e9e678eafb228f1c35c186c85f598b7253c0e7c08ca743bb1c",
           "summary": "5 dynamic imports",
           "details": {
             "count": 5,
@@ -8913,10 +8911,10 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "dynamic-import:velvet_bot/app/auf_generation_receipt_install.py:2c9ce2412dae8035",
+          "id": "dynamic-import:velvet_bot/app/auf_generation_receipt_install.py:bbf88cd493d8d670",
           "category": "dynamic-import",
           "path": "velvet_bot/app/auf_generation_receipt_install.py",
-          "fingerprint": "2c9ce2412dae803546c3eb4fba1ec9d7bc316bd47f90bb47defe8aefdbeb20da",
+          "fingerprint": "bbf88cd493d8d670402b061e71e53ec566afac418fae744c71a1e55d577a3271",
           "summary": "2 dynamic imports",
           "details": {
             "count": 2,
@@ -9033,10 +9031,10 @@
           }
         },
         {
-          "id": "dynamic-import:velvet_bot/app/auf_gpt_image_2_install.py:1b4c6b015dc436c5",
+          "id": "dynamic-import:velvet_bot/app/auf_gpt_image_2_install.py:1496f28fe33e2fb8",
           "category": "dynamic-import",
           "path": "velvet_bot/app/auf_gpt_image_2_install.py",
-          "fingerprint": "1b4c6b015dc436c5f2cbace38da5ead6548636bf62766378fd61e27c28d60a55",
+          "fingerprint": "1496f28fe33e2fb88de2e1f68af6f7eda3d36237aacbdfe5c3f9c59bbfd3b5cf",
           "summary": "2 dynamic imports",
           "details": {
             "count": 2,
@@ -9239,10 +9237,10 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "dynamic-import:velvet_bot/app/auf_margin_dashboard_install.py:b0be3ae05b737c5d",
+          "id": "dynamic-import:velvet_bot/app/auf_margin_dashboard_install.py:c57d54375959a6ea",
           "category": "dynamic-import",
           "path": "velvet_bot/app/auf_margin_dashboard_install.py",
-          "fingerprint": "b0be3ae05b737c5d31d97f5c0d67a6f9e10ab6e2becab182d94f2bb30c8286c4",
+          "fingerprint": "c57d54375959a6ea17854551e7e25edb15528fcbd371336ae5d6707119ef5888",
           "summary": "2 dynamic imports",
           "details": {
             "count": 2,
@@ -9405,10 +9403,10 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "dynamic-import:velvet_bot/app/auf_owner_cost_privacy/install.py:899fd76cb0fdb65c",
+          "id": "dynamic-import:velvet_bot/app/auf_owner_cost_privacy/install.py:7d2dd2251f31655f",
           "category": "dynamic-import",
           "path": "velvet_bot/app/auf_owner_cost_privacy/install.py",
-          "fingerprint": "899fd76cb0fdb65caf2757c505e0caddf34fddf55f17e3843c3c3d24ded35bf2",
+          "fingerprint": "7d2dd2251f31655f1db52534662d5586d2e43dd683d289b7d1db23108fea0e8c",
           "summary": "3 dynamic imports",
           "details": {
             "count": 3,
@@ -9663,10 +9661,10 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "dynamic-import:velvet_bot/app/auf_owner_pricing_ui_install.py:4edb9ee28ebd4255",
+          "id": "dynamic-import:velvet_bot/app/auf_owner_pricing_ui_install.py:c005c43b86ad256c",
           "category": "dynamic-import",
           "path": "velvet_bot/app/auf_owner_pricing_ui_install.py",
-          "fingerprint": "4edb9ee28ebd42557862902a55d40db307e9cabda45d84596c53deb3613f5035",
+          "fingerprint": "c005c43b86ad256cc9cdf645047dabcaa690c1eb73a8fa227e116e6adf281d63",
           "summary": "7 dynamic imports",
           "details": {
             "count": 7,
@@ -9788,10 +9786,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/app/auf_photo_model_modes.py:8e2d81879dbb2b4b",
+          "id": "database-acquire-outside-persistence:velvet_bot/app/auf_photo_model_modes.py:3e7ec2173bf7cadb",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/app/auf_photo_model_modes.py",
-          "fingerprint": "8e2d81879dbb2b4b68771a132b2ca1fd5b8eb4072fb13864d1962944adabc273",
+          "fingerprint": "3e7ec2173bf7cadb2ccf5360ea71885348d4ec12d12eac8bf88281b69ce645cb",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -9833,10 +9831,10 @@
           }
         },
         {
-          "id": "dynamic-import:velvet_bot/app/auf_photo_model_modes.py:ba057cbaa90d80e4",
+          "id": "dynamic-import:velvet_bot/app/auf_photo_model_modes.py:b558de02bcaa1699",
           "category": "dynamic-import",
           "path": "velvet_bot/app/auf_photo_model_modes.py",
-          "fingerprint": "ba057cbaa90d80e4e493c9945a2e7460751ccae78459baf47298269bdf1eb71b",
+          "fingerprint": "b558de02bcaa1699dd9016fb9180d3e5bd17e2a1a2c752f86cf8cc9f527bbe4e",
           "summary": "5 dynamic imports",
           "details": {
             "count": 5,
@@ -9961,10 +9959,10 @@
           }
         },
         {
-          "id": "dynamic-import:velvet_bot/app/auf_photo_ratio_callback_fix.py:7b1f46cc80b86e68",
+          "id": "dynamic-import:velvet_bot/app/auf_photo_ratio_callback_fix.py:5b77f3b426acf231",
           "category": "dynamic-import",
           "path": "velvet_bot/app/auf_photo_ratio_callback_fix.py",
-          "fingerprint": "7b1f46cc80b86e68d58bfbb07c2460b989f1b545db75dff51939ab6b05840331",
+          "fingerprint": "5b77f3b426acf231b09bf0e5c44f8578d39be90f4d27717f365e2d1503fb1a2a",
           "summary": "3 dynamic imports",
           "details": {
             "count": 3,
@@ -10039,10 +10037,10 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "dynamic-import:velvet_bot/app/auf_photo_ui_install.py:be55fd3963194e77",
+          "id": "dynamic-import:velvet_bot/app/auf_photo_ui_install.py:7f8feebb74d34b68",
           "category": "dynamic-import",
           "path": "velvet_bot/app/auf_photo_ui_install.py",
-          "fingerprint": "be55fd3963194e77488050fd988f02912ad62b6c44d468f601b04a124f07bafc",
+          "fingerprint": "7f8feebb74d34b68b5bba278aa2ec738c6d70bb69984c5d4cbfa96ff05f4a366",
           "summary": "1 dynamic imports",
           "details": {
             "count": 1,
@@ -10114,10 +10112,10 @@
       ],
       "violations": [
         {
-          "id": "dynamic-import:velvet_bot/app/auf_reconciliation_install.py:ef8d0bb1396104ed",
+          "id": "dynamic-import:velvet_bot/app/auf_reconciliation_install.py:6bb88abee33707cc",
           "category": "dynamic-import",
           "path": "velvet_bot/app/auf_reconciliation_install.py",
-          "fingerprint": "ef8d0bb1396104ed11e3a4da5dbb0141eca14827776c55e6c56bab43fc80cd87",
+          "fingerprint": "6bb88abee33707cc3e4df18e3177fb48a4245f033980d8b98643da47fafb2a25",
           "summary": "2 dynamic imports",
           "details": {
             "count": 2,
@@ -10221,10 +10219,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/app/auf_reference_privacy_install.py:f4e87eec7f67ae73",
+          "id": "database-acquire-outside-persistence:velvet_bot/app/auf_reference_privacy_install.py:2f7de10b9338c009",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/app/auf_reference_privacy_install.py",
-          "fingerprint": "f4e87eec7f67ae734377b2771fe973c3ac88347ba7e2b882bba0d543d7115167",
+          "fingerprint": "2f7de10b9338c009504a8d9d892f4a95dd7b1c1e6739370fda21c09ade9a35c3",
           "summary": "2 acquire calls outside persistence",
           "details": {
             "count": 2,
@@ -10340,10 +10338,10 @@
       ],
       "violations": [
         {
-          "id": "dynamic-import:velvet_bot/app/auf_runtime_install.py:89dd4fc204bfbb86",
+          "id": "dynamic-import:velvet_bot/app/auf_runtime_install.py:5a5a4e383d28a6fe",
           "category": "dynamic-import",
           "path": "velvet_bot/app/auf_runtime_install.py",
-          "fingerprint": "89dd4fc204bfbb86feb8019fd19cc6c1f202e2e507e79f6524324ca5cb715a11",
+          "fingerprint": "5a5a4e383d28a6fe9f7909baf5ecf77d6158e3b5a915d90ba7e819a4ee0016f2",
           "summary": "2 dynamic imports",
           "details": {
             "count": 2,
@@ -10446,10 +10444,10 @@
           }
         },
         {
-          "id": "dynamic-import:velvet_bot/app/auf_user_portal_install.py:32d3a30d5f52d954",
+          "id": "dynamic-import:velvet_bot/app/auf_user_portal_install.py:b78b51271d775ca4",
           "category": "dynamic-import",
           "path": "velvet_bot/app/auf_user_portal_install.py",
-          "fingerprint": "32d3a30d5f52d9548cabfc1e77060eed41a9ea3ec55adaa3dbd773f5da26a576",
+          "fingerprint": "b78b51271d775ca467b7c83210119a1e50da96e988b22c3af419aec178cecc5a",
           "summary": "1 dynamic imports",
           "details": {
             "count": 1,
@@ -10554,10 +10552,10 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "dynamic-import:velvet_bot/app/auf_wallet_ui_install.py:40c9b4cfd7376f35",
+          "id": "dynamic-import:velvet_bot/app/auf_wallet_ui_install.py:2327b3a3e7561f5c",
           "category": "dynamic-import",
           "path": "velvet_bot/app/auf_wallet_ui_install.py",
-          "fingerprint": "40c9b4cfd7376f35187220ae77c63c02f5d89abe3cede25135e3e81586294d77",
+          "fingerprint": "2327b3a3e7561f5c226a660e80908790652d756828d86f07b1114e8f20fefdf0",
           "summary": "1 dynamic imports",
           "details": {
             "count": 1,
@@ -10647,10 +10645,10 @@
           }
         },
         {
-          "id": "dynamic-import:velvet_bot/app/auf_workspace_ui_install.py:8db5969ac94258bc",
+          "id": "dynamic-import:velvet_bot/app/auf_workspace_ui_install.py:94aa8f1ac8f3966e",
           "category": "dynamic-import",
           "path": "velvet_bot/app/auf_workspace_ui_install.py",
-          "fingerprint": "8db5969ac94258bcbc0d3b45331f09b97005fc51e14d1caebd987f293260901f",
+          "fingerprint": "94aa8f1ac8f3966e959cfbc2cda55a372706d4dd59cb0308da3e99bbee3833e7",
           "summary": "3 dynamic imports",
           "details": {
             "count": 3,
@@ -10694,8 +10692,8 @@
       "module": "velvet_bot.app.bootstrap",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 340,
-      "function_count": 7,
+      "loc": 322,
+      "function_count": 5,
       "class_count": 0,
       "handler_count": 0,
       "max_function_length": 181,
@@ -10714,7 +10712,6 @@
         "velvet_bot.domains.ai_usage",
         "velvet_bot.error_center",
         "velvet_bot.infrastructure.postgres.system_repository",
-        "velvet_bot.presentation.telegram.storage_librarian",
         "velvet_bot.protected_bot",
         "velvet_bot.reference_uploads",
         "velvet_bot.services.diagnostic_bundle",
@@ -10739,7 +10736,7 @@
       "install_definitions": [],
       "install_calls": [
         {
-          "line": 280,
+          "line": 262,
           "call": "install_command_menus"
         }
       ],
@@ -10749,32 +10746,22 @@
       "polling_values": [],
       "worker_registrations": [
         {
-          "line": 48,
-          "owner": "_start_background_workers",
-          "call": "worker_manager.start_all"
-        },
-        {
-          "line": 55,
-          "owner": "_stop_background_workers",
-          "call": "worker_manager.stop_all"
-        },
-        {
-          "line": 213,
+          "line": 195,
           "owner": "run_application",
           "call": "build_worker_manager"
         },
         {
-          "line": 313,
+          "line": 295,
           "owner": "run_application",
-          "call": "_start_background_workers"
+          "call": "worker_manager.start_all"
         },
         {
-          "line": 107,
+          "line": 89,
           "owner": "_close_application_resources",
-          "call": "_stop_background_workers"
+          "call": "worker_manager.stop_all"
         },
         {
-          "line": 300,
+          "line": 282,
           "owner": "run_application",
           "call": "worker_manager.registered_names"
         }
@@ -11574,10 +11561,10 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "dynamic-import:velvet_bot/app/media_delivery_ui_install.py:944186e5de8c82f4",
+          "id": "dynamic-import:velvet_bot/app/media_delivery_ui_install.py:1404f1bad2d1b010",
           "category": "dynamic-import",
           "path": "velvet_bot/app/media_delivery_ui_install.py",
-          "fingerprint": "944186e5de8c82f4e659836bee4c8cf8af2b54609586271282d152bc8ac1938b",
+          "fingerprint": "1404f1bad2d1b010b7f39e77072e108d4813d4e999a03a9f7b142e8223299e94",
           "summary": "3 dynamic imports",
           "details": {
             "count": 3,
@@ -11917,10 +11904,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/app/public_notifications.py:32b4fea30f2a34e1",
+          "id": "database-acquire-outside-persistence:velvet_bot/app/public_notifications.py:6b014a6f4c0dfb07",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/app/public_notifications.py",
-          "fingerprint": "32b4fea30f2a34e1317e278ef533de0d7436a8bc98a95a942de5363d1fc052bd",
+          "fingerprint": "6b014a6f4c0dfb07b45a43227bae47dab68449cd9e8f18ca8e2775ab57abbfed",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -13301,10 +13288,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/application/workspace_tasks.py:4baf3d17b6ea8e10",
+          "id": "database-acquire-outside-persistence:velvet_bot/application/workspace_tasks.py:7113302df6a9e380",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/application/workspace_tasks.py",
-          "fingerprint": "4baf3d17b6ea8e10d50309e0f581378b16fafd5697879842d6582f81c799513b",
+          "fingerprint": "7113302df6a9e3803b610b56c52728ffb913a7a85cdf7ad76b0eb7e34e909c42",
           "summary": "3 acquire calls outside persistence",
           "details": {
             "count": 3,
@@ -13463,10 +13450,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/archive_topic_links.py:0b885dbf9ccb61fe",
+          "id": "database-acquire-outside-persistence:velvet_bot/archive_topic_links.py:572a062375a65705",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/archive_topic_links.py",
-          "fingerprint": "0b885dbf9ccb61fe04e2e6d5822c5deaeeef90ab1dd978593e28c066573b5f18",
+          "fingerprint": "572a062375a65705ad71ca20099cf9fcd31b6ae7fd6f0b37f3dc155ddbce5861",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -13668,10 +13655,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/backup_runtime.py:61b45885f50f4752",
+          "id": "database-acquire-outside-persistence:velvet_bot/backup_runtime.py:38c2a76d7545f420",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/backup_runtime.py",
-          "fingerprint": "61b45885f50f4752f6659d26f95eb62c047577e5034ebb7de80588c06a8870e3",
+          "fingerprint": "38c2a76d7545f42083188d248ccec00bb19a47c7ec1045964e49d17e495e7b38",
           "summary": "2 acquire calls outside persistence",
           "details": {
             "count": 2,
@@ -13770,10 +13757,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/backup_service.py:f0815c4fea41714a",
+          "id": "database-acquire-outside-persistence:velvet_bot/backup_service.py:421dc0191516d0c3",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/backup_service.py",
-          "fingerprint": "f0815c4fea41714a2bdbaf024d1dbfadebf46abef2b935b974c2428d7ff56eba",
+          "fingerprint": "421dc0191516d0c325da4bb30a11f654945cc15da249f41c7905ee295899f051",
           "summary": "15 acquire calls outside persistence",
           "details": {
             "count": 15,
@@ -13927,10 +13914,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/channel_analytics.py:e979fcb6e22c1379",
+          "id": "database-acquire-outside-persistence:velvet_bot/channel_analytics.py:625d54bb9f9a3234",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/channel_analytics.py",
-          "fingerprint": "e979fcb6e22c137916bee05badcf2455077a14fbb0cd5910f9018e6d7585e1ba",
+          "fingerprint": "625d54bb9f9a3234196b7d6efb6f1550f9d9b3b81880058312f88422fb98dd40",
           "summary": "8 acquire calls outside persistence",
           "details": {
             "count": 8,
@@ -14018,10 +14005,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/character_aliases.py:35edf6cb4cb208c7",
+          "id": "database-acquire-outside-persistence:velvet_bot/character_aliases.py:8baa25158d631851",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/character_aliases.py",
-          "fingerprint": "35edf6cb4cb208c7f725d1d09a7537b2ebc2aac3bc41025e40efdc00f630d735",
+          "fingerprint": "8baa25158d631851d46c562a12a92ad9907784f47801879c6abb80f7c2fec208",
           "summary": "5 acquire calls outside persistence",
           "details": {
             "count": 5,
@@ -14125,10 +14112,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/character_renaming.py:f005db22bd67ae75",
+          "id": "database-acquire-outside-persistence:velvet_bot/character_renaming.py:4bd5bdcdf1576df1",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/character_renaming.py",
-          "fingerprint": "f005db22bd67ae756495d742544faf8da932ec66bd9177f4e9e00b540ea36818",
+          "fingerprint": "4bd5bdcdf1576df15316ec04aba773769e0ce37e705ae13bfba8c9ff3f1e17e5",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -14194,10 +14181,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/character_resolution.py:8aa20432642ca09b",
+          "id": "database-acquire-outside-persistence:velvet_bot/character_resolution.py:096b1ab08a241dd2",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/character_resolution.py",
-          "fingerprint": "8aa20432642ca09b131998f8a379b077f8edff0825dad77666f2334c2d68f55c",
+          "fingerprint": "096b1ab08a241dd2ee0bd51aa9d257b2ead27d246f860223e8283cd4e402df3b",
           "summary": "2 acquire calls outside persistence",
           "details": {
             "count": 2,
@@ -15428,10 +15415,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/discussion_thread_links.py:086f867ff013a19f",
+          "id": "database-acquire-outside-persistence:velvet_bot/discussion_thread_links.py:53de0416726cec9e",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/discussion_thread_links.py",
-          "fingerprint": "086f867ff013a19f422bc030304b2c4a42437fd2d0c0902e336efeb93cab91b5",
+          "fingerprint": "53de0416726cec9e76a07b9645780d1f599001658fe647e4eced96900c0d226c",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -15616,10 +15603,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/ai_usage/ledger.py:9886f9f8b17ae0e3",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/ai_usage/ledger.py:7ce03a3f71953f0b",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/ai_usage/ledger.py",
-          "fingerprint": "9886f9f8b17ae0e3d72724467dae085c9eff4e4acdd2509544f66ccf5c56c481",
+          "fingerprint": "7ce03a3f71953f0b752765eb11a5d91e79dadb292054654c45d9ac751129ed93",
           "summary": "9 acquire calls outside persistence",
           "details": {
             "count": 9,
@@ -15913,10 +15900,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/ai_usage/tasks.py:4b14154669b01e86",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/ai_usage/tasks.py:6566a08e8b2e7779",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/ai_usage/tasks.py",
-          "fingerprint": "4b14154669b01e86fa14170171c890918b4db9fe1231663d929df03da61877c5",
+          "fingerprint": "6566a08e8b2e7779d9ede4490542277d6ec90c2e661a541c6a1d54deb00f52e1",
           "summary": "12 acquire calls outside persistence",
           "details": {
             "count": 12,
@@ -16314,10 +16301,10 @@
       ],
       "violations": [
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_runtime/dispatcher.py:2ac3a5398b72a835",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_runtime/dispatcher.py:d22840bbc1ff3f04",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/auf_runtime/dispatcher.py",
-          "fingerprint": "2ac3a5398b72a8357640b1a44ba832e4942401efe6b939c086af2483c0e22a56",
+          "fingerprint": "d22840bbc1ff3f042f913f1dafb3fa71f516dd4f7c45654a4cb70b6e08c3979b",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -16452,10 +16439,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_runtime/queue.py:8c153ea20210c55f",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_runtime/queue.py:6b85d7d4bc6399e3",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/auf_runtime/queue.py",
-          "fingerprint": "8c153ea20210c55f370082e1162b954e3205e7ca7de0386d0a2a2c4c6b567270",
+          "fingerprint": "6b85d7d4bc6399e3186156d2f99472141a0c260525dc0893f7f401b41ec5ac32",
           "summary": "5 acquire calls outside persistence",
           "details": {
             "count": 5,
@@ -16651,10 +16638,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/charged_queue.py:84bcaa52458b4963",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/charged_queue.py:036da8a405748180",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/auf_wallet/charged_queue.py",
-          "fingerprint": "84bcaa52458b496300194d72c88d965a7abf9ce2b24b5aa8c53883baf6fbb215",
+          "fingerprint": "036da8a40574818045b5e06981e016ba768051ec47b9d7b645ea7db376a76f08",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -16753,10 +16740,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/economics.py:16a439a1983f0b9d",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/economics.py:fcf305e82309e555",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/auf_wallet/economics.py",
-          "fingerprint": "16a439a1983f0b9d4847838b1a57fa6f989cf5cf870c5a18bceb77313a216ff6",
+          "fingerprint": "fcf305e82309e55585934ff990be8556ae5ece8d839f02d8a3a29d21797e6237",
           "summary": "2 acquire calls outside persistence",
           "details": {
             "count": 2,
@@ -16852,10 +16839,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/package_pricing.py:e3edf80c193028e5",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/package_pricing.py:21c51ccd29ad0a72",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/auf_wallet/package_pricing.py",
-          "fingerprint": "e3edf80c193028e59d03139c5d12bb26838f4e94e0ad794625dc6b5359d92a21",
+          "fingerprint": "21c51ccd29ad0a728fdcd4e51e61898578abc32ab91abef8321a924a2603816c",
           "summary": "2 acquire calls outside persistence",
           "details": {
             "count": 2,
@@ -16927,10 +16914,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:374253b817082e4b",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:f81ba6fb84bb3db8",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/auf_wallet/pricing.py",
-          "fingerprint": "374253b817082e4bd5ba783fbb4e71dfb2734ba0cc632b3195aa8cd6f0ac4437",
+          "fingerprint": "f81ba6fb84bb3db853c9c8db2a05ffef945ccf35607af0f148e4212460159b09",
           "summary": "4 acquire calls outside persistence",
           "details": {
             "count": 4,
@@ -17022,10 +17009,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/purchase.py:187ad7fa8964f44a",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/purchase.py:d3cc41288af5fd1d",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/auf_wallet/purchase.py",
-          "fingerprint": "187ad7fa8964f44ac17c597b92be275f44553345897c8f066640c3043785ee63",
+          "fingerprint": "d3cc41288af5fd1dd05d987f115053e6387d1b7a99586172e7c55320b2bf8c2e",
           "summary": "9 acquire calls outside persistence",
           "details": {
             "count": 9,
@@ -18539,10 +18526,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/media_generation/task_queue.py:0e863495475d8d3b",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/media_generation/task_queue.py:6f33519fde8df698",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/media_generation/task_queue.py",
-          "fingerprint": "0e863495475d8d3b1c508fae6af54e99d21337193143b06c88f1ab1ea936ea3e",
+          "fingerprint": "6f33519fde8df6987fab7e2984188d5bbaf668a50389bbed1f57a0b27be3c510",
           "summary": "5 acquire calls outside persistence",
           "details": {
             "count": 5,
@@ -18930,10 +18917,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/media_rework/manual.py:7bc8a11db3fa92ef",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/media_rework/manual.py:b7df0adb6e2e9ef7",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/media_rework/manual.py",
-          "fingerprint": "7bc8a11db3fa92ef5247d8560b32875a4dfd448de35d721dba367003ea374940",
+          "fingerprint": "b7df0adb6e2e9ef7a209719bcb13f91aa7f5b925dcbc99fd65a2b7c5204c7645",
           "summary": "2 acquire calls outside persistence",
           "details": {
             "count": 2,
@@ -19890,10 +19877,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/public_archive/story_catalog.py:f3beda1aece1e0da",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/public_archive/story_catalog.py:703cd2beaeeb67c2",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/public_archive/story_catalog.py",
-          "fingerprint": "f3beda1aece1e0da573fead1bae43576115fe536b73e338525fd46972accb75a",
+          "fingerprint": "703cd2beaeeb67c2b604f577e329f501a1ccda6f45f5b9eb5d3467c47a759417",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -20764,10 +20751,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/roleplay/storage.py:83f65ad47f37cd1d",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/roleplay/storage.py:025f586762ba6177",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/roleplay/storage.py",
-          "fingerprint": "83f65ad47f37cd1d70b470dfd4ae292337b8c41bf6fe86d88fc330cf138881ea",
+          "fingerprint": "025f586762ba617730494f1737788d9d26488fb3e4eb238b7b7bd8a9598ad9c5",
           "summary": "10 acquire calls outside persistence",
           "details": {
             "count": 10,
@@ -21455,11 +21442,11 @@
       "module": "velvet_bot.domains.telegram_storage.librarian_repository",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 579,
+      "loc": 569,
       "function_count": 14,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 75,
+      "max_function_length": 72,
       "branch_count": 11,
       "internal_imports": [
         "velvet_bot.database",
@@ -21707,10 +21694,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/telegram_storage/service.py:422c13a6a9566b3e",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/telegram_storage/service.py:d3b13479a63b6957",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/telegram_storage/service.py",
-          "fingerprint": "422c13a6a9566b3ebd15ed0a130b90cbe08dcec10476836826a0fab51b5cb302",
+          "fingerprint": "d3b13479a63b69571bf0bbfb1151fc8965e2edb20728dbe240e47076d19a8478",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -21843,10 +21830,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/user_registry.py:55bbc3262c884297",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/user_registry.py:dcca5619edd4e4bf",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/user_registry.py",
-          "fingerprint": "55bbc3262c8842978e9b8fbe73b3b862b200f77de2f21a914c29fa18bcbce2e9",
+          "fingerprint": "dcca5619edd4e4bfa2f4dea2de3038d2229085b611e2b9fe073cfa425d1a340a",
           "summary": "5 acquire calls outside persistence",
           "details": {
             "count": 5,
@@ -22241,10 +22228,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/vision_routing/cache.py:b7be158a1a143cce",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/vision_routing/cache.py:34245690cda804bc",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/vision_routing/cache.py",
-          "fingerprint": "b7be158a1a143cceca1c28f94f9177fd950ffc4d353dd1f5e75e4ab9ba6e40e6",
+          "fingerprint": "34245690cda804bcf0ca9961b5170b3811bc03e0658b356be8218ae44880658d",
           "summary": "3 acquire calls outside persistence",
           "details": {
             "count": 3,
@@ -22468,10 +22455,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/vision_routing/integration.py:0565fddeabd665ed",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/vision_routing/integration.py:b9a0ba05611488ab",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/vision_routing/integration.py",
-          "fingerprint": "0565fddeabd665ede66591be636761053ab2973d291ff3fae256dc719f113068",
+          "fingerprint": "b9a0ba05611488abf62d1df9eb15de5993c57c6ed0c4d128409e140d2c2d20f8",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -22753,10 +22740,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/watermark/remote_worker.py:da174b51f93b4efd",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/watermark/remote_worker.py:8edc2451c868149d",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/watermark/remote_worker.py",
-          "fingerprint": "da174b51f93b4efdc365c7483f1869a2faa91a4fc3eda6236bfb3eca31cc35de",
+          "fingerprint": "8edc2451c868149d316de145b587b5daf4b7f339bd9657de4820514d8122bf26",
           "summary": "7 acquire calls outside persistence",
           "details": {
             "count": 7,
@@ -23058,10 +23045,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/administration.py:95d1f8c5d190fbed",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/administration.py:ca02aeeb3a9fd10b",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/workspaces/administration.py",
-          "fingerprint": "95d1f8c5d190fbedf5993647e59bd09df09af8b38c45cda161c46ac838659f32",
+          "fingerprint": "ca02aeeb3a9fd10b92ead99cae7efcbb604addf663fbf953ec4d42acdd1e4d3c",
           "summary": "8 acquire calls outside persistence",
           "details": {
             "count": 8,
@@ -23146,10 +23133,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/analytics_access.py:7294bfabb94b63f0",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/analytics_access.py:5b010d0a521b0e32",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/workspaces/analytics_access.py",
-          "fingerprint": "7294bfabb94b63f0cc6fd79c5b94a4af3a68fce48c544a3cf23ee34a395005d2",
+          "fingerprint": "5b010d0a521b0e32e624040887a4a7567ca607f4f31e740fdde04c236b74df1d",
           "summary": "3 acquire calls outside persistence",
           "details": {
             "count": 3,
@@ -23231,10 +23218,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/analytics_ingest.py:4c6973198cfc3e3c",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/analytics_ingest.py:1d2fd5bba471cd2a",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/workspaces/analytics_ingest.py",
-          "fingerprint": "4c6973198cfc3e3c70fed8d1ab93d9d49917d73a14521d0860278ef071bbf624",
+          "fingerprint": "1d2fd5bba471cd2a9d688308257fb6b9b062856414ae84432df174da07e8e6a0",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -23342,10 +23329,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/character_directory.py:fb94715bdc08a8f2",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/character_directory.py:ff1e365ef3b3aa1b",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/workspaces/character_directory.py",
-          "fingerprint": "fb94715bdc08a8f23cb85ccbb4dd9a881787a2dc7e5968d97178d68eac7bde7c",
+          "fingerprint": "ff1e365ef3b3aa1ba04be0bb3514f2251b7729f31a644c02dac806a01445c57c",
           "summary": "5 acquire calls outside persistence",
           "details": {
             "count": 5,
@@ -23440,10 +23427,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/character_management.py:7df957418c083930",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/character_management.py:7ac6dcf5e2bcd7d1",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/workspaces/character_management.py",
-          "fingerprint": "7df957418c083930f41e728a5cec2ed1b84a6e8e32951216bfcfc9183cd5e671",
+          "fingerprint": "7ac6dcf5e2bcd7d126073a52344d02de06fbc5ae395684f51401be5e7c7c2078",
           "summary": "12 acquire calls outside persistence",
           "details": {
             "count": 12,
@@ -23547,10 +23534,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/character_topics.py:e8fd48a31e48c2d8",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/character_topics.py:cf031e7cbef5d6ad",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/workspaces/character_topics.py",
-          "fingerprint": "e8fd48a31e48c2d8a73bcddf77fd6c58815fd58f5ca34e21c8f13326bdf30f72",
+          "fingerprint": "cf031e7cbef5d6adaaaf796ae0a9b4bb66777c101874cb9122ac373a2fa51c99",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -23616,10 +23603,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/media_preferences.py:6b9aa66db54eee46",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/media_preferences.py:9da9eee5e7bdd928",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/workspaces/media_preferences.py",
-          "fingerprint": "6b9aa66db54eee46d3ff3f54ddd15ae26a01986669a287686cc2d714c54c1416",
+          "fingerprint": "9da9eee5e7bdd9280a2c7f597c7eac2e8fbcb0999782bce1c11c5e4ffea0dc5a",
           "summary": "2 acquire calls outside persistence",
           "details": {
             "count": 2,
@@ -23729,10 +23716,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/onboarding.py:3d4ecf2b32b54cf7",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/onboarding.py:9e95b4a0f4154a41",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/workspaces/onboarding.py",
-          "fingerprint": "3d4ecf2b32b54cf7e0dc3ba07fde2bbde495156fb0d15dc9b32ac38adf86f7ff",
+          "fingerprint": "9e95b4a0f4154a41a32aeb53cf361b00c1ab60d72af8361fa8249fe65cf32877",
           "summary": "11 acquire calls outside persistence",
           "details": {
             "count": 11,
@@ -23912,10 +23899,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/publication_access.py:cb4a1e29bb2d704e",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/publication_access.py:3375b2ef86dc6773",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/workspaces/publication_access.py",
-          "fingerprint": "cb4a1e29bb2d704e9765692eb4e0a3d99d4960e83fb56d5585c88486e2a807f7",
+          "fingerprint": "3375b2ef86dc6773db980e2e886cd01d181a73a45905d37c565d16170e7d61df",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -24038,10 +24025,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/reference_access.py:588ac68fa5070d59",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/reference_access.py:af14c5d22c8592d7",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/workspaces/reference_access.py",
-          "fingerprint": "588ac68fa5070d59b8493c06ea38f74d381d0af919bc79d8408211890a0cd029",
+          "fingerprint": "af14c5d22c8592d78e4a321ce3119c37eb9435fa6ffbdc0f4d5e7bc6d919325a",
           "summary": "2 acquire calls outside persistence",
           "details": {
             "count": 2,
@@ -24247,10 +24234,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/watermark_assets.py:d7aef2e8a7e7fa33",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/watermark_assets.py:ebc5ab4f98d267ce",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/workspaces/watermark_assets.py",
-          "fingerprint": "d7aef2e8a7e7fa3334deb2bae358686bf114ecfe11cef57ce9f58bd32c2951d9",
+          "fingerprint": "ebc5ab4f98d267cebfa2492088f2c54eb7fb571e29195f9a8b96a569fa6eb18c",
           "summary": "3 acquire calls outside persistence",
           "details": {
             "count": 3,
@@ -24320,10 +24307,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/watermark_templates.py:54fae3e0ede4aa67",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/watermark_templates.py:ba051c7ce96ab993",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/workspaces/watermark_templates.py",
-          "fingerprint": "54fae3e0ede4aa67299dd6a687c58450bf6d6acef32448fed72104f40891c542",
+          "fingerprint": "ba051c7ce96ab9936e2eb8277421d4204049cd20aa91dce211a859902c1cb602",
           "summary": "3 acquire calls outside persistence",
           "details": {
             "count": 3,
@@ -24412,10 +24399,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/error_center.py:94d6b8c0ad92fabf",
+          "id": "database-acquire-outside-persistence:velvet_bot/error_center.py:65911e89f84a1028",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/error_center.py",
-          "fingerprint": "94d6b8c0ad92fabfeccf4206dbf382bb09f31feedd3bae3cc7f8a2c97d472085",
+          "fingerprint": "65911e89f84a10287d5247760bfad602fb7d604ff03c4ffc0e729fee0c38b242",
           "summary": "9 acquire calls outside persistence",
           "details": {
             "count": 9,
@@ -26543,10 +26530,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/media_sets.py:d0c98dacf35a1fcb",
+          "id": "database-acquire-outside-persistence:velvet_bot/media_sets.py:c5a4567b0a5bcbfb",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/media_sets.py",
-          "fingerprint": "d0c98dacf35a1fcbc07a5a4ceebe6ed4aad8bca181b2cf7941cc9579bd0e0b0b",
+          "fingerprint": "c5a4567b0a5bcbfbd5d665eb5627dfe064d97ffce76f7d6384d85f42c59dfba5",
           "summary": "9 acquire calls outside persistence",
           "details": {
             "count": 9,
@@ -26699,10 +26686,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/ollama_vision.py:75a349fe702c5447",
+          "id": "database-acquire-outside-persistence:velvet_bot/ollama_vision.py:98397abb4843daef",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/ollama_vision.py",
-          "fingerprint": "75a349fe702c5447183a964df2387117d16760d199873460406a397b62827522",
+          "fingerprint": "98397abb4843daef48f87f5787eac8d8b7696ca2745d7f6fde1decdc26b50c76",
           "summary": "2 acquire calls outside persistence",
           "details": {
             "count": 2,
@@ -26990,10 +26977,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/palette_composition_reports.py:f47aacbdcddc4cb6",
+          "id": "database-acquire-outside-persistence:velvet_bot/palette_composition_reports.py:441cc1a2fde0b902",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/palette_composition_reports.py",
-          "fingerprint": "f47aacbdcddc4cb6f2cbe29a0fa4ec3652f73b93fa1db4204d136a9c36cfd338",
+          "fingerprint": "441cc1a2fde0b9024b7eb4f8331d71d9556cf1efff82f5b7c9e804432f8443ed",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -28937,10 +28924,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/archive/save.py:16b321b005b0ee97",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/archive/save.py:de617f98ec2c12a2",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/routers/archive/save.py",
-          "fingerprint": "16b321b005b0ee9721de63eb34203b05c7579a1a11ff320f28794fa7fba9c1a7",
+          "fingerprint": "de617f98ec2c12a22386f479024bd20abea30235abf61b00fd218146113c4a81",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -30418,10 +30405,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/core_operations_controllers/watermark.py:4a63b29f3505bb1b",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/core_operations_controllers/watermark.py:6355d358959a07d0",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/routers/core_operations_controllers/watermark.py",
-          "fingerprint": "4a63b29f3505bb1bbaa6485e21c001218eecff314a6eaf9b626d0327773b4ba8",
+          "fingerprint": "6355d358959a07d0ddbe92e7de4bc3a97444addbe3fccd7ee19a282f36c40d76",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -31581,12 +31568,12 @@
       "module": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_operations",
       "layer": "presentation",
       "target_package": "presentation",
-      "loc": 383,
-      "function_count": 14,
+      "loc": 465,
+      "function_count": 16,
       "class_count": 1,
-      "handler_count": 6,
-      "max_function_length": 64,
-      "branch_count": 26,
+      "handler_count": 7,
+      "max_function_length": 73,
+      "branch_count": 29,
       "internal_imports": [
         "velvet_bot.ai_job_runtime",
         "velvet_bot.ai_quality",
@@ -31630,17 +31617,17 @@
       ],
       "worker_registrations": [
         {
-          "line": 238,
+          "line": 285,
           "owner": "_show_menu",
           "call": "worker_manager.snapshot"
         },
         {
-          "line": 359,
+          "line": 441,
           "owner": "handle_quality_run",
           "call": "worker_manager.run_now"
         },
         {
-          "line": 177,
+          "line": 178,
           "owner": "build_quality_operations_menu",
           "call": "_worker_text"
         }
@@ -33454,10 +33441,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf.py:880af1a37422285a",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf.py:810dc857727fb7cd",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/routers/workspace_auf.py",
-          "fingerprint": "880af1a37422285a16affc17c7926353e7c46e7fb8799f5ab93d079c1bfb2ab9",
+          "fingerprint": "810dc857727fb7cdbc05eb9721e23af118ce9bde18e955c4c6645b40fdc1c614",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -33557,10 +33544,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_balance.py:7c679e7d98e923f3",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_balance.py:03e2ed0354c8d304",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/routers/workspace_auf_balance.py",
-          "fingerprint": "7c679e7d98e923f32bc1bac786fe0ff7f7cc759bf4f4f5519dd0d93c93019721",
+          "fingerprint": "03e2ed0354c8d304e94adc853d64d4025af113281e7d31a8a16997f3655c3d99",
           "summary": "5 acquire calls outside persistence",
           "details": {
             "count": 5,
@@ -33772,10 +33759,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:f8715b2ab9fb49f5",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:8e002641a39fc608",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/routers/workspace_auf_photo.py",
-          "fingerprint": "f8715b2ab9fb49f538babcedbd4ef09ad285ebecb2caf507a8a8a1a8b9dd8cfb",
+          "fingerprint": "8e002641a39fc608982c21df904e2d1b0e4e656e1acc689e4ac827a79dcbdb51",
           "summary": "5 acquire calls outside persistence",
           "details": {
             "count": 5,
@@ -34103,10 +34090,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_video.py:880af1a37422285a",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_video.py:810dc857727fb7cd",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/routers/workspace_auf_video.py",
-          "fingerprint": "880af1a37422285a16affc17c7926353e7c46e7fb8799f5ab93d079c1bfb2ab9",
+          "fingerprint": "810dc857727fb7cdbc05eb9721e23af118ce9bde18e955c4c6645b40fdc1c614",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -34195,10 +34182,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:ea889cf94b297b1e",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:636d174f57897ecb",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py",
-          "fingerprint": "ea889cf94b297b1e07828c72a0315d594e8cb8b33e1490fb86f908f5dbd1e940",
+          "fingerprint": "636d174f57897ecb1516e3442cf3fed4cd36474d8d202ed3fe40cc040612029a",
           "summary": "2 acquire calls outside persistence",
           "details": {
             "count": 2,
@@ -34331,10 +34318,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_character_management.py:9109b0c0eddb3f0e",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_character_management.py:080162e66f62e43d",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/routers/workspace_character_management.py",
-          "fingerprint": "9109b0c0eddb3f0e3b90937685fe503ba1b18dbfc7a7f032883a1ca909b778ff",
+          "fingerprint": "080162e66f62e43d6d5d46f971add4dfc601f17b8797c3794505485473379f13",
           "summary": "2 acquire calls outside persistence",
           "details": {
             "count": 2,
@@ -34427,10 +34414,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_character_pickers.py:c9903d77dc436b28",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_character_pickers.py:f7bf56af24f0ce92",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/routers/workspace_character_pickers.py",
-          "fingerprint": "c9903d77dc436b28cfe77554652e12a655b107b61437a4fd0c7453fa7703b6fc",
+          "fingerprint": "f7bf56af24f0ce9269d28447b251c622b21b1ac139ff9b1e8fec66db888df485",
           "summary": "6 acquire calls outside persistence",
           "details": {
             "count": 6,
@@ -34519,10 +34506,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_character_topic_creation.py:211455d1d4262d46",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_character_topic_creation.py:c7e91f16f470c762",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/routers/workspace_character_topic_creation.py",
-          "fingerprint": "211455d1d4262d466138929049b6e107b4c46eefe5e8c012139a00fb9a791773",
+          "fingerprint": "c7e91f16f470c762da3b32b3bd370ec8ec9929b6cd2148520addd69f6144fe0c",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -35368,10 +35355,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_owner_controls.py:def5993693e3dd3e",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_owner_controls.py:8fd06eab6e7fe2e1",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
-          "fingerprint": "def5993693e3dd3e69f86a6d722cfe7e597315822921a2f359dd7de385356e5e",
+          "fingerprint": "8fd06eab6e7fe2e1f5f67877f5a9b2f904adc8ebc07c93044ebcc4e65c59ff7c",
           "summary": "3 acquire calls outside persistence",
           "details": {
             "count": 3,
@@ -35674,10 +35661,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_taxonomy_admin.py:70b013d67271b43c",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_taxonomy_admin.py:b5a09aa068bee445",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/routers/workspace_taxonomy_admin.py",
-          "fingerprint": "70b013d67271b43c63273f80ba994045514da93ea2588daca3d5fdcb23041b09",
+          "fingerprint": "b5a09aa068bee4452d6fd5030f5e877bf17fd8e3ea3645fa826526734aea739d",
           "summary": "5 acquire calls outside persistence",
           "details": {
             "count": 5,
@@ -35767,10 +35754,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_team.py:02233bf77576dea9",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_team.py:9376c3eee4774933",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/routers/workspace_team.py",
-          "fingerprint": "02233bf77576dea98463bb58e5936f866fab95e325399464cb2adb14f16a56e9",
+          "fingerprint": "9376c3eee477493358b2cf065e4fff70a973ebc0b42979b86bd82f9bd08c874f",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -35851,10 +35838,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_watermark.py:02233bf77576dea9",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_watermark.py:9376c3eee4774933",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/routers/workspace_watermark.py",
-          "fingerprint": "02233bf77576dea98463bb58e5936f866fab95e325399464cb2adb14f16a56e9",
+          "fingerprint": "9376c3eee477493358b2cf065e4fff70a973ebc0b42979b86bd82f9bd08c874f",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -35971,10 +35958,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_watermark_templates.py:be219f8fb8f3870c",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_watermark_templates.py:4b00dc34b7b87e0b",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/routers/workspace_watermark_templates.py",
-          "fingerprint": "be219f8fb8f3870cfa1eec97f471580b988cb7a554cd57d883a6dffbbd6ab77f",
+          "fingerprint": "4b00dc34b7b87e0b829fb7fea535e7a295ca584f5d4362d6e7b4ee8ed02a8e68",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -36541,10 +36528,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/storage_center.py:81dbf0f9a60f60b4",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/storage_center.py:7607a2cbbd087a41",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/storage_center.py",
-          "fingerprint": "81dbf0f9a60f60b4bd57fd183a080f7b772e960c4628dded7fdb348d922da91c",
+          "fingerprint": "7607a2cbbd087a413d02e55c6629471f3b056b2abaa47db617a843d0abc99ab8",
           "summary": "2 acquire calls outside persistence",
           "details": {
             "count": 2,
@@ -37036,10 +37023,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/workspace_archive_dashboard.py:7d7d34269e050c4a",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/workspace_archive_dashboard.py:c8e81d88253c54ad",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/workspace_archive_dashboard.py",
-          "fingerprint": "7d7d34269e050c4ab435417ddcbf83a275d859fcb815ee7e01dcda9163183d6f",
+          "fingerprint": "c8e81d88253c54ad240f551d08a236e25fddec35ba4e5b865dafa78cf7bacaa4",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -37443,10 +37430,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/workspace_deletion_controller.py:c43ee3cce1550ed3",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/workspace_deletion_controller.py:c3ed7193b0760162",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/workspace_deletion_controller.py",
-          "fingerprint": "c43ee3cce1550ed3d2aa91ae642a40a06e992790f29398c0105eb949b0edddae",
+          "fingerprint": "c3ed7193b0760162d90f55e300534fcf9ac0e49252236997987b1e6fc1879c93",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -37858,10 +37845,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/workspace_reference_dashboard.py:ef0e1f62557963c8",
+          "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/workspace_reference_dashboard.py:3d84f03c2d22fc10",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/presentation/telegram/workspace_reference_dashboard.py",
-          "fingerprint": "ef0e1f62557963c88f2147e35a7c11f6da28072c077f32818174dba9aa27b5ee",
+          "fingerprint": "3d84f03c2d22fc10657d56944303106c12ad0f902f72ceee0ebaa05e6135d9e2",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -38091,10 +38078,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/prompt_result_reports.py:f47aacbdcddc4cb6",
+          "id": "database-acquire-outside-persistence:velvet_bot/prompt_result_reports.py:441cc1a2fde0b902",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/prompt_result_reports.py",
-          "fingerprint": "f47aacbdcddc4cb6f2cbe29a0fa4ec3652f73b93fa1db4204d136a9c36cfd338",
+          "fingerprint": "441cc1a2fde0b9024b7eb4f8331d71d9556cf1efff82f5b7c9e804432f8443ed",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -38301,10 +38288,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/public_catalog.py:f833b91ad6ef249e",
+          "id": "database-acquire-outside-persistence:velvet_bot/public_catalog.py:7c8ba522c67429a4",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/public_catalog.py",
-          "fingerprint": "f833b91ad6ef249ec1ffb912fdb55582abaa6801ec0287aa6e3a9a9feddd7557",
+          "fingerprint": "7c8ba522c67429a441dbe397c9502a5fd23e2ee3d3ee7a4c6d896cf3ab26b83b",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -38375,10 +38362,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/public_directory.py:1f72da18985282b6",
+          "id": "database-acquire-outside-persistence:velvet_bot/public_directory.py:e542c8238aba8658",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/public_directory.py",
-          "fingerprint": "1f72da18985282b668f97e2e266b12f3ed0110ebdea2c36571742f8a213bb8cb",
+          "fingerprint": "e542c8238aba86585b9045d4de42c139e738ef220b850a310528626e3b36fd9b",
           "summary": "4 acquire calls outside persistence",
           "details": {
             "count": 4,
@@ -38520,10 +38507,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/public_media_lookup.py:71a1d22abdf1f598",
+          "id": "database-acquire-outside-persistence:velvet_bot/public_media_lookup.py:286f4a4a73d0b393",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/public_media_lookup.py",
-          "fingerprint": "71a1d22abdf1f5983ae7c4a49feb01495fe44958216d29563a00bc6a81f3dc9b",
+          "fingerprint": "286f4a4a73d0b393fd283f317351ec3a6162c1aa1c70ebe74377d1fb121460bf",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -38951,10 +38938,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/quality_audit.py:4c82fce9f720a393",
+          "id": "database-acquire-outside-persistence:velvet_bot/quality_audit.py:a81887f0a0c6c4a3",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/quality_audit.py",
-          "fingerprint": "4c82fce9f720a393f7a2bd1033acb5b8239a2dc5a695875b46f948ead5980e17",
+          "fingerprint": "a81887f0a0c6c4a33fd2189951c6d6d2184baa28fa8152b7f5ed637a532c45ea",
           "summary": "5 acquire calls outside persistence",
           "details": {
             "count": 5,
@@ -39023,10 +39010,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/quality_calibration.py:1cd3378e8fa72b88",
+          "id": "database-acquire-outside-persistence:velvet_bot/quality_calibration.py:3ec80d4bf2f47dbf",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/quality_calibration.py",
-          "fingerprint": "1cd3378e8fa72b880109b4a457df60877d952be51f7776dc18e51a18ef00e000",
+          "fingerprint": "3ec80d4bf2f47dbf386b8f294dd6d440cdaa0bbea9ed573a8bf520bc7a947bcd",
           "summary": "3 acquire calls outside persistence",
           "details": {
             "count": 3,
@@ -39198,18 +39185,18 @@
       "module": "velvet_bot.quality_operations",
       "layer": "root",
       "target_package": "application/<bounded-use-case>",
-      "loc": 102,
-      "function_count": 4,
-      "class_count": 1,
+      "loc": 279,
+      "function_count": 8,
+      "class_count": 2,
       "handler_count": 0,
-      "max_function_length": 44,
-      "branch_count": 1,
+      "max_function_length": 37,
+      "branch_count": 3,
       "internal_imports": [
         "velvet_bot.database"
       ],
-      "external_import_count": 1,
+      "external_import_count": 3,
       "aiogram_imports": [],
-      "sql_literal_count": 3,
+      "sql_literal_count": 2,
       "database_acquire_count": 2,
       "foreign_assignment_targets": [],
       "dynamic_import_count": 0,
@@ -39226,28 +39213,26 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "sql-outside-persistence:velvet_bot/quality_operations.py:9779d0f8ec2c8768",
+          "id": "sql-outside-persistence:velvet_bot/quality_operations.py:c338a93ad0a2ff27",
           "category": "sql-outside-persistence",
           "path": "velvet_bot/quality_operations.py",
-          "fingerprint": "9779d0f8ec2c8768c8ae182f9d1a8d4f487f8d7e9ca9aaeea7c32a584f4a5f0b",
-          "summary": "3 SQL literals outside persistence",
+          "fingerprint": "c338a93ad0a2ff279e22e9f6ad838f0205245f29723f327d9f14e21a53ddd193",
+          "summary": "2 SQL literals outside persistence",
           "details": {
-            "count": 3,
+            "count": 2,
             "keywords": [
-              "SELECT",
-              "UPDATE"
+              "SELECT"
             ],
             "owners": [
-              "enqueue_recent",
-              "retry_errors"
+              "<module>"
             ]
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/quality_operations.py:d0db06e6e1dabdc4",
+          "id": "database-acquire-outside-persistence:velvet_bot/quality_operations.py:8e143539a87dcfa6",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/quality_operations.py",
-          "fingerprint": "d0db06e6e1dabdc493cf437dee300d6e2144221322aeb732e0c782af5acfea57",
+          "fingerprint": "8e143539a87dcfa6586f934c332ac8105ebf26883c8beba135e8c81305528b4d",
           "summary": "2 acquire calls outside persistence",
           "details": {
             "count": 2,
@@ -39255,8 +39240,8 @@
               "self._database.acquire"
             ],
             "owners": [
-              "enqueue_recent",
-              "retry_errors"
+              "_create_plan",
+              "start_plan"
             ]
           }
         }
@@ -39393,10 +39378,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/quality_set_audit_compat.py:a6727ccb96e00668",
+          "id": "database-acquire-outside-persistence:velvet_bot/quality_set_audit_compat.py:f8da1789f869f790",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/quality_set_audit_compat.py",
-          "fingerprint": "a6727ccb96e0066845e63cb8b1ff2b752d9071ba476ea1cda6a4d9e9816ce62e",
+          "fingerprint": "f8da1789f869f790a41e645c283f203cca202da99147935ffb7c03684fe3f951",
           "summary": "2 acquire calls outside persistence",
           "details": {
             "count": 2,
@@ -39595,10 +39580,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/reference_comparison_reports.py:f47aacbdcddc4cb6",
+          "id": "database-acquire-outside-persistence:velvet_bot/reference_comparison_reports.py:441cc1a2fde0b902",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/reference_comparison_reports.py",
-          "fingerprint": "f47aacbdcddc4cb6f2cbe29a0fa4ec3652f73b93fa1db4204d136a9c36cfd338",
+          "fingerprint": "441cc1a2fde0b9024b7eb4f8331d71d9556cf1efff82f5b7c9e804432f8443ed",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -39809,10 +39794,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/resilient_ai_quality.py:5c0ebb8008e54187",
+          "id": "database-acquire-outside-persistence:velvet_bot/resilient_ai_quality.py:b58ee315355f5de1",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/resilient_ai_quality.py",
-          "fingerprint": "5c0ebb8008e54187bf1e450b90d661adebf8113629ade6fb928f80f74d7f4ac0",
+          "fingerprint": "b58ee315355f5de12e28cdafd4f19f04b30ce86aca20e5e5eb0a13fca7cc249c",
           "summary": "3 acquire calls outside persistence",
           "details": {
             "count": 3,
@@ -39883,10 +39868,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/resilient_ai_vision.py:5c0ebb8008e54187",
+          "id": "database-acquire-outside-persistence:velvet_bot/resilient_ai_vision.py:b58ee315355f5de1",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/resilient_ai_vision.py",
-          "fingerprint": "5c0ebb8008e54187bf1e450b90d661adebf8113629ade6fb928f80f74d7f4ac0",
+          "fingerprint": "b58ee315355f5de12e28cdafd4f19f04b30ce86aca20e5e5eb0a13fca7cc249c",
           "summary": "3 acquire calls outside persistence",
           "details": {
             "count": 3,
@@ -40044,10 +40029,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/runtime_stability.py:f27f02b7df2e53e3",
+          "id": "database-acquire-outside-persistence:velvet_bot/runtime_stability.py:4aff8ceaa4bbdc2f",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/runtime_stability.py",
-          "fingerprint": "f27f02b7df2e53e31d52d3abc861d1caa070b28895929bb1c5dc872d146dcd42",
+          "fingerprint": "4aff8ceaa4bbdc2f674565b515a05fae3cd2a4fab927f0477c95af57260bccb9",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
@@ -40801,10 +40786,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/telegram_export_import.py:cdc1bc36ccafd29d",
+          "id": "database-acquire-outside-persistence:velvet_bot/telegram_export_import.py:e9c8531061d3b723",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/telegram_export_import.py",
-          "fingerprint": "cdc1bc36ccafd29dfe38151f55e9d2313d13a3f27d610dc5365615d742a062df",
+          "fingerprint": "e9c8531061d3b723db62920c52daba410bd60e79f3557e7fa78fdd97fb1675c5",
           "summary": "4 acquire calls outside persistence",
           "details": {
             "count": 4,
@@ -41005,10 +40990,10 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/velvet_formatting_reports.py:f47aacbdcddc4cb6",
+          "id": "database-acquire-outside-persistence:velvet_bot/velvet_formatting_reports.py:441cc1a2fde0b902",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/velvet_formatting_reports.py",
-          "fingerprint": "f47aacbdcddc4cb6f2cbe29a0fa4ec3652f73b93fa1db4204d136a9c36cfd338",
+          "fingerprint": "441cc1a2fde0b9024b7eb4f8331d71d9556cf1efff82f5b7c9e804432f8443ed",
           "summary": "1 acquire calls outside persistence",
           "details": {
             "count": 1,
