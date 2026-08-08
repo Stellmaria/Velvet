@@ -29,7 +29,6 @@ from velvet_bot.infrastructure.ai.storage_librarian_ollama import (
 from velvet_bot.infrastructure.telegram.arthur_storage_gateway import (
     ArthurStorageGatewayClient,
 )
-from velvet_bot.local_ai_runtime import set_storage_librarian_archive_phase_enabled
 
 logger = logging.getLogger(__name__)
 _ARCHIVE_BATCH_SIZE = 1
@@ -210,52 +209,55 @@ class ArthurLibrarianApplication:
     async def _archive_loop(self, stop_event: asyncio.Event) -> None:
         service = self._service()
         try:
-            while not stop_event.is_set():
-                try:
-                    queued = await self.repository.enqueue_pending(
-                        settings=self.librarian_settings,
-                        limit=_ARCHIVE_BATCH_SIZE,
-                    )
-                    if stop_event.is_set():
-                        break
-                    async with self._analysis_lock:
+            async with self.repository.full_archive_phase():
+                while not stop_event.is_set():
+                    try:
+                        queued = await self.repository.enqueue_pending(
+                            settings=self.librarian_settings,
+                            limit=_ARCHIVE_BATCH_SIZE,
+                        )
                         if stop_event.is_set():
                             break
-                        processed = await service.process_once(auto_enqueue=False)
-                    self._archive_last_error = None
-                    if queued or processed:
-                        logger.info(
-                            "Arthur archive cycle queued=%s processed=%s analyzer=%s",
-                            queued,
-                            processed,
-                            self.librarian_settings.analyzer_version,
+                        async with self._analysis_lock:
+                            if stop_event.is_set():
+                                break
+                            processed = await service.process_once(auto_enqueue=False)
+                        self._archive_last_error = None
+                        if queued or processed:
+                            logger.info(
+                                "Arthur archive cycle queued=%s processed=%s analyzer=%s",
+                                queued,
+                                processed,
+                                self.librarian_settings.analyzer_version,
+                            )
+                    except asyncio.CancelledError:
+                        raise
+                    except (
+                        StorageLibrarianError,
+                        asyncpg.PostgresError,
+                        aiohttp.ClientError,
+                        OSError,
+                        ValueError,
+                        TimeoutError,
+                    ) as error:
+                        self._archive_last_error = str(error)[:1200] or type(error).__name__
+                        logger.warning("Arthur archive cycle failed: %s", error)
+                    if stop_event.is_set():
+                        break
+                    try:
+                        await asyncio.wait_for(
+                            stop_event.wait(),
+                            timeout=self.librarian_settings.scan_interval_seconds,
                         )
-                except asyncio.CancelledError:
-                    raise
-                except (
-                    StorageLibrarianError,
-                    asyncpg.PostgresError,
-                    aiohttp.ClientError,
-                    OSError,
-                    ValueError,
-                    TimeoutError,
-                ) as error:
-                    self._archive_last_error = str(error)[:1200] or type(error).__name__
-                    logger.warning("Arthur archive cycle failed: %s", error)
-                if stop_event.is_set():
-                    break
-                try:
-                    await asyncio.wait_for(
-                        stop_event.wait(),
-                        timeout=self.librarian_settings.scan_interval_seconds,
-                    )
-                except TimeoutError:
-                    pass
+                    except TimeoutError:
+                        pass
+        except StorageLibrarianError as error:
+            self._archive_last_error = str(error)[:1200] or type(error).__name__
+            logger.warning("Arthur archive phase failed: %s", error)
         finally:
             async with self._archive_control_lock:
                 if self._archive_task is asyncio.current_task():
                     self._archive_task = None
-                    set_storage_librarian_archive_phase_enabled(False)
 
     async def start_archive(self) -> bool:
         if not self.librarian_settings.enabled:
@@ -271,7 +273,6 @@ class ArthurLibrarianApplication:
                 self._archive_loop(stop_event),
                 name="arthur-full-archive",
             )
-            set_storage_librarian_archive_phase_enabled(True)
             return True
 
     async def stop_archive(self) -> bool:
