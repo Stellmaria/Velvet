@@ -33,15 +33,22 @@ class QualityCallbackAcknowledgmentTests(unittest.TestCase):
             "await _show_section(",
         )
 
-    def test_queue_callbacks_ack_before_menu_reload(self) -> None:
+    def test_queue_plan_callbacks_ack_before_plan_render(self) -> None:
         self.assert_ack_between(
             quality_operations.handle_quality_recent,
-            "await QualityOperationsRepository(database).enqueue_recent(",
-            "await _show_menu(",
+            "await QualityOperationsRepository(database).plan_recent(",
+            "await safe_edit_message_text(",
         )
         self.assert_ack_between(
             quality_operations.handle_quality_retry_errors,
-            "await QualityOperationsRepository(database).retry_errors(",
+            "await QualityOperationsRepository(database).plan_errors(",
+            "await safe_edit_message_text(",
+        )
+
+    def test_plan_start_ack_precedes_menu_reload(self) -> None:
+        self.assert_ack_between(
+            quality_operations.handle_quality_plan_start,
+            "await QualityOperationsRepository(database).start_plan(",
             "await _show_menu(",
         )
 
