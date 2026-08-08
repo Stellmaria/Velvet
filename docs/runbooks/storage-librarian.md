@@ -91,14 +91,20 @@ STORAGE_LIBRARIAN_ALLOWED_KINDS=diagnostics,exports,codex,releases,rework,inbox
 STORAGE_LIBRARIAN_ANALYZER_VERSION=velvet-librarian:qwen3-4b-text:v4
 STORAGE_LIBRARIAN_SCAN_INTERVAL_SECONDS=300
 STORAGE_LIBRARIAN_POLL_INTERVAL_SECONDS=2
-STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS=180
+STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS=720
 STORAGE_LIBRARIAN_MAX_OBJECT_BYTES=12582912
 # STORAGE_LIBRARIAN_MAX_TEXT_CHARS=11520
 STORAGE_LIBRARIAN_MAX_ZIP_ENTRIES=40
 STORAGE_LIBRARIAN_MAX_ATTEMPTS=3
 ```
 
-`STORAGE_LIBRARIAN_MAX_TEXT_CHARS` намеренно является необязательным tighter cap. Если переменная не задана, приложение вычисляет безопасный source-envelope limit из `STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH` и `STORAGE_LIBRARIAN_TEXT_MAX_OUTPUT_TOKENS`. Для стандартных `8192/384` лимит равен `11520`: из context резервируются output и `1024` токена system/schema overhead, применяется консервативная оценка `2 chars/token`, затем ещё `2048` символов резервируются под analysis wrapper. Явный меньший override сохраняется как tighter cap. Legacy завышенное значение, включая ранее использовавшееся `120000`, безопасно ограничивается derived limit, поэтому rollout не требует предварительной ручной правки production env. Oversized source envelope завершается terminal error до HTTP: chunking пока не реализован, silent truncation запрещён.
+`STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS` имеет effective CPU floor `720` секунд. Более низкий legacy override безопасно поднимается до floor в application settings, а большее значение до `1800` секунд сохраняется. Это нужно потому, что timeout покрывает весь Ollama request wall-clock, включая prompt evaluation, generation и ожидание локального single slot.
+
+`STORAGE_LIBRARIAN_MAX_TEXT_CHARS` намеренно является необязательным tighter cap. Если переменная не задана, приложение вычисляет безопасный source-envelope limit из `STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH` и `STORAGE_LIBRARIAN_TEXT_MAX_OUTPUT_TOKENS`. Для стандартных `8192/384` single-shot limit равен `11520`: из context резервируются output и `1024` токена system/schema overhead, применяется консервативная оценка `2 chars/token`, затем ещё `2048` символов резервируются под analysis wrapper. Явный меньший override сохраняется как tighter cap. Legacy завышенное значение, включая ранее использовавшееся `120000`, безопасно ограничивается derived limit.
+
+Source больше single-shot limit обрабатывается bounded hierarchical path. Исходный текст делится на детерминированные contiguous chunks без потери символов; каждый chunk последовательно анализируется тем же local Ollama client, после чего выполняется одна bounded synthesis по ordered chunk summaries. По умолчанию допускается до `12` chunks и до `13` inference calls на объект. Chunk wrapper резервирует `512` символов, поэтому для canonical `8192/384` theoretical hard source cap равен `(11520 - 512) * 12 = 132096` символов. Значение `STORAGE_LIBRARIAN_MAX_CHUNK_SOURCE_CHARS` может только дополнительно уменьшить этот предел. Source выше hard cap завершается terminal error до inference; silent truncation запрещён.
+
+Все supported Storage worker paths используют один PostgreSQL transaction advisory claim gate. Пока любой `telegram_storage_analysis_jobs` row имеет status `running`, другой main/AFK/Arthur claimant не переводит следующий queued job в `running`. Advisory lock удерживается только на время claim transaction, а не во время inference; orphaned `running` row освобождается существующим stale-recovery path. Это не меняет `STORAGE_LIBRARIAN_AUTO_ENQUEUE=false` для Arthur и не добавляет cloud fallback.
 
 Generic `HERMES_BASE_URL`/`HERMES_API_KEY` принадлежат Каэлю и incident/Supervisor-интеграции. Storage Librarian использует dedicated variables и не должен подменять основной Hermes endpoint.
 
