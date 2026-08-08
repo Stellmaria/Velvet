@@ -92,7 +92,7 @@ PR #709 добавил fail-closed `AI_QUALITY_ENABLED=false`, а PR #712 огр
 - package architecture baseline пересобран на изменённом root persistence slice без добавления новой debt category;
 - generated Telegram navigation inventory пересобран после новых plan/start кнопок;
 - generated P2 stability inventory пересобран после нового callback handler;
-- backup restore drill уже проходил на migration slice до финального docs-only refresh;
+- backup restore drill проходил на migration slice;
 - required CI должен быть зелёным на финальном owner-authored head до merge.
 
 ### PR и commit
@@ -101,6 +101,7 @@ PR #709 добавил fail-closed `AI_QUALITY_ENABLED=false`, а PR #712 огр
 - branch: `feat/vl-quality-owner-queue`;
 - generated inventory refresh source head: `2b6968730391c896fa8b6a5542e75095fa8934d1`;
 - generated inventory commit: `deb15fe800957825abbfedeb3005cf6aebdd1505`;
+- final package architecture refresh commit: `bb64cd3b79f11fb46311b7dfc7edda492dfda8a0`;
 - merge SHA будет добавлен GitHub после зелёного CI/merge.
 
 ### Незавершённое
