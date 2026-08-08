@@ -25,6 +25,10 @@ jobs:
       - name: Regenerate canonical inventories
         run: |
           set -Eeuo pipefail
+          python scripts/shared_contract_inventory.py \
+            --write-json docs/shared_contract_inventory.json \
+            --write-markdown docs/shared_contract_inventory.md \
+            --check
           python scripts/inventory_repository_layout.py \
             --write \
             --label p3e-repository-layout-complete
@@ -40,6 +44,8 @@ jobs:
           if-no-files-found: error
           retention-days: 1
           path: |
+            docs/shared_contract_inventory.json
+            docs/shared_contract_inventory.md
             docs/repository_layout_inventory.json
             docs/repository_layout_inventory.md
             docs/package_architecture_inventory.json
