@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from functools import partial
@@ -15,8 +16,9 @@ from velvet_bot.core.ai_budget import AIBudgetScope
 from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
 from velvet_bot.domains.ai_usage import AITaskQueueService, AIUsageService
-from velvet_bot.domains.local_inference_priority import (
-    storage_librarian_full_archive_has_priority,
+from velvet_bot.domains.telegram_storage.librarian_models import StorageLibrarianSettings
+from velvet_bot.domains.telegram_storage.librarian_repository import (
+    StorageLibrarianRepository,
 )
 from velvet_bot.domains.vision_batches.service import VISION_BATCH_TASK_TYPE
 from velvet_bot.domains.vision_batches.store import VisionBatchRepository
@@ -36,6 +38,48 @@ from velvet_bot.workers.adaptive import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _env_enabled(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name, "").strip().casefold()
+    if not raw:
+        return default
+    return raw in {"1", "true", "yes", "on", "да"}
+
+
+async def storage_librarian_full_archive_has_priority(database: Database) -> bool:
+    """Keep automatic VL behind the explicitly enabled Arthur full-archive phase."""
+
+    if not _env_enabled("STORAGE_LIBRARIAN_AUTO_ENQUEUE", False):
+        return False
+    if not _env_enabled("STORAGE_LIBRARIAN_AUTO_BACKFILL", False):
+        return False
+
+    try:
+        settings = StorageLibrarianSettings.from_env()
+    except ValueError as error:
+        logger.error(
+            "Storage Librarian priority gate failed closed on invalid configuration: %s",
+            error,
+        )
+        return True
+    if not settings.enabled:
+        return False
+    if not settings.allowed_kinds:
+        logger.error("Storage Librarian priority gate failed closed: empty allowed_kinds")
+        return True
+
+    repository = StorageLibrarianRepository(database)
+    counts = await repository.counts()
+    if counts.get("running", 0) > 0 or counts.get("queued", 0) > 0:
+        return True
+
+    # Probe the exact existing full-archive eligibility query with a hard limit of
+    # one. If work remains, queue exactly one Arthur item and keep VL closed. The
+    # next gate iteration sees that queued/running item and cannot grow the queue
+    # during the Librarian scheduler's idle interval.
+    enqueued = await repository.enqueue_pending(settings=settings, limit=1)
+    return enqueued > 0
 
 
 class TargetedVisionService(CascadeMediaAIVisionService):
