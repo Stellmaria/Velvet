@@ -1,0 +1,105 @@
+name: deploy production vision gateway
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type DEPLOY_VISION_GATEWAY to update only production vision-gateway"
+        required: true
+        type: string
+      source_commit:
+        description: "Exact current main commit recorded in gateway image provenance"
+        required: true
+        type: string
+      image_digest:
+        description: "Verified GHCR image: ghcr.io/stellmaria/velvet-vision-gateway@sha256:<64 hex>"
+        required: true
+        type: string
+
+concurrency:
+  group: velvet-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-vision-gateway:
+    if: github.ref == 'refs/heads/main' && inputs.confirmation == 'DEPLOY_VISION_GATEWAY'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - name: Checkout exact control plane
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate immutable gateway deployment request
+        shell: bash
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          IMAGE_DIGEST: ${{ inputs.image_digest }}
+        run: |
+          set -Eeuo pipefail
+          source_commit="${SOURCE_COMMIT,,}"
+          image_digest="${IMAGE_DIGEST,,}"
+          if [[ ! "$source_commit" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "source_commit must be an exact 40-character SHA" >&2
+            exit 2
+          fi
+          if [[ "$source_commit" != "${GITHUB_SHA,,}" ]]; then
+            echo "source_commit must equal the main commit executing this workflow" >&2
+            exit 2
+          fi
+          if [[ ! "$image_digest" =~ ^ghcr\.io/stellmaria/velvet-vision-gateway@sha256:[0-9a-f]{64}$ ]]; then
+            echo "image_digest must be the immutable verified vision gateway reference" >&2
+            exit 2
+          fi
+
+      - name: Validate required production secrets
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+
+      - name: Configure SSH
+        shell: bash
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy verified gateway without restarting bot or runtime
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          IMAGE_DIGEST: ${{ inputs.image_digest }}
+        run: |
+          set -Eeuo pipefail
+          port="${DEPLOY_PORT:-22}"
+          app_dir="${DEPLOY_APP_DIR:-/srv/velvet}"
+          printf -v remote_command \
+            'VELVET_APP_DIR=%q VELVET_GATEWAY_SOURCE_COMMIT=%q VELVET_GATEWAY_IMAGE=%q bash -s' \
+            "$app_dir" "$SOURCE_COMMIT" "$IMAGE_DIGEST"
+          ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command" \
+            < deploy/server/deploy-vision-gateway.sh
