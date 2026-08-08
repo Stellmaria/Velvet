@@ -6,7 +6,7 @@
 - Статус: `завершено`
 - Ветка: `feat/codex-recovery-notification`
 - Базовый commit: `8b160db820592c36f51da491b0525754f6954bdf`
-- Синхронизированный main перед финальным CI: `42bd97eedd0807befb92cfcd56cd231e9cc51567`
+- Синхронизированный main перед финальным CI: `f0223d62a5b9039fa92c7d50929418d92fdf2f43`
 
 ## Перед началом
 
@@ -66,6 +66,7 @@ SQL migrations отсутствуют. Формат `/opt/codex-runs/codex-avail
 - Startup false-positive smoke: `NO_STARTUP_FALSE_POSITIVE_OK`.
 - Probe-error smoke: `PROBE_ERROR_NO_NOTIFY_OK`.
 - Delivery failure smoke: dedupe marker сохраняется до Telegram send и restart не повторяет claimed event.
+- После sync с `main=f0223d62a5b9039fa92c7d50929418d92fdf2f43` package architecture inventory регенерируется повторно на exact post-merge tree; старый pre-merge generated snapshot не считается финальным.
 - Полный protected CI должен подтвердить final PR head перед merge.
 
 ### PR и commit
