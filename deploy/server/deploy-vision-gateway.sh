@@ -164,6 +164,7 @@ test "$(docker inspect --format '{{.State.Running}}' "$runtime_cid_before")" = t
 
 old_gateway_image_id="$(docker inspect --format '{{.Image}}' "$gateway_cid_before")"
 old_gateway_image_ref="$(docker inspect --format '{{.Config.Image}}' "$gateway_cid_before")"
+echo "Current vision gateway image: $old_gateway_image_ref"
 if [[ "$old_gateway_image_id" == "$new_gateway_image_id" ]]; then
   echo "Vision gateway already runs the requested image: $IMAGE_DIGEST"
   exit 0
