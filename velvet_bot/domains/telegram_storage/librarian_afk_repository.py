@@ -66,7 +66,7 @@ class StorageLibrarianAfkRepository(StorageLibrarianRepository):
         self._min_object_id = cutoff
 
     async def claim_next(self, worker_id: str) -> LibrarianJob | None:
-        return await self._claim_next(
+        return await self.claim_matching(
             worker_id,
             min_object_id=self._min_object_id,
         )
