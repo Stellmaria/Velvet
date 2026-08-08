@@ -21,10 +21,16 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Compare full and fast package inventories
+      - name: Use CI Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+
+      - name: Compare full and fast package inventories on CI Python
         shell: bash
         run: |
           set -euo pipefail
+          python --version
           python scripts/inventory_package_architecture.py --json --label p1-package-architecture-baseline > /tmp/full.json
           python scripts/inventory_package_architecture_fast.py --json --label p1-package-architecture-baseline > /tmp/fast.json
           python - <<'PY'
@@ -33,6 +39,7 @@ jobs:
 
           full = json.loads(Path('/tmp/full.json').read_text(encoding='utf-8'))
           fast = json.loads(Path('/tmp/fast.json').read_text(encoding='utf-8'))
+          stored = json.loads(Path('docs/package_architecture_inventory.json').read_text(encoding='utf-8'))
 
           def first_diff(a, b, path='$'):
               if type(a) is not type(b):
@@ -57,22 +64,18 @@ jobs:
                   return path, a, b
               return None
 
-          diff = first_diff(full, fast)
-          print(f'full_equals_fast={diff is None}')
-          if diff is not None:
-              path, left, right = diff
-              print(f'first_diff_path={path}')
-              print(f'full_value={left!r}')
-              print(f'fast_value={right!r}')
-
-          stored = json.loads(Path('docs/package_architecture_inventory.json').read_text(encoding='utf-8'))
-          stored_diff = first_diff(stored, fast)
-          print(f'stored_equals_fast={stored_diff is None}')
-          if stored_diff is not None:
-              path, left, right = stored_diff
-              print(f'stored_fast_diff_path={path}')
-              print(f'stored_value={left!r}')
-              print(f'fast_value={right!r}')
+          for label, left, right in (
+              ('full_fast', full, fast),
+              ('stored_full', stored, full),
+              ('stored_fast', stored, fast),
+          ):
+              diff = first_diff(left, right)
+              print(f'{label}_equal={diff is None}')
+              if diff is not None:
+                  path, a, b = diff
+                  print(f'{label}_first_diff_path={path}')
+                  print(f'{label}_left={a!r}')
+                  print(f'{label}_right={b!r}')
           PY
 
       - name: Run exact CI fast check
