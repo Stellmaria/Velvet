@@ -161,6 +161,11 @@ class StorageLibrarianAfkContractTests(unittest.TestCase):
         self.assertIn("await start_storage_librarian(bot, database)", bootstrap)
         self.assertIn("await stop_storage_librarian()", bootstrap)
         self.assertIn(
+            "await _start_background_workers(bot, database, worker_manager)",
+            bootstrap,
+        )
+        self.assertIn("await _stop_background_workers(worker_manager)", bootstrap)
+        self.assertIn(
             "LEFT JOIN telegram_storage_analysis_jobs AS existing_job",
             repository,
         )
