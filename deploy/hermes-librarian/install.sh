@@ -25,6 +25,7 @@ for path in \
   "$SOURCE_DIR/Modelfile.text" \
   "$SOURCE_DIR/Modelfile.vision" \
   "$SOURCE_DIR/start.sh" \
+  "$SOURCE_DIR/recreate_bot_preserving_image.sh" \
   "$SOURCE_DIR/SOUL.md" \
   "$SOURCE_DIR/AGENTS.md" \
   "$BRAIN_SOURCE/context_compiler.py" \
@@ -71,10 +72,14 @@ key = values.get("STORAGE_LIBRARIAN_HERMES_API_KEY", "")
 if len(key) < 24:
     key = secrets.token_urlsafe(48)
 
+analyzer_version = values.get("STORAGE_LIBRARIAN_ANALYZER_VERSION", "").strip()
+if not analyzer_version:
+    analyzer_version = "velvet-librarian:qwen3-4b-text:v4"
+
 updates = {
     "STORAGE_LIBRARIAN_HERMES_BASE_URL": "http://librarian-hermes:8642",
     "STORAGE_LIBRARIAN_HERMES_API_KEY": key,
-    "STORAGE_LIBRARIAN_ANALYZER_VERSION": "velvet-librarian:qwen3-4b-text:v4",
+    "STORAGE_LIBRARIAN_ANALYZER_VERSION": analyzer_version,
     "STORAGE_LIBRARIAN_PUBLISH_REPORTS": "true",
     "STORAGE_LIBRARIAN_OLLAMA_BASE_URL": "http://ollama-librarian:11434",
     "STORAGE_LIBRARIAN_TEXT_MODEL": "velvet-librarian-text:v1",
@@ -124,6 +129,7 @@ print(values.get("STORAGE_LIBRARIAN_TEXT_MODEL", "velvet-librarian-text:v1"))
 print(values.get("STORAGE_LIBRARIAN_VISION_MODEL", "velvet-librarian-vision:v1"))
 print(values.get("STORAGE_LIBRARIAN_OLLAMA_BASE_URL", "http://ollama-librarian:11434") + "/v1")
 print(values.get("STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH", "8192"))
+print(values.get("STORAGE_LIBRARIAN_ANALYZER_VERSION", "velvet-librarian:qwen3-4b-text:v4"))
 PY
 )
 VELVET_DATA_DIR="${resolved[0]}"
@@ -132,6 +138,7 @@ TEXT_MODEL="${resolved[2]}"
 VISION_MODEL="${resolved[3]}"
 LOCAL_BASE_URL="${resolved[4]}"
 LOCAL_CONTEXT_LENGTH="${resolved[5]}"
+ANALYZER_VERSION="${resolved[6]}"
 SOURCE_CONFIG="$VELVET_DATA_DIR/hermes/config.yaml"
 TARGET_DIR="$VELVET_DATA_DIR/hermes-librarian"
 ARTHUR_TARGET_DIR="$VELVET_DATA_DIR/arthur"
@@ -217,11 +224,11 @@ systemctl daemon-reload
 systemctl enable velvet-librarian.service
 systemctl restart velvet-librarian.service
 
-runuser -u "$SERVICE_USER" -- bash -ceu "
-  cd '$VELVET_APP_DIR'
-  docker compose --env-file '$VELVET_ENV_FILE' -f '$VELVET_COMPOSE_FILE' \
-    up -d --force-recreate bot
-"
+runuser -u "$SERVICE_USER" -- env \
+  VELVET_APP_DIR="$VELVET_APP_DIR" \
+  VELVET_ENV_FILE="$VELVET_ENV_FILE" \
+  VELVET_COMPOSE_FILE="$VELVET_COMPOSE_FILE" \
+  "$SOURCE_DIR/recreate_bot_preserving_image.sh"
 
 healthy=false
 for _ in $(seq 1 45); do
@@ -328,7 +335,7 @@ printf '%s\n' \
   "Dedicated API key configured." \
   "Text model configured: $TEXT_MODEL." \
   "Vision alias prepared; image support remains incomplete until image bytes are supplied." \
-  "Analyzer version set to velvet-librarian:qwen3-4b-text:v4." \
+  "Analyzer version preserved: $ANALYZER_VERSION." \
   "Hermes Reports publication enabled." \
   "Bot-to-Hermes health verified." \
   "Bot-to-Ollama structured analysis smoke verified." \
