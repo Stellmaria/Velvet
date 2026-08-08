@@ -1,4 +1,4 @@
-name: pr722 generate package inventory
+name: pr722 finalize package inventory
 
 on:
   push:
@@ -6,38 +6,40 @@ on:
       - fix/storage-librarian-scheduler-lifecycle
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  generate:
+  finalize:
+    if: github.event.head_commit.message == 'Finalize PR 722 generated architecture baseline'
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout exact head
+      - name: Checkout branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          persist-credentials: false
-      - name: Generate package inventory
+          ref: fix/storage-librarian-scheduler-lifecycle
+      - name: Regenerate reviewed baseline and self-clean
         run: |
           set -euo pipefail
-          mkdir -p generated
-          cp docs/package_architecture_exemptions.json generated/
           python scripts/inventory_package_architecture.py \
             --write \
-            --label p1-package-architecture-baseline \
-            --output-dir generated
+            --label p1-package-architecture-baseline
           python - <<'PY'
-          import json
           from pathlib import Path
-          data = json.loads(Path('generated/package_architecture_inventory.json').read_text())
-          print('production_loc=', data['production_loc'])
-          print('violation_count=', data['violation_count'])
+          path = Path('tests/test_package_architecture_inventory.py')
+          text = path.read_text(encoding='utf-8')
+          old = 'self.assertEqual(144196, self.inventory["production_loc"])'
+          new = 'self.assertEqual(144224, self.inventory["production_loc"])'
+          if text.count(old) != 1:
+              raise SystemExit('expected exactly one package LOC assertion to update')
+          path.write_text(text.replace(old, new), encoding='utf-8')
           PY
-      - name: Upload generated inventory
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: pr722-package-inventory
-          path: |
-            generated/package_architecture_inventory.json
-            generated/package_architecture_inventory.md
-          if-no-files-found: error
-          retention-days: 1
+          git rm -- .github/workflows/pr722-generate-package-inventory.yml
+          git add -- \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            tests/test_package_architecture_inventory.py
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Refresh architecture baseline for Librarian lifecycle'
+          git push origin HEAD:fix/storage-librarian-scheduler-lifecycle
