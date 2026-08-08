@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import re
 from collections.abc import Callable
 from typing import AsyncContextManager, Protocol, cast
 
@@ -29,34 +30,49 @@ STORAGE_LIBRARIAN_ANALYSIS_SCHEMA: JsonObject = {
         "confidence",
     ],
     "properties": {
-        "summary": {"type": "string"},
+        "summary": {
+            "type": "string",
+            "maxLength": 400,
+        },
         "tags": {
             "type": "array",
-            "maxItems": 6,
-            "items": {"type": "string"},
+            "maxItems": 3,
+            "items": {
+                "type": "string",
+                "maxLength": 32,
+            },
         },
         "entities": {
             "type": "array",
-            "maxItems": 6,
+            "maxItems": 3,
             "items": {
                 "type": "object",
                 "additionalProperties": False,
                 "required": ["name", "type"],
                 "properties": {
-                    "name": {"type": "string"},
-                    "type": {"type": "string"},
+                    "name": {
+                        "type": "string",
+                        "maxLength": 60,
+                    },
+                    "type": {
+                        "type": "string",
+                        "maxLength": 32,
+                    },
                 },
             },
         },
         "action_items": {
             "type": "array",
-            "maxItems": 6,
+            "maxItems": 3,
             "items": {
                 "type": "object",
                 "additionalProperties": False,
                 "required": ["text", "priority"],
                 "properties": {
-                    "text": {"type": "string"},
+                    "text": {
+                        "type": "string",
+                        "maxLength": 120,
+                    },
                     "priority": {
                         "type": "string",
                         "enum": ["low", "medium", "high"],
@@ -79,6 +95,13 @@ STORAGE_LIBRARIAN_ANALYSIS_SCHEMA: JsonObject = {
         },
     },
 }
+
+_CHUNK_SESSION_RE = re.compile(
+    r"^(?P<base>.+)-chunk-(?P<index>\d+)-of-(?P<total>\d+)$"
+)
+_SYNTHESIS_SESSION_RE = re.compile(
+    r"^(?P<base>.+)-synthesis-(?P<total>\d+)$"
+)
 
 
 class _ResponseProtocol(Protocol):
@@ -122,7 +145,9 @@ def _validate_analysis(value: object) -> JsonObject:
         _require_string(tag, "tags[]")
     entities = value["entities"]
     if not isinstance(entities, list) or len(entities) > 6:
-        raise _terminal("Ollama schema mismatch: entities должен содержать до 6 элементов.")
+        raise _terminal(
+            "Ollama schema mismatch: entities должен содержать до 6 элементов."
+        )
     for entity in entities:
         if not isinstance(entity, dict) or set(entity) != {"name", "type"}:
             raise _terminal("Ollama schema mismatch: неверная entity.")
@@ -151,7 +176,9 @@ def _validate_analysis(value: object) -> JsonObject:
         or not isinstance(confidence, int)
         or not 0 <= confidence <= 100
     ):
-        raise _terminal("Ollama schema mismatch: confidence должен быть integer 0..100.")
+        raise _terminal(
+            "Ollama schema mismatch: confidence должен быть integer 0..100."
+        )
     return cast(JsonObject, value)
 
 
@@ -162,16 +189,125 @@ def _usage_count(payload: dict[object, object], name: str) -> int:
     return value
 
 
-def _max_prompt_chars(settings: StorageLibrarianSettings) -> int:
+def _max_prompt_chars(
+    settings: StorageLibrarianSettings,
+    *,
+    max_output_tokens: int | None = None,
+) -> int:
     try:
         return storage_librarian_text_prompt_char_limit(
             context_length=settings.text_context_length,
-            max_output_tokens=settings.text_max_output_tokens,
+            max_output_tokens=(
+                settings.text_max_output_tokens
+                if max_output_tokens is None
+                else max_output_tokens
+            ),
         )
     except ValueError as error:
         raise _terminal(
             "Ollama analysis configuration leaves insufficient input context."
         ) from error
+
+
+def _length_retry_output_tokens(
+    settings: StorageLibrarianSettings,
+    *,
+    prompt_chars: int,
+) -> int:
+    current = settings.text_max_output_tokens
+    candidate = min(1536, max(current + 128, current * 2))
+    if candidate <= current:
+        return current
+    try:
+        retry_prompt_limit = _max_prompt_chars(
+            settings,
+            max_output_tokens=candidate,
+        )
+    except TerminalStorageLibrarianError:
+        return current
+    return candidate if prompt_chars <= retry_prompt_limit else current
+
+
+def _analysis_session_plan(
+    session_id: str,
+    *,
+    max_inference_calls: int,
+) -> tuple[str, int, int, bool]:
+    chunk = _CHUNK_SESSION_RE.fullmatch(session_id)
+    if chunk is not None:
+        total = max(1, int(chunk.group("total")))
+        planned_calls = total + 1
+        return (
+            chunk.group("base"),
+            max(0, max_inference_calls - planned_calls),
+            planned_calls,
+            False,
+        )
+    synthesis = _SYNTHESIS_SESSION_RE.fullmatch(session_id)
+    if synthesis is not None:
+        total = max(1, int(synthesis.group("total")))
+        planned_calls = total + 1
+        return (
+            synthesis.group("base"),
+            max(0, max_inference_calls - planned_calls),
+            planned_calls,
+            True,
+        )
+    return session_id, max(0, max_inference_calls - 1), 1, True
+
+
+def _request_body(
+    settings: StorageLibrarianSettings,
+    *,
+    prompt: str,
+    instructions: str,
+    max_output_tokens: int,
+) -> dict[str, object]:
+    return {
+        "model": settings.text_model,
+        "stream": False,
+        "think": False,
+        "keep_alive": settings.ollama_keep_alive,
+        "format": STORAGE_LIBRARIAN_ANALYSIS_SCHEMA,
+        "messages": [
+            {"role": "system", "content": instructions},
+            {"role": "user", "content": prompt},
+        ],
+        "options": {
+            "num_ctx": settings.text_context_length,
+            "num_predict": max_output_tokens,
+            "temperature": 0,
+            "top_k": 20,
+            "top_p": 0.9,
+            "repeat_penalty": 1.05,
+            "seed": 42,
+        },
+    }
+
+
+async def _post_analysis_json(
+    session: _SessionProtocol,
+    *,
+    url: str,
+    request: dict[str, object],
+) -> dict[object, object]:
+    async with session.post(url, json=request) as response:
+        if response.status < 200 or response.status >= 300:
+            error_type = (
+                StorageLibrarianError
+                if response.status in {408, 429} or response.status >= 500
+                else TerminalStorageLibrarianError
+            )
+            raise error_type(f"Ollama analysis HTTP {response.status}.")
+        try:
+            raw_payload = await response.json(content_type=None)
+        except (json.JSONDecodeError, ValueError, TypeError) as error:
+            raise _terminal(
+                "Ollama analysis вернул malformed HTTP JSON."
+            ) from error
+    if not isinstance(raw_payload, dict):
+        raise _terminal("Ollama analysis вернул malformed response.")
+    return raw_payload
 
 
 class OllamaStorageAnalysisClient:
@@ -186,6 +322,7 @@ class OllamaStorageAnalysisClient:
     ) -> None:
         self._settings = settings
         self._session_factory = session_factory
+        self._length_retry_remaining: dict[str, int] = {}
 
     async def run(
         self,
@@ -200,83 +337,145 @@ class OllamaStorageAnalysisClient:
             raise _terminal(
                 "Ollama analysis input exceeds the bounded text context: "
                 f"chars={prompt_chars}, limit={max_prompt_chars}. "
-                "Chunking is not implemented; silent truncation is forbidden."
+                "The caller must provide a bounded chunk; "
+                "silent truncation is forbidden."
             )
 
-        request: dict[str, object] = {
-            "model": self._settings.text_model,
-            "stream": False,
-            "think": False,
-            "keep_alive": self._settings.ollama_keep_alive,
-            "format": STORAGE_LIBRARIAN_ANALYSIS_SCHEMA,
-            "messages": [
-                {"role": "system", "content": instructions},
-                {"role": "user", "content": prompt},
-            ],
-            "options": {
-                "num_ctx": self._settings.text_context_length,
-                "num_predict": self._settings.text_max_output_tokens,
-                "temperature": 0,
-                "top_k": 20,
-                "top_p": 0.9,
-                "repeat_penalty": 1.05,
-                "seed": 42,
-            },
-        }
+        (
+            base_session,
+            retry_budget,
+            planned_calls,
+            final_session,
+        ) = _analysis_session_plan(
+            session_id,
+            max_inference_calls=self._settings.max_inference_calls,
+        )
+        remaining = self._length_retry_remaining.setdefault(
+            base_session,
+            retry_budget,
+        )
+        max_output_tokens = self._settings.text_max_output_tokens
+        retry_output_tokens = _length_retry_output_tokens(
+            self._settings,
+            prompt_chars=prompt_chars,
+        )
         timeout = aiohttp.ClientTimeout(total=self._settings.run_timeout_seconds)
+        prompt_tokens = 0
+        completion_tokens = 0
+        attempts = 0
+        payload: dict[object, object] | None = None
+
         try:
-            async with self._session_factory(timeout=timeout) as session:
-                async with session.post(
-                    self._settings.ollama_base_url + "/api/chat",
-                    json=request,
-                ) as response:
-                    if response.status < 200 or response.status >= 300:
-                        error_type = (
-                            StorageLibrarianError
-                            if response.status in {408, 429} or response.status >= 500
-                            else TerminalStorageLibrarianError
+            async with asyncio.timeout(self._settings.run_timeout_seconds):
+                async with self._session_factory(timeout=timeout) as session:
+                    while attempts < 2:
+                        attempts += 1
+                        request = _request_body(
+                            self._settings,
+                            prompt=prompt,
+                            instructions=instructions,
+                            max_output_tokens=(
+                                retry_output_tokens
+                                if attempts == 2
+                                else max_output_tokens
+                            ),
                         )
-                        raise error_type(f"Ollama analysis HTTP {response.status}.")
-                    try:
-                        payload = await response.json(content_type=None)
-                    except (json.JSONDecodeError, ValueError, TypeError) as error:
+                        raw_payload = await _post_analysis_json(
+                            session,
+                            url=self._settings.ollama_base_url + "/api/chat",
+                            request=request,
+                        )
+                        payload = raw_payload
+                        prompt_tokens += _usage_count(
+                            payload,
+                            "prompt_eval_count",
+                        )
+                        completion_tokens += _usage_count(
+                            payload,
+                            "eval_count",
+                        )
+                        if (
+                            payload.get("done") is True
+                            and payload.get("done_reason") == "stop"
+                        ):
+                            break
+
+                        reason = payload.get("done_reason")
+                        safe_reason = (
+                            reason
+                            if isinstance(reason, str)
+                            else type(reason).__name__
+                        )
+                        if (
+                            attempts == 1
+                            and payload.get("done") is True
+                            and reason == "length"
+                            and remaining > 0
+                        ):
+                            remaining -= 1
+                            self._length_retry_remaining[base_session] = remaining
+                            continue
                         raise _terminal(
-                            "Ollama analysis вернул malformed HTTP JSON."
-                        ) from error
+                            "Ollama analysis did not complete normally: "
+                            f"done_reason={safe_reason}."
+                        )
         except StorageLibrarianError:
+            self._length_retry_remaining.pop(base_session, None)
             raise
         except (asyncio.TimeoutError, aiohttp.ServerTimeoutError) as error:
+            self._length_retry_remaining.pop(base_session, None)
             raise StorageLibrarianError("Ollama analysis timeout.") from error
         except aiohttp.ClientError as error:
+            self._length_retry_remaining.pop(base_session, None)
             raise StorageLibrarianError(
                 f"Ollama analysis network error: {type(error).__name__}."
             ) from error
 
-        if not isinstance(payload, dict):
-            raise _terminal("Ollama analysis вернул malformed response.")
-        if payload.get("done") is not True or payload.get("done_reason") != "stop":
-            reason = payload.get("done_reason")
-            safe_reason = reason if isinstance(reason, str) else type(reason).__name__
-            raise _terminal(
-                "Ollama analysis did not complete normally: "
-                f"done_reason={safe_reason}."
-            )
+        if payload is None:
+            self._length_retry_remaining.pop(base_session, None)
+            raise _terminal("Ollama analysis did not return a response.")
         message = payload.get("message")
         content = message.get("content") if isinstance(message, dict) else None
         if not isinstance(content, str) or not content.strip():
+            self._length_retry_remaining.pop(base_session, None)
             raise _terminal("Ollama analysis не вернул message.content.")
         try:
             decoded: object = json.loads(content)
         except json.JSONDecodeError as error:
+            self._length_retry_remaining.pop(base_session, None)
             raise _terminal("Ollama analysis вернул invalid JSON content.") from error
-        analysis = _validate_analysis(decoded)
+        try:
+            analysis = _validate_analysis(decoded)
+        except StorageLibrarianError:
+            self._length_retry_remaining.pop(base_session, None)
+            raise
         fingerprint = hashlib.sha256(
             f"{session_id}\0{self._settings.text_model}".encode("utf-8")
         ).hexdigest()[:24]
         usage: JsonObject = {
-            "prompt_tokens": _usage_count(payload, "prompt_eval_count"),
-            "completion_tokens": _usage_count(payload, "eval_count"),
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
         }
+        if attempts > 1:
+            usage.update(
+                {
+                    "inference_calls": attempts,
+                    "length_retries": attempts - 1,
+                    "retry_num_predict": retry_output_tokens,
+                }
+            )
+        if final_session:
+            used_retries = retry_budget - self._length_retry_remaining.get(
+                base_session,
+                retry_budget,
+            )
+            usage.update(
+                {
+                    "actual_inference_calls": planned_calls + used_retries,
+                    "object_length_retries": used_retries,
+                }
+            )
+            self._length_retry_remaining.pop(base_session, None)
         return HermesRunResult(
             run_id=f"ollama-storage-{fingerprint}",
             output=json.dumps(analysis, ensure_ascii=False, separators=(",", ":")),
