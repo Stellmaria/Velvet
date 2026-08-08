@@ -140,6 +140,9 @@ class HermesIncidentMonitor:
             self._last_event_at = float(self._state.get("last_event_at") or 0.0)
         except (TypeError, ValueError):
             self._last_event_at = 0.0
+        self._incident_episode_open = bool(
+            self._state.get("incident_episode_open", False)
+        )
         self.notifier = TelegramNotifier(
             bot_token=(
                 os.getenv("SUPERVISOR_NOTIFICATION_BOT_TOKEN", "").strip()
@@ -290,6 +293,7 @@ class HermesIncidentMonitor:
             "incident": self.client.status(),
             "last_event_key": self._last_event_key,
             "last_event_at": self._last_event_at,
+            "incident_episode_open": self._incident_episode_open,
         }
         temporary = self.state_path.with_suffix(".tmp")
         temporary.write_text(
@@ -336,7 +340,13 @@ class HermesIncidentMonitor:
             )
         )
 
+    @staticmethod
+    def _is_recovered(probe: BotProbe) -> bool:
+        return probe.running and probe.health == "healthy"
+
     def _can_submit(self, event_key: str) -> bool:
+        if self._incident_episode_open:
+            return False
         if str(self.client.status().get("state")) in _ACTIVE_INCIDENT_STATES:
             return False
         if event_key != self._last_event_key:
@@ -378,6 +388,7 @@ class HermesIncidentMonitor:
         if self.client.submit_async(incident):
             self._last_event_key = event_key
             self._last_event_at = time.time()
+            self._incident_episode_open = True
             logger.warning(
                 "Submitted server incident reason=%s restarts=%s health=%s",
                 reason,
@@ -414,6 +425,8 @@ class HermesIncidentMonitor:
             try:
                 probe = self.probe()
                 if self.enabled:
+                    if self._is_recovered(probe):
+                        self._incident_episode_open = False
                     reason = self._reason(probe)
                     if reason is not None:
                         self._submit(probe, reason)
