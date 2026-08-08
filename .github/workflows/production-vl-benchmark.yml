@@ -203,9 +203,31 @@ jobs:
           test -n "$bot_id"
           test -n "$runtime_id"
           test -n "$gateway_id"
-          test "$(docker inspect -f '{{.State.Running}}' "$bot_id")" = true
-          test "$(docker inspect -f '{{.State.Running}}' "$runtime_id")" = true
-          test "$(docker inspect -f '{{.State.Running}}' "$gateway_id")" = true
+
+          assert_container_ready() {
+            local label="$1"
+            local container_id="$2"
+            local running paused health
+            running="$(docker inspect -f '{{.State.Running}}' "$container_id")"
+            paused="$(docker inspect -f '{{.State.Paused}}' "$container_id")"
+            health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id")"
+            if [[ "$running" != true ]]; then
+              echo "production benchmark requires $label to be running" >&2
+              exit 3
+            fi
+            if [[ "$paused" != false ]]; then
+              echo "production benchmark refuses paused container: $label" >&2
+              exit 3
+            fi
+            if [[ "$health" != none && "$health" != healthy ]]; then
+              echo "production benchmark requires healthy container: $label (health=$health)" >&2
+              exit 3
+            fi
+          }
+
+          assert_container_ready bot "$bot_id"
+          assert_container_ready vision-runtime "$runtime_id"
+          assert_container_ready vision-gateway "$gateway_id"
 
           gateway_image_ref="$(docker inspect -f '{{.Config.Image}}' "$gateway_id")"
           if [[ ! "$gateway_image_ref" =~ ^ghcr\.io/stellmaria/velvet-vision-gateway@sha256:[0-9a-f]{64}$ ]]; then
@@ -228,6 +250,7 @@ jobs:
           if [[ "$COLD_UNLOAD" == true ]]; then
             cold_args+=(--cold-unload)
           fi
+          benchmark_exit_code=0
           python3 scripts/benchmark_vision_gateway.py \
             --endpoint http://vision-gateway:8080 \
             --request-container "$bot_id" \
@@ -238,7 +261,18 @@ jobs:
             --max-output-tokens "$OUTPUT_CAP" \
             --rounds "$ROUNDS" \
             --timeout 360 \
-            "${cold_args[@]}"
+            "${cold_args[@]}" || benchmark_exit_code=$?
+
+          current_bot_id="$("${compose[@]}" ps -q bot)"
+          current_runtime_id="$("${compose[@]}" ps -q vision-runtime)"
+          current_gateway_id="$("${compose[@]}" ps -q vision-gateway)"
+          test "$current_bot_id" = "$bot_id"
+          test "$current_runtime_id" = "$runtime_id"
+          test "$current_gateway_id" = "$gateway_id"
+          assert_container_ready bot "$bot_id"
+          assert_container_ready vision-runtime "$runtime_id"
+          assert_container_ready vision-gateway "$gateway_id"
+          exit "$benchmark_exit_code"
           REMOTE
           benchmark_exit_code=$?
           set -e
