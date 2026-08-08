@@ -38,8 +38,8 @@ def _client(*, max_attempts: int = 5) -> MeteredVisionClient:
     return MeteredVisionClient(
         config=VisionRouteConfig(
             route=VisionRoute.FLASH,
-            provider="openai_compatible",
-            base_url="https://vision.example/v1",
+            provider="local_openai_compatible",
+            base_url="http://vision-gateway:8080/v1",
             model="main-vl",
             api_key=None,
             timeout_seconds=30,
@@ -58,7 +58,7 @@ def _client(*, max_attempts: int = 5) -> MeteredVisionClient:
 def _analysis() -> VisionProviderAnalysis:
     return VisionProviderAnalysis(
         profile={"confidence": 90},
-        provider="openai_compatible",
+        provider="local_openai_compatible",
         model="main-vl",
         route=VisionRoute.FLASH,
         input_tokens=10,
@@ -145,7 +145,7 @@ class TypedVisionFailureTests(unittest.IsolatedAsyncioTestCase):
             "eval_count": 12,
         }
         with patch(
-            "velvet_bot.typed_quality_vision.post_vision_json",
+            "velvet_bot.services.typed_quality_vision.post_vision_json",
             new=AsyncMock(return_value=payload),
         ) as post:
             with self.assertRaises(VisionSchemaError):
