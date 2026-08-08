@@ -7,10 +7,8 @@ from typing import Awaitable, Callable
 
 from aiogram import Bot
 
-from velvet_bot.ai_quality import (
-    QualityVisionClient,
-    build_quality_vision_contract,
-)
+from velvet_bot.ai_quality import build_quality_vision_contract
+from velvet_bot.typed_quality_vision import TypedQualityVisionClient
 from velvet_bot.app.ai_vision_logging import run_ai_vision_once_with_terminal_skip_info
 from velvet_bot.app.public_notifications import build_public_notification_dispatcher
 from velvet_bot.app.publication import build_publication_service
@@ -239,7 +237,7 @@ def build_worker_manager(
             bot=bot,
             repository=ResilientAIQualityRepository(database),
             calibration_repository=QualityCalibrationRepository(database),
-            client=QualityVisionClient(
+            client=TypedQualityVisionClient(
                 provider=settings.ai_vision_provider,
                 base_url=settings.ai_vision_base_url,
                 model=settings.ai_vision_model,
