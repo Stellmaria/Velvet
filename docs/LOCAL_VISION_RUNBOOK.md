@@ -1,20 +1,35 @@
 # Local Vision server runbook
 
-Связано с issue #505 и `docs/AI_VISION.md`.
+Канонический источник: issue #630 `VL: 3-model local-first vision-контур Velvet и Arthur Archive`.
 
-## Ограничения
+## Production invariants
 
-- `AI_VISION_ENABLED=false` и `AI_VISION_QUEUE_ENABLED=false` сохраняются до
-  завершения benchmark и sensitive calibration;
-- production VL runtime не имеет internet egress;
-- модель скачивает только one-shot сервис `vision-model-loader`;
-- исходные приватные изображения не используются для первого benchmark;
-- заполненный `.env.server` не коммитится и имеет права `600`.
+До отдельного owner decision сохраняются:
+
+```dotenv
+AI_VISION_ENABLED=false
+AI_VISION_QUEUE_ENABLED=false
+AI_QUALITY_ENABLED=false
+AI_VISION_CLOUD_PRO_ENABLED=false
+AI_VISION_LOCAL_UNCENSORED_ENABLED=false
+```
+
+Этот runbook проверяет только `LOCAL_MAIN`. Он не включает global quality worker, archive batch, `CLOUD_PRO` или `LOCAL_UNCENSORED` и не создаёт mass backfill.
+
+Текущий production `LOCAL_MAIN`, подтверждённый диагностикой 2026-08-07:
+
+```dotenv
+VISION_MODEL=qwen3.5:9b
+VISION_MODEL_EXPECTED_DIGEST=6488c96fa5fa
+AI_VISION_MODEL=qwen3.5:9b
+AI_VISION_FLASH_MODEL=qwen3.5:9b
+```
+
+`VISION_MODEL_EXPECTED_DIGEST` является prefix pin. `vision-model-loader` и `vision-gateway` fail-closed при несовпадении установленного digest.
 
 ## 1. Проверить конфигурацию
 
-Перенесите VL-переменные из `.env.vision-local.example` в существующий
-`.env.server`, не заменяя Telegram, PostgreSQL и provider secrets.
+Заполненный `.env.server` не коммитится и должен иметь права `600`.
 
 ```bash
 cd /srv/velvet
@@ -26,16 +41,9 @@ python scripts/server_preflight.py \
   --skip-host-tools
 ```
 
-Для первого запуска должны оставаться:
+Перед benchmark отдельно проверьте, что все пять feature flags из раздела выше остаются `false`.
 
-```dotenv
-AI_VISION_ENABLED=false
-AI_VISION_QUEUE_ENABLED=false
-VISION_MODEL=qwen3-vl:8b-instruct-q4_K_M
-VISION_MODEL_EXPECTED_DIGEST=
-```
-
-## 2. Собрать images
+## 2. Собрать runtime/gateway
 
 ```bash
 docker compose \
@@ -46,7 +54,21 @@ docker compose \
   build vision-model-loader vision-runtime vision-gateway
 ```
 
-## 3. Установить Q4 model
+Сохраните identity собранных images до benchmark:
+
+```bash
+docker image inspect velvet-vision-runtime:local \
+  --format '{{json .RepoDigests}} {{.Id}}'
+
+docker image inspect velvet-vision-gateway:local \
+  --format '{{json .RepoDigests}} {{.Id}}'
+```
+
+Если image собран локально и `RepoDigests` пуст, в scorecard сохраняется immutable image ID. После публикации image должен быть закреплён registry digest.
+
+## 3. Проверить model volume
+
+Только `vision-model-loader` имеет egress. Production runtime сам веса не скачивает.
 
 ```bash
 docker compose \
@@ -56,34 +78,19 @@ docker compose \
   run --rm vision-model-loader
 ```
 
-Повторный запуск не скачивает уже установленную модель заново, если model ID и
-ожидаемый digest совпадают.
+Если установленная модель не соответствует prefix `6488c96fa5fa`, loader завершается ошибкой. Не очищайте model volume автоматически и не заменяйте модель на другой candidate в рамках этого smoke.
 
-## 4. Запустить runtime и gateway без включения bot Vision
-
-Bot нужно пересоздать один раз, чтобы он получил internal `vision-front` network.
-Это не включает AI-функции, пока `AI_VISION_ENABLED=false`.
+## 4. Запустить runtime/gateway без включения bot Vision
 
 ```bash
 docker compose \
   --env-file .env.server \
   -f docker-compose.server.yml \
   --profile vision \
-  up -d --build bot vision-runtime vision-gateway
+  up -d --build vision-runtime vision-gateway
 ```
 
-Проверить состояние:
-
-```bash
-docker compose \
-  --env-file .env.server \
-  -f docker-compose.server.yml \
-  --profile vision \
-  ps
-```
-
-Gateway health проверяется из bot-контейнера, поскольку host port намеренно не
-публикуется:
+Gateway не публикует host port. Проверка health выполняется через уже подключённый к `vision-front` bot-контейнер:
 
 ```bash
 docker compose \
@@ -102,92 +109,111 @@ with urllib.request.urlopen(
 PY
 ```
 
-## 5. Закрепить model digest
+Обязательный результат:
 
-Возьмите поле `digest` из health response и внесите его в `.env.server`:
+- `status=healthy`;
+- `model=qwen3.5:9b`;
+- `digest` начинается с `6488c96fa5fa`;
+- `max_concurrency=1`.
 
-```dotenv
-VISION_MODEL_EXPECTED_DIGEST=<полный digest или достаточный уникальный prefix>
-```
+## 5. Подготовить closed evaluation image
 
-После этого пересоздайте runtime и gateway:
-
-```bash
-docker compose \
-  --env-file .env.server \
-  -f docker-compose.server.yml \
-  --profile vision \
-  up -d --force-recreate vision-runtime vision-gateway
-```
-
-Runtime и loader должны завершаться ошибкой при несовпадении digest.
-
-## 6. Подготовить безопасное benchmark-изображение
-
-Используйте нейтральное тестовое изображение без приватных данных:
+Для первого smoke используйте нейтральное изображение без приватных данных. Один и тот же файл используется для всех output-cap runs.
 
 ```bash
 install -m 600 /path/to/test-image.jpg \
   /srv/velvet/data/runtime/vision-benchmark.jpg
 ```
 
-## 7. Выполнить Q4 benchmark
+Не добавляйте evaluation image в git и не отправляйте его в cloud.
+
+## 6. Запустить benchmark с host resource evidence
+
+Harness запускается на host. HTTP-запрос к internal-only gateway проходит через `docker exec` в bot-контейнер, поэтому gateway port не открывается, а harness при этом видит host Docker stats, swap и runtime image identity.
+
+Сначала определите фактические container names:
 
 ```bash
 docker compose \
   --env-file .env.server \
   -f docker-compose.server.yml \
-  --profile vision \
-  exec -T bot python scripts/benchmark_vision_gateway.py \
-    --endpoint http://vision-gateway:8080 \
-    --image /app/runtime/vision-benchmark.jpg \
-    --rounds 3 \
-    --docker-container "" \
-    --output /app/runtime/vision-benchmark-q4.json
+  --profile vision ps --format json
 ```
 
-Отдельно зафиксируйте host/container stats во время запроса:
+Затем выполните одинаковый benchmark для output caps `384`, `512`, `768`. Пример для `512`:
 
 ```bash
-docker stats --no-stream \
-  velvet-bot-1 \
-  velvet-postgres-1 \
-  velvet-hermes-1 \
-  velvet-vision-runtime-1 \
-  velvet-vision-gateway-1
+python scripts/benchmark_vision_gateway.py \
+  --endpoint http://vision-gateway:8080 \
+  --request-container velvet-bot-1 \
+  --docker-container velvet-vision-runtime-1 \
+  --image /srv/velvet/data/runtime/vision-benchmark.jpg \
+  --model qwen3.5:9b \
+  --expected-digest 6488c96fa5fa \
+  --max-output-tokens 512 \
+  --rounds 5 \
+  --cold-unload \
+  --output /srv/velvet/data/runtime/vision-benchmark-qwen35-9b-cap512.json
 ```
 
-## 8. Проверить Q8 candidate
+Повторите с `--max-output-tokens 384` и `768`, меняя имя output-файла. `--cold-unload` выполняется один раз перед первой пробой каждого run; первая sample считается cold, последующие warm.
 
-В `.env.server` временно замените model ID одновременно во всех local VL полях:
+Если container names отличаются от примера, используйте фактические имена из `docker compose ps`.
 
-```dotenv
-VISION_MODEL=qwen3-vl:8b-instruct-q8_0
-VISION_MODEL_EXPECTED_DIGEST=
-AI_VISION_MODEL=qwen3-vl:8b-instruct-q8_0
-AI_VISION_FLASH_MODEL=qwen3-vl:8b-instruct-q8_0
-AI_VISION_SENSITIVE_MODEL=qwen3-vl:8b-instruct-q8_0
-AI_VISION_FALLBACK_MODEL=qwen3-vl:8b-instruct-q8_0
-```
+## 7. Что обязан содержать scorecard
 
-Затем повторите шаги установки, запуска, digest pin и benchmark. Результат
-сохраните как `/app/runtime/vision-benchmark-q8.json`.
+Harness автоматически сохраняет:
 
-## 9. Resource gate
+- benchmark contract version;
+- model tag и runtime model digest;
+- expected digest prefix;
+- runtime container image ref / image ID / RepoDigests, если Docker их предоставляет;
+- cold latency;
+- warm p50/p95;
+- completion-token throughput estimate, если provider вернул usage;
+- peak runtime memory и CPU;
+- peak host swap usage;
+- success/failure rate;
+- schema validity rate;
+- per-sample errors и latency;
+- применённый output cap.
 
-Q8 выбирается только если одновременно выполнены условия:
+Поля `manual_scorecard` заполняются после просмотра закрытого evaluation set:
 
-- нет OOM/restart-loop;
-- суммарная RAM под нагрузкой не превышает 80%;
-- Telegram polling и callbacks не деградируют;
-- warm latency пригодна для пользовательского сценария;
-- качество на контрольной выборке заметно лучше Q4;
-- Hermes/PostgreSQL/bot сохраняют рабочий резерв CPU и RAM.
+- omissions;
+- hallucinations;
+- visual-quality accuracy;
+- OCR accuracy;
+- pose accuracy;
+- composition accuracy;
+- owner quality score.
 
-Если хотя бы один обязательный gate не проходит, production default остаётся Q4.
+`tokens_per_second_estimate` делит completion tokens на полную request latency. Это reproducible comparative metric, но не чистая decoder-only скорость Ollama.
 
-## 10. Не включать очередь преждевременно
+## 8. Acceptance gate
 
-После выбора модели разрешается одиночный standard smoke. Sensitive route и batch
-queue включаются только после отдельного PR с classifier, `adult_confirmed` gate,
-versioned sensitive schema и закрытым тестовым набором.
+`LOCAL_MAIN` не считается принятым только потому, что ответ получен один раз. Перед изменением production flags должны быть сохранены результаты benchmark и выполнены все условия:
+
+- model/digest совпадают с pin;
+- нет timeout/OOM/restart-loop;
+- schema validity приемлема на closed set;
+- warm p50/p95 приемлемы для выбранного сценария;
+- peak RSS/swap/CPU оставляют рабочий резерв VPS;
+- manual quality score и omissions/hallucinations задокументированы;
+- output cap выбран по данным, а не по желанию получить JSON размером с семейную хронику.
+
+Timeout `VISION_REQUEST_TIMEOUT_SECONDS=300` в этом phase не увеличивается. Сначала измеряются текущий contract и output caps.
+
+## 9. Rollout после single-image acceptance
+
+Benchmark сам ничего не ставит в очередь. После отдельного owner approval rollout остаётся:
+
+1. single-image smoke;
+2. controlled batch `10`;
+3. controlled batch `25`;
+4. controlled batch `100`;
+5. mass backfill только отдельным owner decision и только при наличии evidence.
+
+`AI_QUALITY_ENABLED=false` сохраняется, пока owner явно не разрешил соответствующий controlled quality run. Legacy rows не удаляются ради benchmark.
+
+`LOCAL_UNCENSORED` и `CLOUD_PRO` имеют собственные benchmark/privacy/runtime gates и этим runbook не активируются.
