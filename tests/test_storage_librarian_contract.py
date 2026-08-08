@@ -193,7 +193,7 @@ class StorageLibrarianSettingsTests(unittest.TestCase):
             "velvet-librarian:qwen3-4b-text:v4",
             settings.analyzer_version,
         )
-        self.assertEqual(180, settings.run_timeout_seconds)
+        self.assertEqual(720, settings.run_timeout_seconds)
         self.assertEqual(
             13_568,
             storage_librarian_text_prompt_char_limit(
