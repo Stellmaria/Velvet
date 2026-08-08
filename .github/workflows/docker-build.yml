@@ -87,13 +87,6 @@ jobs:
     name: resolve-docker-surfaces
     runs-on: ubuntu-latest
     timeout-minutes: 3
-    # These job outputs replace the old monolithic step guards while preserving
-    # the same surface decisions:
-    # steps.changes.outputs.docker_velvet == 'true'
-    # steps.changes.outputs.docker_supervisor == 'true'
-    # steps.changes.outputs.docker_vision == 'true'
-    # steps.changes.outputs.docker_krita == 'true'
-    # steps.changes.outputs.docker_hermes == 'true'
     outputs:
       docker_velvet: ${{ steps.changes.outputs.docker_velvet }}
       docker_supervisor: ${{ steps.changes.outputs.docker_supervisor }}
@@ -397,7 +390,6 @@ jobs:
             --tag velvet-vision-runtime:ci \
             .
 
-  # Skip unchanged Krita image by skipping this job at the job level.
   build-krita:
     name: build-krita
     needs: changes
@@ -476,7 +468,6 @@ jobs:
           sudo env VELVET_APP_DIR="$PWD" VELVET_ENV_FILE=.env.server \
             bash deploy/server/krita-smoke.sh .env.server
 
-  # Skip unchanged Hermes images by skipping this job at the job level.
   build-hermes:
     name: build-hermes
     needs: changes
@@ -490,68 +481,6 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
-      - name: Prepare Hermes Coder and router environment
-        run: |
-          set -Eeuo pipefail
-          root="$PWD/.ci/hermes-coders"
-          control="$PWD/.ci/hermes-operator"
-          mkdir -p \
-            "$root/secrets" \
-            "$root/data/velvet" \
-            "$root/data/max" \
-            "$root/workspaces/velvet/.git" \
-            "$root/workspaces/max/.git" \
-            "$control/runtime"
-          cat > "$root/secrets/velvet.env" <<'EOF'
-          BYESU_HERMES_CODEX_API_KEY=test_coder_key
-          TELEGRAM_BOT_TOKEN=test_velvet_telegram_token
-          TELEGRAM_ALLOWED_USERS=1
-          GH_TOKEN=ci_velvet_github_token_abcdefghijklmnopqrstuvwxyz
-          API_SERVER_KEY=ci_velvet_api_server_key_abcdefghijklmnopqrstuvwxyz
-          EOF
-          cat > "$root/secrets/max.env" <<'EOF'
-          BYESU_HERMES_CODEX_API_KEY=test_coder_key
-          TELEGRAM_BOT_TOKEN=test_max_telegram_token
-          TELEGRAM_ALLOWED_USERS=1
-          GH_TOKEN=ci_max_github_token_abcdefghijklmnopqrstuvwxyz
-          API_SERVER_KEY=ci_max_api_server_key_abcdefghijklmnopqrstuvwxyz
-          EOF
-          cat > "$root/secrets/velvet-db.env" <<'EOF'
-          DATABASE_URL=postgresql://hermes_velvet_ro:test@postgres:5432/velvet
-          EOF
-          cat > "$root/secrets/max-db.env" <<'EOF'
-          DATABASE_URL=postgresql://hermes_max_ro:test@postgres:5432/card_hunter
-          EOF
-          cat > "$control/operator.env" <<'EOF'
-          HERMES_OPS_CLIENT_TOKEN=ci_client_token_abcdefghijklmnopqrstuvwxyz
-          HERMES_OPS_HOST_TOKEN=ci_host_token_abcdefghijklmnopqrstuvwxyz
-          VELVET_SUPERVISOR_TOKEN=ci_velvet_supervisor_token_abcdefghijklmnopqrstuvwxyz
-          ROMATIC_SUPERVISOR_TOKEN=ci_max_supervisor_token_abcdefghijklmnopqrstuvwxyz
-          VELVET_SUPERVISOR_BASE_URL=http://supervisor-proxy:8765
-          ROMATIC_SUPERVISOR_BASE_URL=http://romatic-supervisor:8765
-          HERMES_OPS_HOST_RUNTIME_DIR=/tmp/hermes-operator/runtime
-          HERMES_OPS_HOST_SOCKET=/tmp/hermes-operator/runtime/start.sock
-          HERMES_OPS_SOCKET_GID=10001
-          EOF
-          cat > "$control/coders.env" <<'EOF'
-          HERMES_CODER_ROUTER_CLIENT_TOKEN=ci_client_token_abcdefghijklmnopqrstuvwxyz
-          HERMES_CODER_VELVET_TOKEN=ci_velvet_api_server_key_abcdefghijklmnopqrstuvwxyz
-          HERMES_CODER_MAX_TOKEN=ci_max_api_server_key_abcdefghijklmnopqrstuvwxyz
-          HERMES_CODER_VELVET_BASE_URL=http://hermes-coder-velvet:8642
-          HERMES_CODER_MAX_BASE_URL=http://hermes-coder-max:8642
-          HERMES_CODER_ROUTER_HOST=0.0.0.0
-          HERMES_CODER_ROUTER_PORT=8878
-          EOF
-          cp deploy/hermes-coders/config.yaml "$root/data/velvet/config.yaml"
-          cp deploy/hermes-coders/config.yaml "$root/data/max/config.yaml"
-          cp deploy/hermes-coders/SOUL.velvet.md "$root/data/velvet/SOUL.md"
-          cp deploy/hermes-coders/SOUL.max.md "$root/data/max/SOUL.md"
-          chmod 600 "$root/secrets/"*.env "$control/"*.env
-          python deploy/hermes-orchestration/prepare_router_env.py \
-            "$root/secrets/velvet.env" \
-            "$root/secrets/max.env" \
-            "$control/coders.env"
-
       - name: Set up cached Docker builder
         shell: bash
         run: |
@@ -559,15 +488,31 @@ jobs:
           docker buildx create --name "velvet-ci-${GITHUB_RUN_ID}" --driver docker-container --use
           docker buildx inspect --bootstrap
 
-      - name: Build Hermes Coder images
+      - name: Build shared Hermes Coder image
+        shell: bash
         run: |
-          HERMES_CODERS_ROOT="$PWD/.ci/hermes-coders" \
-          HERMES_AGENT_CONTROL_NETWORK=hermes-agent-control \
-            docker compose \
-              --profile velvet \
-              --profile max \
-              -f deploy/hermes-coders/compose.yaml \
-              build
+          docker buildx build \
+            --load \
+            --file deploy/hermes-coders/Dockerfile.coder \
+            --cache-from type=gha,scope=velvet-hermes-coder \
+            --cache-to type=gha,mode=max,scope=velvet-hermes-coder,ignore-error=true \
+            --tag velvet-hermes-chat-velvet:local \
+            --tag velvet-codex-coder-velvet:local \
+            --tag velvet-hermes-chat-max:local \
+            --tag velvet-codex-coder-max:local \
+            deploy/hermes-coders
+
+      - name: Build shared Hermes DB proxy image
+        shell: bash
+        run: |
+          docker buildx build \
+            --load \
+            --file deploy/hermes-coders/Dockerfile.db-proxy \
+            --cache-from type=gha,scope=velvet-hermes-db-proxy \
+            --cache-to type=gha,mode=max,scope=velvet-hermes-db-proxy,ignore-error=true \
+            --tag velvet-hermes-db-proxy-velvet:local \
+            --tag velvet-hermes-db-proxy-max:local \
+            deploy/hermes-coders
 
       - name: Build Hermes operator and coder router image
         shell: bash
