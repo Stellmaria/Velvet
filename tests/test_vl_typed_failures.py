@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import unittest
 from decimal import Decimal
 from unittest.mock import AsyncMock, patch
+
+from PIL import Image
 
 from velvet_bot.domains.ai_usage import AITokenPricing
 from velvet_bot.domains.vision_routing.client import MeteredVisionClient
@@ -62,6 +65,12 @@ def _analysis() -> VisionProviderAnalysis:
         output_tokens=5,
         usage_reported=True,
     )
+
+
+def _image_bytes() -> bytes:
+    output = io.BytesIO()
+    Image.new("RGB", (32, 24), (80, 90, 100)).save(output, format="JPEG")
+    return output.getvalue()
 
 
 class TypedVisionFailureTests(unittest.IsolatedAsyncioTestCase):
@@ -140,11 +149,9 @@ class TypedVisionFailureTests(unittest.IsolatedAsyncioTestCase):
             new=AsyncMock(return_value=payload),
         ) as post:
             with self.assertRaises(VisionSchemaError):
-                await client.analyze(b"not-a-real-image")
+                await client.analyze(_image_bytes())
 
-        # Preparation fails before transport, proving malformed local input is also
-        # terminal and cannot accidentally trigger an HTTP retry.
-        post.assert_not_awaited()
+        post.assert_awaited_once()
 
 
 if __name__ == "__main__":
