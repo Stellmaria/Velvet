@@ -120,7 +120,8 @@ class ServerSupervisorContractTests(unittest.TestCase):
             'docker_config="${DOCKER_CONFIG:-$data_dir/runtime/docker-config}"',
             self.deploy,
         )
-        self.assertIn('export COMPOSE_BAKE="${COMPOSE_BAKE:-false}"', self.deploy)
+        self.assertIn('export COMPOSE_BAKE="${COMPOSE_BAKE:-true}"', self.deploy)
+        self.assertNotIn('export COMPOSE_BAKE="${COMPOSE_BAKE:-false}"', self.deploy)
         self.assertIn('chmod 0700 "$docker_config"', self.deploy)
 
     def test_deploy_requires_checkout_owner_and_safe_reset_umask(self) -> None:
@@ -194,7 +195,8 @@ class ServerSupervisorContractTests(unittest.TestCase):
             "Environment=DOCKER_CONFIG=/srv/velvet/data/runtime/docker-config",
             self.unit,
         )
-        self.assertIn("Environment=COMPOSE_BAKE=false", self.unit)
+        self.assertIn("Environment=COMPOSE_BAKE=true", self.unit)
+        self.assertNotIn("Environment=COMPOSE_BAKE=false", self.unit)
         self.assertIn("Restart=always", self.unit)
         self.assertIn("scripts/server_supervisor.py", self.unit)
         self.assertNotIn("User=root", self.unit)
