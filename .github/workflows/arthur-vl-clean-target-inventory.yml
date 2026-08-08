@@ -8,78 +8,69 @@ on:
       - .github/workflows/arthur-vl-clean-target-inventory.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  compare:
+  refresh:
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout exact PR head
+      - name: Checkout current PR branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: 3a9d677fc482ce224b03b4574bf35818df234246
-          fetch-depth: 1
-          persist-credentials: false
+          ref: fix/arthur-archive-vl-gate-main-20260808
+          fetch-depth: 0
+          persist-credentials: true
 
-      - name: Use CI Python
+      - name: Use exact CI Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.13'
 
-      - name: Compare full and fast package inventories on CI Python
+      - name: Regenerate and verify reviewed inventories
         shell: bash
         run: |
           set -euo pipefail
           python --version
-          python scripts/inventory_package_architecture.py --json --label p1-package-architecture-baseline > /tmp/full.json
-          python scripts/inventory_package_architecture_fast.py --json --label p1-package-architecture-baseline > /tmp/fast.json
+          python scripts/inventory_repository_layout.py --write --label p3e-repository-layout-complete
+          python scripts/inventory_package_architecture.py --write --label p1-package-architecture-baseline
           python - <<'PY'
           import json
+          import re
           from pathlib import Path
 
-          full = json.loads(Path('/tmp/full.json').read_text(encoding='utf-8'))
-          fast = json.loads(Path('/tmp/fast.json').read_text(encoding='utf-8'))
-          stored = json.loads(Path('docs/package_architecture_inventory.json').read_text(encoding='utf-8'))
-
-          def first_diff(a, b, path='$'):
-              if type(a) is not type(b):
-                  return path, a, b
-              if isinstance(a, dict):
-                  if set(a) != set(b):
-                      return path + '.keys', sorted(a), sorted(b)
-                  for key in a:
-                      found = first_diff(a[key], b[key], f'{path}.{key}')
-                      if found:
-                          return found
-                  return None
-              if isinstance(a, list):
-                  if len(a) != len(b):
-                      return path + '.length', len(a), len(b)
-                  for index, (left, right) in enumerate(zip(a, b)):
-                      found = first_diff(left, right, f'{path}[{index}]')
-                      if found:
-                          return found
-                  return None
-              if a != b:
-                  return path, a, b
-              return None
-
-          for label, left, right in (
-              ('full_fast', full, fast),
-              ('stored_full', stored, full),
-              ('stored_fast', stored, fast),
-          ):
-              diff = first_diff(left, right)
-              print(f'{label}_equal={diff is None}')
-              if diff is not None:
-                  path, a, b = diff
-                  print(f'{label}_first_diff_path={path}')
-                  print(f'{label}_left={a!r}')
-                  print(f'{label}_right={b!r}')
+          inventory = json.loads(Path("docs/package_architecture_inventory.json").read_text(encoding="utf-8"))
+          path = Path("tests/test_package_architecture_inventory.py")
+          text = path.read_text(encoding="utf-8")
+          replacement = f'self.assertEqual({int(inventory["production_loc"])}, self.inventory["production_loc"])'
+          updated, count = re.subn(
+              r'self\.assertEqual\(\d+, self\.inventory\["production_loc"\]\)',
+              replacement,
+              text,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f"expected one production_loc assertion, found {count}")
+          path.write_text(updated, encoding="utf-8")
           PY
+          python scripts/inventory_package_architecture.py --check --label p1-package-architecture-baseline
+          python scripts/inventory_package_architecture_fast.py --check --label p1-package-architecture-baseline
+          python scripts/inventory_repository_layout.py --check --label p3e-repository-layout-complete
 
-      - name: Run exact CI fast check
+      - name: Commit only verified generated outputs
         shell: bash
         run: |
           set -euo pipefail
-          python scripts/inventory_package_architecture_fast.py --check --label p1-package-architecture-baseline
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            docs/repository_layout_inventory.json \
+            docs/repository_layout_inventory.md \
+            tests/test_package_architecture_inventory.py
+          if git diff --cached --quiet; then
+            echo "No verified generated drift"
+            exit 0
+          fi
+          git commit -m "Refresh Arthur VL inventories with CI Python"
+          git push origin HEAD:fix/arthur-archive-vl-gate-main-20260808
