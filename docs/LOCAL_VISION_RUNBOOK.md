@@ -145,7 +145,11 @@ Harness запускается на host. HTTP-запрос к internal-only gat
 - `rounds=1`;
 - `cold_unload=false`.
 
-Workflow fail-closed проверяет exact clean checkout, policy flags, model/digest, concurrency и timeout. Он не выполняет `compose up`, `pull`, `restart` и не меняет queue. В artifact возвращается только `benchmark.json`.
+Workflow fail-closed проверяет exact clean checkout, policy flags, model/digest, concurrency, timeout и Docker state `bot`/`vision-runtime`/`vision-gateway` до и после benchmark. Он требует `running=true`, `paused=false` и `healthy`, если у контейнера есть healthcheck. Он также проверяет, что container IDs не изменились за время run.
+
+Для изоляции нагрузки не ставьте production-контейнеры на `docker pause`, не останавливайте и не убивайте `bot`, Arthur или другие runtime services. `docker pause` оставляет `State.Running=true`, но блокирует exec-based healthcheck и превращает штатную изоляцию benchmark в production incident. Если Storage Librarian или другой workload конкурирует за local inference, benchmark должен быть отложен до idle-состояния либо auto-enqueue/backfill должен быть отключён через его документированный lifecycle до запуска benchmark.
+
+Workflow сам не выполняет `compose up`, `pull`, `restart`, `pause`, `unpause`, `stop` или `kill` и не меняет queue. В artifact возвращается только `benchmark.json`.
 
 После успешного first smoke выполняются отдельные explicit runs для output caps `384`, `512`, `768`; cold run включается отдельным `cold_unload=true`, когда нужен cold-start evidence.
 
@@ -159,6 +163,8 @@ docker compose \
   -f docker-compose.server.yml \
   --profile vision ps --format json
 ```
+
+Перед прямым host run применяются те же invariants, что и в workflow: request/runtime containers должны быть running, не paused и healthy. Не оборачивайте harness в shell-скрипт, который делает `docker pause`/`unpause` production services ради освобождения CPU/RAM/VRAM; такой wrapper считается нарушением benchmark contract.
 
 Пример для cap `512`:
 

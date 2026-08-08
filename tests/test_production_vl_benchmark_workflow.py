@@ -63,6 +63,19 @@ class ProductionVLBenchmarkWorkflowTests(unittest.TestCase):
         self.assertIn('"${gateway_revision,,}" != "${SOURCE_COMMIT,,}"', self.text)
         self.assertIn('"$gateway_component" != "vision-gateway"', self.text)
 
+    def test_workflow_fails_closed_on_container_state(self) -> None:
+        required = (
+            "assert_container_ready",
+            "{{.State.Running}}",
+            "{{.State.Paused}}",
+            "{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+            'current_bot_id="$("${compose[@]}" ps -q bot)"',
+            'test "$current_bot_id" = "$bot_id"',
+        )
+        for fragment in required:
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, self.text)
+
     def test_workflow_rejects_functionally_failed_scorecards(self) -> None:
         self.assertIn('payload.get("success_rate") != 1.0', self.text)
         self.assertIn('payload.get("failure_rate") != 0.0', self.text)
@@ -72,11 +85,15 @@ class ProductionVLBenchmarkWorkflowTests(unittest.TestCase):
         self.assertIn('BENCHMARK_EXIT_CODE', self.text)
         self.assertIn('if: always()', self.text)
 
-    def test_workflow_does_not_start_services_or_enqueue_archive_work(self) -> None:
+    def test_workflow_does_not_mutate_runtime_or_enqueue_archive_work(self) -> None:
         forbidden = (
             "docker compose up",
             "docker compose pull",
             "docker compose restart",
+            "docker pause",
+            "docker unpause",
+            "docker stop",
+            "docker kill",
             "AI_QUALITY_ENABLED=true",
             "AI_VISION_CLOUD_PRO_ENABLED=true",
             "AI_VISION_LOCAL_UNCENSORED_ENABLED=true",
@@ -100,6 +117,7 @@ class ProductionVLBenchmarkWorkflowTests(unittest.TestCase):
         self.assertIn("rounds=1", self.runbook)
         self.assertIn("cold_unload=false", self.runbook)
         self.assertIn("production-vl-benchmark.yml", self.runbook)
+        self.assertIn("не ставьте production-контейнеры на `docker pause`", self.runbook)
 
 
 if __name__ == "__main__":
