@@ -3,7 +3,7 @@
 - Дата: 2026-08-08
 - ID: `arthur-preserve-running-image-20260808`
 - Линия/фаза: production lifecycle / Storage Librarian
-- Статус: `готово`
+- Статус: `завершено`
 - Ветка: `fix/arthur-preserve-running-image-20260808`
 - Базовый commit: `a84724836bcc603f0e609d1f58e1f1776e6eae3a`
 - Канонический VL источник: issue #630
@@ -74,14 +74,14 @@ CI выполняется после открытия PR. Merge допускае
 
 ### PR и commit
 
-PR и финальный exact head фиксируются после открытия pull request. Production deploy выполняется отдельно.
+PR #743. Финальный exact head фиксируется после terminal success CI. Production deploy выполняется отдельно.
 
 ### Незавершённое
 
-- protected CI ещё не завершён;
+- protected CI ещё должен завершиться на exact head;
 - PR ещё не merged;
 - production ещё не обновлён этим fix.
 
 ### Следующий шаг
 
-Открыть PR, дождаться terminal success required CI, проверить актуальный `main` и `behind_by=0`, выполнить squash merge с expected head SHA. После merge перейти к production console: доказать текущий image/revision, выполнить verified deployment нового `main`, затем включить Arthur full-archive и подтвердить, что lifecycle toggle сохраняет exact bot image ID.
+Дождаться terminal success required CI, проверить актуальный `main` и `behind_by=0`, выполнить squash merge с expected head SHA. После merge перейти к production console: доказать текущий image/revision, выполнить verified deployment нового `main`, затем включить Arthur full-archive и подтвердить, что lifecycle toggle сохраняет exact bot image ID.
