@@ -70,6 +70,7 @@ Arthur `STORAGE_LIBRARIAN_AUTO_ENQUEUE=false` не меняется. Recovery ж
 - regression test проверяет stale predicate, queued/failed split и сохранение attempt history;
 - type-check GitHub CI на первом PR head прошёл;
 - после синхронизации с актуальным `main` package architecture inventory регенерирован на GitHub runner с Python 3.13 и label `p1-package-architecture-baseline`;
+- repository layout inventory регенерирован на GitHub runner с Python 3.13 и label `p3e-repository-layout-complete` после добавления production consumer recovery helper;
 - полный required GitHub CI должен пройти на финальном head до merge.
 
 ### PR и commit
