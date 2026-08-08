@@ -249,15 +249,15 @@ class CiChangedSurfacesTests(unittest.TestCase):
         self.assertIn("Resolve changed Docker surfaces", source)
         self.assertIn("--base-ref \"$BASE_REF\"", source)
         self.assertIn("github.event.pull_request.head.sha || github.sha", source)
-        self.assertIn("steps.changes.outputs.docker_velvet == 'true'", source)
-        self.assertIn("steps.changes.outputs.docker_supervisor == 'true'", source)
-        self.assertIn("steps.changes.outputs.docker_vision == 'true'", source)
-        self.assertIn("steps.changes.outputs.docker_krita == 'true'", source)
-        self.assertIn("steps.changes.outputs.docker_hermes == 'true'", source)
+        self.assertIn("needs.changes.outputs.docker_velvet == 'true'", source)
+        self.assertIn("needs.changes.outputs.docker_supervisor == 'true'", source)
+        self.assertIn("needs.changes.outputs.docker_vision == 'true'", source)
+        self.assertIn("needs.changes.outputs.docker_krita == 'true'", source)
+        self.assertIn("needs.changes.outputs.docker_hermes == 'true'", source)
         self.assertIn("--cache-from type=gha,scope=velvet-krita", source)
         self.assertIn("--cache-to type=gha,mode=max,scope=velvet-krita", source)
-        self.assertIn("Skip unchanged Krita image", source)
-        self.assertIn("Skip unchanged Hermes images", source)
+        self.assertIn("--cache-from type=gha,scope=velvet-hermes-coder", source)
+        self.assertIn("--cache-from type=gha,scope=velvet-hermes-db-proxy", source)
 
 
 if __name__ == "__main__":

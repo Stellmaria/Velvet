@@ -54,6 +54,46 @@ class DockerBuildWorkflowContractTests(unittest.TestCase):
             self.workflow,
         )
 
+    def test_hermes_shared_images_are_built_once_with_gha_cache(self) -> None:
+        self.assertIn(
+            "--file deploy/hermes-coders/Dockerfile.coder",
+            self.workflow,
+        )
+        self.assertIn(
+            "--cache-from type=gha,scope=velvet-hermes-coder",
+            self.workflow,
+        )
+        self.assertIn(
+            "--cache-to type=gha,mode=max,scope=velvet-hermes-coder,ignore-error=true",
+            self.workflow,
+        )
+        for tag in (
+            "velvet-hermes-chat-velvet:local",
+            "velvet-codex-coder-velvet:local",
+            "velvet-hermes-chat-max:local",
+            "velvet-codex-coder-max:local",
+        ):
+            self.assertEqual(self.workflow.count(f"--tag {tag}"), 1)
+
+        self.assertIn(
+            "--file deploy/hermes-coders/Dockerfile.db-proxy",
+            self.workflow,
+        )
+        self.assertIn(
+            "--cache-from type=gha,scope=velvet-hermes-db-proxy",
+            self.workflow,
+        )
+        for tag in (
+            "velvet-hermes-db-proxy-velvet:local",
+            "velvet-hermes-db-proxy-max:local",
+        ):
+            self.assertEqual(self.workflow.count(f"--tag {tag}"), 1)
+
+        self.assertNotIn(
+            "-f deploy/hermes-coders/compose.yaml \\\n              build",
+            self.workflow,
+        )
+
     def test_required_build_check_is_a_fail_closed_aggregator(self) -> None:
         self.assertIn("  build:\n    name: build\n    if: always()", self.workflow)
         for job in (
