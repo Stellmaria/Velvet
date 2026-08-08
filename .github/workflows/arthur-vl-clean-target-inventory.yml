@@ -1,5 +1,6 @@
 name: arthur vl clean target inventory
 
+# Refresh after synchronous Arthur archive lease acquisition.
 on:
   push:
     branches:
