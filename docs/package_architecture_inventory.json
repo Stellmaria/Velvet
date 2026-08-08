@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 661,
-  "production_loc": 146144,
+  "production_loc": 146213,
   "layer_counts": {
     "application": 22,
     "composition": 62,
@@ -22115,26 +22115,29 @@
       "module": "velvet_bot.domains.vision_batches.worker",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 206,
-      "function_count": 6,
+      "loc": 275,
+      "function_count": 9,
       "class_count": 2,
       "handler_count": 0,
-      "max_function_length": 61,
-      "branch_count": 9,
+      "max_function_length": 63,
+      "branch_count": 18,
       "internal_imports": [
         "velvet_bot.ai_vision",
         "velvet_bot.core.ai_budget",
         "velvet_bot.core.config",
         "velvet_bot.database",
         "velvet_bot.domains.ai_usage",
+        "velvet_bot.domains.telegram_storage.librarian_models",
+        "velvet_bot.domains.telegram_storage.librarian_repository",
         "velvet_bot.domains.vision_batches.service",
         "velvet_bot.domains.vision_batches.store",
         "velvet_bot.domains.vision_routing",
         "velvet_bot.domains.vision_routing.integration",
         "velvet_bot.infrastructure.postgres.ai_task_wakeup_repository",
+        "velvet_bot.local_ai_runtime",
         "velvet_bot.workers.adaptive"
       ],
-      "external_import_count": 7,
+      "external_import_count": 10,
       "aiogram_imports": [
         "aiogram"
       ],
@@ -22150,26 +22153,32 @@
       "install_calls": [],
       "installed_sentinel_count": 0,
       "package_getattr": false,
-      "env_reads": [],
+      "env_reads": [
+        {
+          "line": 44,
+          "owner": "_env_enabled",
+          "call": "os.getenv"
+        }
+      ],
       "polling_values": [],
       "worker_registrations": [
         {
-          "line": 111,
+          "line": 159,
+          "owner": "_empty_result",
+          "call": "WorkerIterationResult"
+        },
+        {
+          "line": 199,
           "owner": "process_once",
           "call": "WorkerIterationResult"
         },
         {
-          "line": 132,
+          "line": 198,
           "owner": "process_once",
           "call": "WorkerIterationResult"
         },
         {
-          "line": 131,
-          "owner": "process_once",
-          "call": "WorkerIterationResult"
-        },
-        {
-          "line": 155,
+          "line": 222,
           "owner": "process_once",
           "call": "WorkerIterationResult"
         }
