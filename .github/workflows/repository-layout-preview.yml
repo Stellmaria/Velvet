@@ -1,0 +1,72 @@
+name: repository layout preview
+
+on:
+  pull_request:
+    paths:
+      - velvet_bot/**
+      - tests/**
+      - scripts/inventory_repository_layout.py
+      - docs/repository_layout_inventory.json
+      - docs/repository_layout_inventory.md
+      - .github/workflows/repository-layout-preview.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repository-layout-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v6.1.0
+        with:
+          python-version: "3.13"
+
+      - name: Generate repository layout inventory
+        run: |
+          python scripts/inventory_repository_layout.py \
+            --write \
+            --label p3e-repository-layout-complete
+          python scripts/inventory_repository_layout.py \
+            --check \
+            --label p3e-repository-layout-complete
+
+      - name: Validate exact branch head and commit generated inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_head="$(git ls-remote --heads origin "refs/heads/${HEAD_BRANCH}" | awk '{print $1}')"
+          if [[ "$remote_head" != "$EXPECTED_HEAD_SHA" ]]; then
+            echo "PR head moved: expected $EXPECTED_HEAD_SHA, actual $remote_head" >&2
+            exit 1
+          fi
+
+          rm .github/workflows/repository-layout-preview.yml
+          git add \
+            docs/repository_layout_inventory.json \
+            docs/repository_layout_inventory.md \
+            .github/workflows/repository-layout-preview.yml
+          git diff --cached --check
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit \
+            -m "Refresh repository layout inventory" \
+            -m "Source head: ${EXPECTED_HEAD_SHA}" \
+            -m "Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          git push origin "HEAD:refs/heads/${HEAD_BRANCH}"
