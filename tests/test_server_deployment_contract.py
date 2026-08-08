@@ -94,6 +94,7 @@ class ServerDeploymentContractTests(unittest.TestCase):
         self.assertIn('find "$backup_root" -maxdepth 1 -type f', source)
         self.assertIn("-name '*.dump'", source)
         self.assertIn("-name '*.dump.json'", source)
+        self.assertIn("! -perm -004", source)
         self.assertIn('chmod 0644 -- "$candidate"', source)
         self.assertIn("-print0", source)
         self.assertLess(

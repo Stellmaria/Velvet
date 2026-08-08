@@ -110,6 +110,7 @@ normalize_backup_permissions() {
   done < <(
     find "$backup_root" -maxdepth 1 -type f \
       \( -name '*.dump' -o -name '*.dump.json' \) \
+      ! -perm -004 \
       -print0
   )
 
