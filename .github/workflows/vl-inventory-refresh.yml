@@ -1,0 +1,69 @@
+name: VL inventory refresh
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/vl-inventory-refresh.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vl-inventory-refresh-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.13"
+
+      - name: Refresh generated inventories
+        run: |
+          python scripts/update_p2_stability_inventory.py \
+            --label p1-package-architecture-baseline \
+            --schema-version 82
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md \
+            --check
+
+      - name: Commit generated inventories and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_head="$(git ls-remote --heads origin "refs/heads/${HEAD_BRANCH}" | awk '{print $1}')"
+          if [[ "$remote_head" != "$EXPECTED_HEAD_SHA" ]]; then
+            echo "PR head moved: expected $EXPECTED_HEAD_SHA, actual $remote_head"
+            exit 1
+          fi
+
+          rm .github/workflows/vl-inventory-refresh.yml
+          git add \
+            docs/p2_stability_inventory.json \
+            docs/p2_stability_inventory.md \
+            docs/generated/telegram_navigation_inventory.md \
+            .github/workflows/vl-inventory-refresh.yml
+          git diff --cached --check
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit \
+            -m "Refresh generated VL inventories" \
+            -m "Source head: ${EXPECTED_HEAD_SHA}" \
+            -m "Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          git push origin "HEAD:refs/heads/${HEAD_BRANCH}"
