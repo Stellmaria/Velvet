@@ -6,7 +6,7 @@
 - Статус: `завершено`
 - Ветка: `feat/codex-recovery-notification`
 - Базовый commit: `8b160db820592c36f51da491b0525754f6954bdf`
-- Синхронизированный main: `fa360df542e7dcc44ce2f98eb44580548055ad41`
+- Синхронизированный main перед финальным CI: `42bd97eedd0807befb92cfcd56cd231e9cc51567`
 
 ## Перед началом
 

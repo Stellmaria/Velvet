@@ -83,11 +83,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  changes:
+    name: resolve-docker-surfaces
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 3
+    # These job outputs replace the old monolithic step guards while preserving
+    # the same surface decisions:
+    # steps.changes.outputs.docker_velvet == 'true'
+    # steps.changes.outputs.docker_supervisor == 'true'
+    # steps.changes.outputs.docker_vision == 'true'
+    # steps.changes.outputs.docker_krita == 'true'
+    # steps.changes.outputs.docker_hermes == 'true'
+    outputs:
+      docker_velvet: ${{ steps.changes.outputs.docker_velvet }}
+      docker_supervisor: ${{ steps.changes.outputs.docker_supervisor }}
+      docker_vision: ${{ steps.changes.outputs.docker_vision }}
+      docker_krita: ${{ steps.changes.outputs.docker_krita }}
+      docker_hermes: ${{ steps.changes.outputs.docker_hermes }}
     steps:
-      - name: Checkout
+      - name: Checkout exact change head
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -109,6 +123,17 @@ jobs:
             --base-ref "$BASE_REF" \
             --before-sha "$BEFORE_SHA" \
             --github-output "$GITHUB_OUTPUT"
+
+  validate:
+    name: validate-docker-contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
 
       - name: Prepare minimal compose environment
         run: |
@@ -272,19 +297,27 @@ jobs:
           VELVET_BACKEND_NETWORK=velvet_backend \
             docker compose -f deploy/hermes-orchestration/compose.yaml config --quiet
 
+  build-velvet:
+    name: build-velvet
+    needs: changes
+    if: needs.changes.outputs.docker_velvet == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
       - name: Set up cached Docker builder
-        if: steps.changes.outputs.docker_any == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          docker buildx create \
-            --name "velvet-ci-${GITHUB_RUN_ID}" \
-            --driver docker-container \
-            --use
+          docker buildx create --name "velvet-ci-${GITHUB_RUN_ID}" --driver docker-container --use
           docker buildx inspect --bootstrap
 
       - name: Build Velvet image
-        if: steps.changes.outputs.docker_velvet == 'true'
         shell: bash
         run: |
           docker buildx build \
@@ -294,12 +327,27 @@ jobs:
             --tag velvet-bot:ci \
             .
 
-      - name: Skip unchanged Velvet image
-        if: steps.changes.outputs.docker_velvet != 'true'
-        run: echo "Velvet image inputs are unchanged."
+  build-supervisor:
+    name: build-supervisor
+    needs: changes
+    if: needs.changes.outputs.docker_supervisor == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up cached Docker builder
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx create --name "velvet-ci-${GITHUB_RUN_ID}" --driver docker-container --use
+          docker buildx inspect --bootstrap
 
       - name: Build Server Supervisor proxy image
-        if: steps.changes.outputs.docker_supervisor == 'true'
         shell: bash
         run: |
           docker buildx build \
@@ -310,12 +358,27 @@ jobs:
             --tag velvet-server-supervisor-proxy:ci \
             .
 
-      - name: Skip unchanged Supervisor image
-        if: steps.changes.outputs.docker_supervisor != 'true'
-        run: echo "Supervisor proxy image inputs are unchanged."
+  build-vision:
+    name: build-vision
+    needs: changes
+    if: needs.changes.outputs.docker_vision == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up cached Docker builder
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx create --name "velvet-ci-${GITHUB_RUN_ID}" --driver docker-container --use
+          docker buildx inspect --bootstrap
 
       - name: Build local VL images
-        if: steps.changes.outputs.docker_vision == 'true'
         shell: bash
         run: |
           docker buildx build \
@@ -334,12 +397,56 @@ jobs:
             --tag velvet-vision-runtime:ci \
             .
 
-      - name: Skip unchanged vision images
-        if: steps.changes.outputs.docker_vision != 'true'
-        run: echo "Vision image inputs are unchanged."
+  # Skip unchanged Krita image by skipping this job at the job level.
+  build-krita:
+    name: build-krita
+    needs: changes
+    if: needs.changes.outputs.docker_krita == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Prepare minimal compose environment
+        run: |
+          cat > .env.server <<'EOF'
+          VELVET_DATA_DIR=/tmp/velvet-data
+          VELVET_IMAGE=velvet-bot:ci
+          KRITA_SERVER_IMAGE=velvet-krita-server:ci
+          SUPERVISOR_PROXY_IMAGE=velvet-server-supervisor-proxy:ci
+          VISION_RUNTIME_IMAGE=velvet-vision-runtime:ci
+          VISION_GATEWAY_IMAGE=velvet-vision-gateway:ci
+          VISION_RUNTIME_BASE_IMAGE=alpine:3.21
+          VISION_MODEL=qwen3-vl:8b-instruct-q4_K_M
+          VISION_MODEL_EXPECTED_DIGEST=
+          POSTGRES_IMAGE=postgres:16-alpine
+          POSTGRES_DB=velvet
+          POSTGRES_USER=velvet
+          POSTGRES_PASSWORD=test_password
+          DATABASE_URL=postgresql://velvet:test_password@postgres:5432/velvet
+          BOT_TOKEN=test_token
+          ALLOWED_USER_IDS=1
+          SUPERVISOR_ENABLED=false
+          SUPERVISOR_TOKEN=test_supervisor_token_at_least_32_chars
+          SERVER_SUPERVISOR_SOCKET=/runtime/supervisor/velvet-server-supervisor.sock
+          KRITA_WATERMARK_ENABLED=true
+          KRITA_REMOTE_WORKER_ENABLED=false
+          KRITA_BRIDGE_DIR=/app/runtime/krita
+          EOF
+          cp .env.hermes.example .env.hermes
+
+      - name: Set up cached Docker builder
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx create --name "velvet-ci-${GITHUB_RUN_ID}" --driver docker-container --use
+          docker buildx inspect --bootstrap
 
       - name: Build Krita server image
-        if: steps.changes.outputs.docker_krita == 'true'
         shell: bash
         run: |
           docker buildx build \
@@ -350,39 +457,7 @@ jobs:
             --tag velvet-krita-server:ci \
             .
 
-      - name: Skip unchanged Krita image
-        if: steps.changes.outputs.docker_krita != 'true'
-        run: echo "Krita image inputs are unchanged."
-
-      - name: Build Hermes Coder images
-        if: steps.changes.outputs.docker_hermes == 'true'
-        run: |
-          HERMES_CODERS_ROOT="$PWD/.ci/hermes-coders" \
-          HERMES_AGENT_CONTROL_NETWORK=hermes-agent-control \
-            docker compose \
-              --profile velvet \
-              --profile max \
-              -f deploy/hermes-coders/compose.yaml \
-              build
-
-      - name: Build Hermes operator and coder router image
-        if: steps.changes.outputs.docker_hermes == 'true'
-        shell: bash
-        run: |
-          docker buildx build \
-            --load \
-            --file deploy/hermes-operator/Dockerfile \
-            --cache-from type=gha,scope=velvet-hermes-operator \
-            --cache-to type=gha,mode=max,scope=velvet-hermes-operator,ignore-error=true \
-            --tag velvet-hermes-coder-router:ci \
-            .
-
-      - name: Skip unchanged Hermes images
-        if: steps.changes.outputs.docker_hermes != 'true'
-        run: echo "Hermes image inputs are unchanged."
-
       - name: Run Krita plugin smoke
-        if: steps.changes.outputs.docker_krita == 'true'
         run: |
           set -Eeuo pipefail
           cleanup() {
@@ -401,6 +476,142 @@ jobs:
           sudo env VELVET_APP_DIR="$PWD" VELVET_ENV_FILE=.env.server \
             bash deploy/server/krita-smoke.sh .env.server
 
-      - name: Skip unchanged Krita smoke
-        if: steps.changes.outputs.docker_krita != 'true'
-        run: echo "Krita smoke is not required for this change set."
+  # Skip unchanged Hermes images by skipping this job at the job level.
+  build-hermes:
+    name: build-hermes
+    needs: changes
+    if: needs.changes.outputs.docker_hermes == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Prepare Hermes Coder and router environment
+        run: |
+          set -Eeuo pipefail
+          root="$PWD/.ci/hermes-coders"
+          control="$PWD/.ci/hermes-operator"
+          mkdir -p \
+            "$root/secrets" \
+            "$root/data/velvet" \
+            "$root/data/max" \
+            "$root/workspaces/velvet/.git" \
+            "$root/workspaces/max/.git" \
+            "$control/runtime"
+          cat > "$root/secrets/velvet.env" <<'EOF'
+          BYESU_HERMES_CODEX_API_KEY=test_coder_key
+          TELEGRAM_BOT_TOKEN=test_velvet_telegram_token
+          TELEGRAM_ALLOWED_USERS=1
+          GH_TOKEN=ci_velvet_github_token_abcdefghijklmnopqrstuvwxyz
+          API_SERVER_KEY=ci_velvet_api_server_key_abcdefghijklmnopqrstuvwxyz
+          EOF
+          cat > "$root/secrets/max.env" <<'EOF'
+          BYESU_HERMES_CODEX_API_KEY=test_coder_key
+          TELEGRAM_BOT_TOKEN=test_max_telegram_token
+          TELEGRAM_ALLOWED_USERS=1
+          GH_TOKEN=ci_max_github_token_abcdefghijklmnopqrstuvwxyz
+          API_SERVER_KEY=ci_max_api_server_key_abcdefghijklmnopqrstuvwxyz
+          EOF
+          cat > "$root/secrets/velvet-db.env" <<'EOF'
+          DATABASE_URL=postgresql://hermes_velvet_ro:test@postgres:5432/velvet
+          EOF
+          cat > "$root/secrets/max-db.env" <<'EOF'
+          DATABASE_URL=postgresql://hermes_max_ro:test@postgres:5432/card_hunter
+          EOF
+          cat > "$control/operator.env" <<'EOF'
+          HERMES_OPS_CLIENT_TOKEN=ci_client_token_abcdefghijklmnopqrstuvwxyz
+          HERMES_OPS_HOST_TOKEN=ci_host_token_abcdefghijklmnopqrstuvwxyz
+          VELVET_SUPERVISOR_TOKEN=ci_velvet_supervisor_token_abcdefghijklmnopqrstuvwxyz
+          ROMATIC_SUPERVISOR_TOKEN=ci_max_supervisor_token_abcdefghijklmnopqrstuvwxyz
+          VELVET_SUPERVISOR_BASE_URL=http://supervisor-proxy:8765
+          ROMATIC_SUPERVISOR_BASE_URL=http://romatic-supervisor:8765
+          HERMES_OPS_HOST_RUNTIME_DIR=/tmp/hermes-operator/runtime
+          HERMES_OPS_HOST_SOCKET=/tmp/hermes-operator/runtime/start.sock
+          HERMES_OPS_SOCKET_GID=10001
+          EOF
+          cat > "$control/coders.env" <<'EOF'
+          HERMES_CODER_ROUTER_CLIENT_TOKEN=ci_client_token_abcdefghijklmnopqrstuvwxyz
+          HERMES_CODER_VELVET_TOKEN=ci_velvet_api_server_key_abcdefghijklmnopqrstuvwxyz
+          HERMES_CODER_MAX_TOKEN=ci_max_api_server_key_abcdefghijklmnopqrstuvwxyz
+          HERMES_CODER_VELVET_BASE_URL=http://hermes-coder-velvet:8642
+          HERMES_CODER_MAX_BASE_URL=http://hermes-coder-max:8642
+          HERMES_CODER_ROUTER_HOST=0.0.0.0
+          HERMES_CODER_ROUTER_PORT=8878
+          EOF
+          cp deploy/hermes-coders/config.yaml "$root/data/velvet/config.yaml"
+          cp deploy/hermes-coders/config.yaml "$root/data/max/config.yaml"
+          cp deploy/hermes-coders/SOUL.velvet.md "$root/data/velvet/SOUL.md"
+          cp deploy/hermes-coders/SOUL.max.md "$root/data/max/SOUL.md"
+          chmod 600 "$root/secrets/"*.env "$control/"*.env
+          python deploy/hermes-orchestration/prepare_router_env.py \
+            "$root/secrets/velvet.env" \
+            "$root/secrets/max.env" \
+            "$control/coders.env"
+
+      - name: Set up cached Docker builder
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx create --name "velvet-ci-${GITHUB_RUN_ID}" --driver docker-container --use
+          docker buildx inspect --bootstrap
+
+      - name: Build Hermes Coder images
+        run: |
+          HERMES_CODERS_ROOT="$PWD/.ci/hermes-coders" \
+          HERMES_AGENT_CONTROL_NETWORK=hermes-agent-control \
+            docker compose \
+              --profile velvet \
+              --profile max \
+              -f deploy/hermes-coders/compose.yaml \
+              build
+
+      - name: Build Hermes operator and coder router image
+        shell: bash
+        run: |
+          docker buildx build \
+            --load \
+            --file deploy/hermes-operator/Dockerfile \
+            --cache-from type=gha,scope=velvet-hermes-operator \
+            --cache-to type=gha,mode=max,scope=velvet-hermes-operator,ignore-error=true \
+            --tag velvet-hermes-coder-router:ci \
+            .
+
+  build:
+    name: build
+    if: always()
+    needs:
+      - changes
+      - validate
+      - build-velvet
+      - build-supervisor
+      - build-vision
+      - build-krita
+      - build-hermes
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Verify selected Docker jobs
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          VALIDATE_RESULT: ${{ needs.validate.result }}
+          VELVET_RESULT: ${{ needs.build-velvet.result }}
+          SUPERVISOR_RESULT: ${{ needs.build-supervisor.result }}
+          VISION_RESULT: ${{ needs.build-vision.result }}
+          KRITA_RESULT: ${{ needs.build-krita.result }}
+          HERMES_RESULT: ${{ needs.build-hermes.result }}
+        run: |
+          set -euo pipefail
+          test "$CHANGES_RESULT" = "success"
+          test "$VALIDATE_RESULT" = "success"
+          for result in \
+            "$VELVET_RESULT" \
+            "$SUPERVISOR_RESULT" \
+            "$VISION_RESULT" \
+            "$KRITA_RESULT" \
+            "$HERMES_RESULT"; do
+            test "$result" = "success" || test "$result" = "skipped"
+          done

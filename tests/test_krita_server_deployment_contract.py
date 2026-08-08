@@ -12,6 +12,7 @@ def test_krita_server_image_is_headless_and_non_root() -> None:
     assert "xvfb" in dockerfile
     assert "dbus-x11" in dockerfile
     assert "python3-pyqt5" in dockerfile
+    assert "qml-module-qtquick-controls" in dockerfile
     assert "useradd --create-home --uid 10001 velvet" in dockerfile
     assert "USER velvet" in dockerfile
     assert "enable_velvet_logo=true" in dockerfile
@@ -41,6 +42,16 @@ def test_krita_plugin_prefers_worker_and_server_bridge_environment() -> None:
     assert server_env in plugin
     assert fallback in plugin
     assert plugin.index(worker_env) < plugin.index(server_env) < plugin.index(fallback)
+
+
+def test_krita_server_bridge_keeps_documents_headless() -> None:
+    plugin = (
+        ROOT / "tools/krita/velvet_logo/velvet_logo.py"
+    ).read_text(encoding="utf-8")
+
+    assert "window.addView(document)" not in plugin
+    assert plugin.count("document.waitForDone()") >= 2
+    assert "if Krita.instance().activeDocument() == document:" in plugin
 
 
 def test_krita_entrypoint_uses_virtual_display_without_tcp() -> None:
@@ -82,6 +93,9 @@ def test_krita_smoke_uses_real_plugin_request_contract() -> None:
     assert '"logo": {"kind": "builtin"' in smoke
     assert '"status") != "ok"' in smoke
     assert 'startswith(b"\\x89PNG\\r\\n\\x1a\\n")' in smoke
+    assert 'exec -T krita python3 -' in smoke
+    assert "RestartCount" in smoke
+    assert "VELVET_KRITA_HOST_BRIDGE" not in smoke
 
 
 def test_installer_enables_local_mode_without_remote_worker() -> None:
