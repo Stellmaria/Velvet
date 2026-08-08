@@ -20,6 +20,7 @@ PROTECTED_KINDS = frozenset({"backups", "analysis", "watermarks"})
 TEXT_CONTEXT_RESERVED_TOKENS = 1024
 TEXT_CHARS_PER_TOKEN = 2
 TEXT_ANALYSIS_WRAPPER_RESERVED_CHARS = 2048
+TEXT_CHUNK_WRAPPER_RESERVED_CHARS = 512
 
 
 class StorageLibrarianError(RuntimeError):
@@ -115,6 +116,9 @@ class StorageLibrarianSettings:
     vision_context_length: int = 16384
     vision_max_output_tokens: int = 640
     ollama_keep_alive: str = "5m"
+    max_chunk_count: int = 12
+    max_chunk_source_chars: int = 220_000
+    max_inference_calls: int = 13
 
     @classmethod
     def from_env(cls) -> "StorageLibrarianSettings":
@@ -172,6 +176,43 @@ class StorageLibrarianSettings:
             context_length=text_context_length,
             max_output_tokens=text_max_output_tokens,
         )
+        max_text_chars = min(
+            _int_env(
+                "STORAGE_LIBRARIAN_MAX_TEXT_CHARS",
+                max_text_chars_limit,
+                minimum=2000,
+                maximum=500_000,
+            ),
+            max_text_chars_limit,
+        )
+        max_chunk_count = _int_env(
+            "STORAGE_LIBRARIAN_MAX_CHUNKS",
+            12,
+            minimum=2,
+            maximum=32,
+        )
+        theoretical_chunk_capacity = max(
+            1,
+            max_text_chars - TEXT_CHUNK_WRAPPER_RESERVED_CHARS,
+        ) * max_chunk_count
+        max_chunk_source_chars = min(
+            _int_env(
+                "STORAGE_LIBRARIAN_MAX_CHUNK_SOURCE_CHARS",
+                220_000,
+                minimum=4000,
+                maximum=2_000_000,
+            ),
+            theoretical_chunk_capacity,
+        )
+        max_inference_calls = min(
+            _int_env(
+                "STORAGE_LIBRARIAN_MAX_INFERENCE_CALLS",
+                max_chunk_count + 1,
+                minimum=2,
+                maximum=64,
+            ),
+            max_chunk_count + 1,
+        )
 
         return cls(
             enabled=enabled,
@@ -201,15 +242,7 @@ class StorageLibrarianSettings:
                 minimum=1024,
                 maximum=48 * 1024 * 1024,
             ),
-            max_text_chars=min(
-                _int_env(
-                    "STORAGE_LIBRARIAN_MAX_TEXT_CHARS",
-                    max_text_chars_limit,
-                    minimum=2000,
-                    maximum=500_000,
-                ),
-                max_text_chars_limit,
-            ),
+            max_text_chars=max_text_chars,
             max_zip_entries=_int_env(
                 "STORAGE_LIBRARIAN_MAX_ZIP_ENTRIES",
                 40,
@@ -269,6 +302,9 @@ class StorageLibrarianSettings:
                 os.getenv("STORAGE_LIBRARIAN_OLLAMA_KEEP_ALIVE", "5m").strip()
                 or "5m"
             ),
+            max_chunk_count=max_chunk_count,
+            max_chunk_source_chars=max_chunk_source_chars,
+            max_inference_calls=max_inference_calls,
         )
 
 
@@ -333,6 +369,7 @@ __all__ = (
     "PROTECTED_KINDS",
     "StorageLibrarianError",
     "StorageLibrarianSettings",
+    "TEXT_CHUNK_WRAPPER_RESERVED_CHARS",
     "TerminalStorageLibrarianError",
     "UnsupportedStorageContent",
     "storage_librarian_text_prompt_char_limit",
