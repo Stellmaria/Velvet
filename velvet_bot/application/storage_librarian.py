@@ -12,12 +12,16 @@ from typing import Protocol, cast
 from velvet_bot.database import Database
 from velvet_bot.domains.telegram_storage.librarian_content import (
     analysis_prompt,
+    chunk_analysis_source,
     extract_storage_text,
+    hierarchical_synthesis_source,
     parse_librarian_analysis,
+    plan_storage_text_chunks,
     redact_sensitive,
 )
 from velvet_bot.domains.telegram_storage.librarian_models import (
     HermesRunResult,
+    JsonObject,
     JsonValue,
     LibrarianAnalysis,
     LibrarianObject,
@@ -32,6 +36,12 @@ from velvet_bot.domains.telegram_storage.librarian_repository import (
 
 logger = logging.getLogger(__name__)
 _TOKEN_RE = re.compile(r"[0-9A-Za-zА-Яа-яЁё_-]{3,}")
+_ANALYSIS_INSTRUCTIONS = (
+    "Ты библиотекарь закрытого Telegram Storage Velvet. Анализируй только "
+    "предоставленный текст, не вызывай инструменты и возвращай строгий JSON без "
+    "Markdown. Естественный язык ответа — русский; технические идентификаторы не "
+    "переводи."
+)
 _SEARCH_STOPWORDS = frozenset(
     {
         "какие",
@@ -224,6 +234,39 @@ def _fallback_analysis_rows(
     return [row for _, row in scored[: max(1, min(int(limit), 20))]]
 
 
+def _usage_value(run: HermesRunResult, key: str) -> int:
+    value = run.usage.get(key)
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return 0
+    return value
+
+
+def _aggregate_hierarchical_run(
+    runs: tuple[HermesRunResult, ...],
+    *,
+    chunk_count: int,
+) -> HermesRunResult:
+    final = runs[-1]
+    usage: JsonObject = dict(final.usage)
+    usage.update(
+        {
+            "prompt_tokens": sum(_usage_value(run, "prompt_tokens") for run in runs),
+            "completion_tokens": sum(
+                _usage_value(run, "completion_tokens") for run in runs
+            ),
+            "chunk_count": chunk_count,
+            "inference_calls": len(runs),
+            "hierarchical": True,
+        }
+    )
+    return HermesRunResult(
+        run_id=final.run_id,
+        output=final.output,
+        usage=usage,
+        analyzer=final.analyzer,
+    )
+
+
 class StorageLibrarianService:
     def __init__(
         self,
@@ -242,6 +285,75 @@ class StorageLibrarianService:
         self.answer_client = answer_client
         self.report_publisher = report_publisher
         self.worker_id = f"storage-librarian:{os.getpid()}"
+
+    async def _run_local_analysis(
+        self,
+        *,
+        prompt: str,
+        session_id: str,
+    ) -> HermesRunResult:
+        run = await self.analysis_client.run(
+            prompt=prompt,
+            session_id=session_id,
+            instructions=_ANALYSIS_INSTRUCTIONS,
+        )
+        if run.analyzer != "ollama":
+            raise TerminalStorageLibrarianError(
+                "Storage Librarian analysis must use local Ollama only; "
+                f"received analyzer={run.analyzer}."
+            )
+        return run
+
+    async def _analyze_source(
+        self,
+        item: LibrarianObject,
+        source_text: str,
+    ) -> HermesRunResult:
+        chunks = plan_storage_text_chunks(source_text, settings=self.settings)
+        base_session = (
+            f"velvet-storage-{item.object_id}-{self.settings.analyzer_version}"
+        )
+        if len(chunks) == 1:
+            return await self._run_local_analysis(
+                prompt=analysis_prompt(item, source_text),
+                session_id=base_session,
+            )
+
+        required_calls = len(chunks) + 1
+        if required_calls > self.settings.max_inference_calls:
+            raise TerminalStorageLibrarianError(
+                "Storage Librarian hierarchical analysis exceeds the bounded inference "
+                f"budget: calls={required_calls}, limit={self.settings.max_inference_calls}."
+            )
+
+        chunk_runs: list[HermesRunResult] = []
+        chunk_analyses: list[LibrarianAnalysis] = []
+        for index, chunk in enumerate(chunks, start=1):
+            chunk_source = chunk_analysis_source(
+                chunk,
+                index=index,
+                total=len(chunks),
+                max_chars=self.settings.max_text_chars,
+            )
+            run = await self._run_local_analysis(
+                prompt=analysis_prompt(item, chunk_source),
+                session_id=(
+                    f"{base_session}-chunk-{index:03d}-of-{len(chunks):03d}"
+                ),
+            )
+            chunk_runs.append(run)
+            chunk_analyses.append(parse_librarian_analysis(run.output))
+
+        synthesis_source = hierarchical_synthesis_source(
+            tuple(chunk_analyses),
+            max_chars=self.settings.max_text_chars,
+        )
+        synthesis_run = await self._run_local_analysis(
+            prompt=analysis_prompt(item, synthesis_source),
+            session_id=f"{base_session}-synthesis-{len(chunks):03d}",
+        )
+        all_runs = tuple(chunk_runs) + (synthesis_run,)
+        return _aggregate_hierarchical_run(all_runs, chunk_count=len(chunks))
 
     async def process_once(self, *, auto_enqueue: bool = False) -> int:
         if not self.settings.enabled:
@@ -270,20 +382,9 @@ class StorageLibrarianService:
                 item,
                 source,
                 settings=self.settings,
+                allow_chunking=True,
             )
-            run = await self.analysis_client.run(
-                prompt=analysis_prompt(item, source_text),
-                session_id=(
-                    f"velvet-storage-{item.object_id}-"
-                    f"{self.settings.analyzer_version}"
-                ),
-                instructions=(
-                    "Ты библиотекарь закрытого Telegram Storage Velvet. Анализируй "
-                    "только предоставленный текст, не вызывай инструменты и возвращай "
-                    "строгий JSON без Markdown. Естественный язык ответа — русский; "
-                    "технические идентификаторы не переводи."
-                ),
-            )
+            run = await self._analyze_source(item, source_text)
             analysis = parse_librarian_analysis(run.output)
             await self.repository.complete(
                 job=job,

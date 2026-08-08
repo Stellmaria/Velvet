@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 661,
-  "production_loc": 145658,
+  "production_loc": 145945,
   "layer_counts": {
     "application": 22,
     "composition": 62,
@@ -13222,12 +13222,12 @@
       "module": "velvet_bot.application.storage_librarian",
       "layer": "application",
       "target_package": "application",
-      "loc": 399,
-      "function_count": 12,
+      "loc": 500,
+      "function_count": 16,
       "class_count": 4,
       "handler_count": 0,
-      "max_function_length": 101,
-      "branch_count": 28,
+      "max_function_length": 90,
+      "branch_count": 33,
       "internal_imports": [
         "velvet_bot.database",
         "velvet_bot.domains.telegram_storage.librarian_content",
@@ -21379,12 +21379,12 @@
       "module": "velvet_bot.domains.telegram_storage.librarian_content",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 302,
-      "function_count": 11,
+      "loc": 444,
+      "function_count": 16,
       "class_count": 0,
       "handler_count": 0,
-      "max_function_length": 53,
-      "branch_count": 37,
+      "max_function_length": 62,
+      "branch_count": 49,
       "internal_imports": [
         "velvet_bot.domains.telegram_storage.librarian_models"
       ],
@@ -21412,11 +21412,11 @@
       "module": "velvet_bot.domains.telegram_storage.librarian_models",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 340,
-      "function_count": 5,
+      "loc": 384,
+      "function_count": 6,
       "class_count": 9,
       "handler_count": 0,
-      "max_function_length": 153,
+      "max_function_length": 160,
       "branch_count": 9,
       "internal_imports": [],
       "external_import_count": 4,
@@ -21435,62 +21435,62 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 121,
+          "line": 157,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 49,
+          "line": 50,
           "owner": "_int_env",
           "call": "os.getenv"
         },
         {
-          "line": 38,
+          "line": 39,
           "owner": "_bool_env",
           "call": "os.getenv"
         },
         {
-          "line": 144,
+          "line": 180,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 139,
+          "line": 175,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 146,
+          "line": 182,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 141,
+          "line": 177,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 226,
+          "line": 266,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 241,
+          "line": 281,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 248,
+          "line": 288,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 269,
+          "line": 309,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 234,
+          "line": 274,
           "owner": "from_env",
           "call": "os.getenv"
         }
