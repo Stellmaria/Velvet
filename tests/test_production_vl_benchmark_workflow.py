@@ -53,6 +53,16 @@ class ProductionVLBenchmarkWorkflowTests(unittest.TestCase):
                 self.assertIn(fragment, self.text)
         self.assertIn("--expected-digest 6488c96fa5fa", self.text)
 
+    def test_workflow_requires_exact_verified_gateway_revision(self) -> None:
+        self.assertIn(
+            "ghcr\\.io/stellmaria/velvet-vision-gateway@sha256:[0-9a-f]{64}",
+            self.text,
+        )
+        self.assertIn("gateway_revision=", self.text)
+        self.assertIn("gateway_component=", self.text)
+        self.assertIn('"${gateway_revision,,}" != "${SOURCE_COMMIT,,}"', self.text)
+        self.assertIn('"$gateway_component" != "vision-gateway"', self.text)
+
     def test_workflow_rejects_functionally_failed_scorecards(self) -> None:
         self.assertIn('payload.get("success_rate") != 1.0', self.text)
         self.assertIn('payload.get("failure_rate") != 0.0', self.text)

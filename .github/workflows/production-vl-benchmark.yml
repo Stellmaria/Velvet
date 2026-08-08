@@ -207,6 +207,23 @@ jobs:
           test "$(docker inspect -f '{{.State.Running}}' "$runtime_id")" = true
           test "$(docker inspect -f '{{.State.Running}}' "$gateway_id")" = true
 
+          gateway_image_ref="$(docker inspect -f '{{.Config.Image}}' "$gateway_id")"
+          if [[ ! "$gateway_image_ref" =~ ^ghcr\.io/stellmaria/velvet-vision-gateway@sha256:[0-9a-f]{64}$ ]]; then
+            echo "production VL benchmark requires immutable verified vision gateway image" >&2
+            exit 3
+          fi
+          gateway_image_id="$(docker inspect -f '{{.Image}}' "$gateway_id")"
+          gateway_revision="$(docker image inspect "$gateway_image_id" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')"
+          gateway_component="$(docker image inspect "$gateway_image_id" --format '{{index .Config.Labels "org.opencontainers.image.component"}}')"
+          if [[ "${gateway_revision,,}" != "${SOURCE_COMMIT,,}" ]]; then
+            echo "production VL benchmark gateway revision mismatch: ${gateway_revision:-<missing>}" >&2
+            exit 3
+          fi
+          if [[ "$gateway_component" != "vision-gateway" ]]; then
+            echo "production VL benchmark gateway component label mismatch: ${gateway_component:-<missing>}" >&2
+            exit 3
+          fi
+
           cold_args=()
           if [[ "$COLD_UNLOAD" == true ]]; then
             cold_args+=(--cold-unload)
