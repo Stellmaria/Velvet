@@ -91,6 +91,33 @@ class CanonicalWatermarkUiTests(unittest.TestCase):
 
 
 class KritaWakeContractTests(unittest.IsolatedAsyncioTestCase):
+    async def test_local_server_worker_does_not_call_supervisor(self) -> None:
+        environment = {
+            "KRITA_WATERMARK_ENABLED": "true",
+            "KRITA_REMOTE_WORKER_ENABLED": "false",
+            "KRITA_BRIDGE_DIR": "/app/runtime/krita",
+        }
+        with patch.dict("os.environ", environment, clear=False):
+            with patch(
+                "velvet_bot.krita_supervisor.build_krita_supervisor_client"
+            ) as build_client:
+                self.assertIsNone(await wake_krita(context="server test"))
+        build_client.assert_not_called()
+
+    async def test_missing_bridge_marker_still_uses_supervisor(self) -> None:
+        client = SimpleNamespace(ensure_krita=AsyncMock(return_value={"ok": True}))
+        environment = {
+            "KRITA_WATERMARK_ENABLED": "true",
+            "KRITA_REMOTE_WORKER_ENABLED": "false",
+        }
+        with patch.dict("os.environ", environment, clear=True):
+            with patch(
+                "velvet_bot.krita_supervisor.build_krita_supervisor_client",
+                return_value=client,
+            ):
+                self.assertIsNone(await wake_krita(context="local test"))
+        client.ensure_krita.assert_awaited_once_with()
+
     async def test_missing_supervisor_is_a_valid_noop(self) -> None:
         with patch(
             "velvet_bot.krita_supervisor.build_krita_supervisor_client",
