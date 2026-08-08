@@ -92,14 +92,17 @@ SQL migrations отсутствуют. Существующие Storage/VL rows,
 
 После устранения новых architecture violations checker на `6e867f20258c37f161b332276550b77feb333aee` сообщал только stale generated inventory. Штатный одноразовый package-architecture preview был восстановлен из исторического governance flow, запущен с source head `2eb13884d1620491cc4435fb1ff27a1185aa5500` и успешно создал generated commit `8ea22c3754fe983eaf8299f0333f67ca574a0135`. В generated commit temporary workflow удалён из tree; generated inventory/exemptions созданы штатным scanner с label `p1-package-architecture-baseline`.
 
-Generated commit от `github-actions[bot]` не запускает обычную цепочку GitHub Actions повторно, поэтому текущий docs-only commit служит явным CI kick без изменения production source или generated architecture baseline.
+После package baseline preflight стал зелёным. Full shard затем выявил отдельно stale `repository_layout_inventory`: новый import `StorageLibrarianRepository` увеличил его production consumer graph без изменения repository layout. Штатный `inventory_repository_layout.py --write --label p3e-repository-layout-complete` был запущен одноразовым exact-head workflow с source head `157b1ea01be172847e94d4068eaa1621857b142b` и создал generated commit `7520dc788cc6c98e32f38412bf13c3ad4f021938`. Temporary repository-layout workflow также удалён из generated tree.
+
+Generated commits от `github-actions[bot]` не запускают обычную цепочку GitHub Actions повторно, поэтому текущий docs-only commit служит явным CI kick без изменения production source или generated baselines.
 
 ### PR и commit
 
 - PR: `#741` — `Prioritize Arthur full-archive before automatic VL`.
 - Ветка: `fix/arthur-before-vl-priority-20260808`.
 - Базовый `main`: `9a3770db95ef820c0f36e2c07a7e7c9315279e0d`.
-- Generated architecture commit: `8ea22c3754fe983eaf8299f0333f67ca574a0135`.
+- Generated package architecture commit: `8ea22c3754fe983eaf8299f0333f67ca574a0135`.
+- Generated repository layout commit: `7520dc788cc6c98e32f38412bf13c3ad4f021938`.
 - Финальный exact head и squash merge commit фиксируются после terminal success protected CI.
 
 ### Незавершённое
