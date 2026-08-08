@@ -29,7 +29,7 @@ class ProductionVLBenchmarkWorkflowTests(unittest.TestCase):
             self.assertIn(f'- "{cap}"', self.text)
         for rounds in ("1", "3", "5"):
             self.assertIn(f'- "{rounds}"', self.text)
-        self.assertIn('--timeout 300', self.text)
+        self.assertIn('--timeout 360', self.text)
         self.assertIn('--max-output-tokens "$OUTPUT_CAP"', self.text)
         self.assertIn('--rounds "$ROUNDS"', self.text)
         self.assertIn("runtime/vision-benchmark", self.text)
@@ -46,11 +46,21 @@ class ProductionVLBenchmarkWorkflowTests(unittest.TestCase):
             '"VISION_MODEL_EXPECTED_DIGEST": "6488c96fa5fa"',
             '"VISION_MAX_CONCURRENCY": "1"',
             '"VISION_REQUEST_TIMEOUT_SECONDS": "300"',
+            '"STORAGE_LIBRARIAN_AUTO_ENQUEUE": "false"',
         )
         for fragment in required:
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, self.text)
         self.assertIn("--expected-digest 6488c96fa5fa", self.text)
+
+    def test_workflow_rejects_functionally_failed_scorecards(self) -> None:
+        self.assertIn('payload.get("success_rate") != 1.0', self.text)
+        self.assertIn('payload.get("failure_rate") != 0.0', self.text)
+        self.assertIn('payload.get("schema_validity_rate") != 1.0', self.text)
+        self.assertIn('sample.get("error") is not None', self.text)
+        self.assertIn('sample.get("schema_valid") is not True', self.text)
+        self.assertIn('BENCHMARK_EXIT_CODE', self.text)
+        self.assertIn('if: always()', self.text)
 
     def test_workflow_does_not_start_services_or_enqueue_archive_work(self) -> None:
         forbidden = (
