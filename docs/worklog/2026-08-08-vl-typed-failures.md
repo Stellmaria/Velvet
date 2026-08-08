@@ -80,11 +80,15 @@ Production `qwen3.5:9b` уже демонстрировал 300-second timeout �
 - calibrated quality persistence использует typed permanent classification;
 - unit coverage добавлена для timeout/OOM/transport/schema/cancellation и retry bounds.
 
+### Миграции и совместимость
+
+DB migration в этом slice нет. Typed exceptions наследуются от существующих `VisionAnalysisError` / `VisionProviderUnavailable`, поэтому существующие внешние catch-boundaries продолжают работать. Public route/config schema не меняется, production timeout не увеличивается, а `AI_QUALITY_ENABLED=false` остаётся прежним fail-closed default. Изменение совместимости намеренно касается только retry semantics: timeout/schema/OOM/refusal больше не считаются основанием для повторной передачи полного изображения.
+
 ### Проверки
 
 - targeted typed-failure tests добавлены;
 - существующие metered client/refusal contracts сохраняются через subclass compatibility;
-- generated wiring commit был GitHub Actions-authored, поэтому его стандартные PR runs получили `action_required`; этот owner-authored worklog commit запускает обычный required CI на том же code tree;
+- generated wiring commit был GitHub Actions-authored, поэтому его стандартные PR runs получили `action_required`; owner-authored worklog commits запускают обычный required CI на том же code tree;
 - required project CI должен быть зелёным на финальном head до merge.
 
 ### PR и commit
