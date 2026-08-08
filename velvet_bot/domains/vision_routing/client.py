@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
-import urllib.request
 from typing import Mapping
 
 from velvet_bot.ai_vision import (
@@ -30,8 +29,16 @@ from velvet_bot.domains.vision_routing.profile_contract import (
     prompt_for_mode,
     schema_for_mode,
 )
+from velvet_bot.vision_failures import (
+    VisionRefusalError,
+    VisionSchemaError,
+    is_full_image_retryable,
+    schema_failure,
+)
+from velvet_bot.vision_http import post_vision_json
 
 _MAX_OUTPUT_TOKENS = 1800
+_MAX_FULL_IMAGE_ATTEMPTS = 2
 
 
 class MeteredVisionClient(VisionClient):
@@ -161,7 +168,7 @@ class MeteredVisionClient(VisionClient):
                     "prompt_version": self.prompt_version,
                     "analysis_contract": self._contract.name,
                     "provider_reported_usage": analysis.usage_reported,
-                    "attempt_limit": self.max_attempts,
+                    "attempt_limit": min(self.max_attempts, _MAX_FULL_IMAGE_ATTEMPTS),
                 },
             )
 
@@ -171,66 +178,55 @@ class MeteredVisionClient(VisionClient):
         )
 
     async def _analyze_with_attempts(self, prepared: bytes) -> VisionProviderAnalysis:
+        attempt_limit = min(self.max_attempts, _MAX_FULL_IMAGE_ATTEMPTS)
         last_error: VisionProviderUnavailable | None = None
-        for attempt in range(1, self.max_attempts + 1):
+        for attempt in range(1, attempt_limit + 1):
             try:
-                return await asyncio.to_thread(self._request_once, prepared)
+                return await self._request_once(prepared)
+            except asyncio.CancelledError:
+                raise
             except VisionProviderUnavailable as error:
                 last_error = error
-                if attempt >= self.max_attempts:
-                    break
-                await asyncio.sleep(min(2 ** (attempt - 1), 4))
+                if (
+                    attempt >= attempt_limit
+                    or not is_full_image_retryable(error)
+                ):
+                    raise
+                await asyncio.sleep(min(2 ** (attempt - 1), 2))
         if last_error is not None:
             raise last_error
         raise VisionProviderUnavailable("VL provider завершился без ответа.")
 
-    def _request_once(self, prepared: bytes) -> VisionProviderAnalysis:
+    async def _request_once(self, prepared: bytes) -> VisionProviderAnalysis:
         image_base64 = base64.b64encode(prepared).decode("ascii")
-        schema_modes = (
-            (True, False)
-            if self.provider == "ollama" and self._contract.ollama_json_fallback
-            else (True,)
+        # Structured-output parse failure is terminal for this image request. We do
+        # not resend the full image merely to change JSON formatting mode.
+        payload = await post_vision_json(
+            url=self._endpoint(),
+            body=self._request_body(image_base64, use_schema=True),
+            headers=self._headers(),
+            timeout_seconds=self.timeout_seconds,
         )
-        errors: list[str] = []
-        for use_schema in schema_modes:
-            request = urllib.request.Request(
-                self._endpoint(),
-                data=json.dumps(
-                    self._request_body(image_base64, use_schema=use_schema),
-                    ensure_ascii=False,
-                ).encode("utf-8"),
-                headers=self._headers(),
-                method="POST",
-            )
-            payload = self._read_json(request, timeout=self.timeout_seconds)
-            provider_error = payload.get("error")
-            if provider_error:
-                raise VisionAnalysisError(
-                    f"{self.provider}:{self.model}: {provider_error}"
-                )
-            try:
-                profile = self._normalize_payload(payload)
-            except VisionAnalysisError as error:
-                errors.append(str(error))
-                if use_schema and len(schema_modes) > 1:
-                    continue
-                raise
-            input_tokens, output_tokens, usage_reported = _extract_usage(
-                payload,
-                provider=self.provider,
-            )
-            return VisionProviderAnalysis(
-                profile=profile,
-                provider=self.provider,
-                model=self.model,
-                route=self.route,
-                input_tokens=input_tokens,
-                output_tokens=output_tokens,
-                usage_reported=usage_reported,
-            )
-        raise VisionAnalysisError(
-            f"{self.provider}:{self.model} не вернул {self._contract.name}: "
-            + " | ".join(errors)
+        try:
+            profile = self._normalize_payload(payload)
+        except VisionRefusalError:
+            raise
+        except VisionSchemaError:
+            raise
+        except VisionAnalysisError as error:
+            raise schema_failure(error) from error
+        input_tokens, output_tokens, usage_reported = _extract_usage(
+            payload,
+            provider=self.provider,
+        )
+        return VisionProviderAnalysis(
+            profile=profile,
+            provider=self.provider,
+            model=self.model,
+            route=self.route,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            usage_reported=usage_reported,
         )
 
     def _normalize_payload(self, payload: Mapping[str, object]) -> Mapping[str, object]:
@@ -251,12 +247,15 @@ class MeteredVisionClient(VisionClient):
                     return dict(self._contract.normalize(_extract_json_object(text)))
                 except VisionAnalysisError as error:
                     errors.append(str(error))
-            raise VisionAnalysisError(
-                "Ollama не вернула структурированный ответ"
+            raise VisionSchemaError(
+                "Ollama не вернула валидный structured output"
                 + (": " + "; ".join(errors) if errors else ".")
             )
         content = _extract_provider_content(payload, provider=self.provider)
-        return dict(self._contract.normalize(_extract_json_object(content)))
+        try:
+            return dict(self._contract.normalize(_extract_json_object(content)))
+        except VisionAnalysisError as error:
+            raise schema_failure(error) from error
 
     def _endpoint(self) -> str:
         if self.provider == "ollama":
@@ -326,18 +325,18 @@ def _extract_provider_content(
         content = message.get("content") if isinstance(message, dict) else None
         if isinstance(content, str) and content.strip():
             return content
-        raise VisionAnalysisError("Ollama не вернула содержимое VL-ответа.")
+        raise VisionSchemaError("Ollama не вернула содержимое VL-ответа.")
 
     choices = payload.get("choices")
     if not isinstance(choices, list) or not choices:
-        raise VisionAnalysisError("OpenAI-compatible VL endpoint не вернул choices.")
+        raise VisionSchemaError("OpenAI-compatible VL endpoint не вернул choices.")
     first = choices[0]
     message = first.get("message") if isinstance(first, dict) else None
     if not isinstance(message, dict):
-        raise VisionAnalysisError("OpenAI-compatible VL endpoint не вернул message.")
+        raise VisionSchemaError("OpenAI-compatible VL endpoint не вернул message.")
     refusal = message.get("refusal")
     if isinstance(refusal, str) and refusal.strip():
-        raise VisionAnalysisError(f"provider refusal: {refusal.strip()}")
+        raise VisionRefusalError(f"provider refusal: {refusal.strip()}")
     content = message.get("content")
     if isinstance(content, str) and content.strip():
         return content
@@ -349,7 +348,7 @@ def _extract_provider_content(
         ]
         if fragments:
             return "\n".join(fragments)
-    raise VisionAnalysisError("OpenAI-compatible VL endpoint не вернул текст.")
+    raise VisionSchemaError("OpenAI-compatible VL endpoint не вернул текст.")
 
 
 def _extract_usage(
