@@ -98,6 +98,17 @@ class VisionGatewayPayloadTests(unittest.TestCase):
         )
         self.assertEqual(settings.model, result["model"])
         self.assertFalse(result["stream"])
+        self.assertEqual("none", result["reasoning_effort"])
+
+    def test_client_cannot_override_reasoning_policy(self) -> None:
+        with self.assertRaisesRegex(GatewayRequestError, "Unsupported request fields"):
+            sanitize_chat_payload(
+                {
+                    "reasoning_effort": "high",
+                    "messages": [{"role": "user", "content": "test"}],
+                },
+                settings=_settings(),
+            )
 
     def test_model_override_is_rejected(self) -> None:
         with self.assertRaisesRegex(GatewayRequestError, "not available"):
