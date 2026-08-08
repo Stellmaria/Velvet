@@ -5,7 +5,7 @@
 - Линия/фаза: Storage Librarian / Arthur owner controls
 - Статус: `завершено`
 - Ветка: `feat/arthur-archive-control`
-- Базовый commit: `a84724836bcc603f0e609d1f58e1f1776e6eae3a`
+- Базовый commit: `79e97cbd401136ff79c858f82931e35bd3192a9d`
 
 ## Перед началом
 
@@ -15,7 +15,7 @@
 
 ### Исходный контекст
 
-Production full-archive backfill был ранее включён через server lifecycle, затем остановлен штатным `disable_afk.sh`. Для полного повторного прохода была установлена отдельная `STORAGE_LIBRARIAN_ANALYZER_VERSION`, а существующие jobs были возвращены в `queued`. Arthur уже имел owner-only Telegram интерфейс, PostgreSQL repository и локальный Ollama analysis path, но массовый архивный цикл из самого Arthur отсутствовал. Работа началась от `9a3770db95ef820c0f36e2c07a7e7c9315279e0d`; до merge `main` продвинулся PR #741, поэтому финальная ветка была пересобрана поверх `a84724836bcc603f0e609d1f58e1f1776e6eae3a` без потери Arthur-first VL priority изменений.
+Production full-archive backfill был ранее включён через server lifecycle, затем остановлен штатным `disable_afk.sh`. Для полного повторного прохода была установлена отдельная `STORAGE_LIBRARIAN_ANALYZER_VERSION`, а существующие jobs были возвращены в `queued`. Arthur уже имел owner-only Telegram интерфейс, PostgreSQL repository и локальный Ollama analysis path, но массовый архивный цикл из самого Arthur отсутствовал. Работа началась от `9a3770db95ef820c0f36e2c07a7e7c9315279e0d`; затем `main` продвинулся PR #741 и PR #743. Финальная ветка пересобрана поверх `79e97cbd401136ff79c858f82931e35bd3192a9d`, сохранив Arthur-first VL priority и lifecycle image-preservation изменения.
 
 ### Планируемый объём
 
@@ -56,13 +56,13 @@ SQL-миграций нет. Формат persistent Storage, job rows и analys
 
 Добавлен `tests/test_arthur_archive_control.py` с async lifecycle checks для idempotent start/cooperative stop и source contracts для Telegram wiring, runtime shutdown, enqueue path, shared inference lock и трёх archive reply controls. Existing Arthur phase-2 deployment contracts продолжают требовать auto-enqueue=false и isolated container privileges.
 
-Первый CI выявил две governance-регрессии: новый archive handler увеличивал `build_arthur_router()` выше лимита 180 строк, а broad `Exception` менял P2 stability inventory. Handler вынесен в отдельный registration helper внутри существующего модуля, а archive loop теперь ловит только конкретные Librarian/PostgreSQL/aiohttp/IO/value/timeout ошибки. Telegram navigation inventory обновлён с учётом трёх новых reply controls.
+Первый CI выявил две governance-регрессии: новый archive handler увеличивал `build_arthur_router()` выше лимита 180 строк, а broad `Exception` менял P2 stability inventory. Handler вынесен в отдельный registration helper внутри существующего модуля, а archive loop теперь ловит только конкретные Librarian/PostgreSQL/aiohttp/IO/value/timeout ошибки. Telegram navigation inventory и canonical sync-test обновлены с учётом трёх новых reply controls.
 
-После merge PR #741 ветка была пересобрана поверх актуального `main`. Канонический package architecture inventory повторно сгенерирован для объединённого дерева одноразовым self-removing GitHub Actions helper; временный workflow удалён самим helper и отсутствует на финальном head.
+После merge PR #741 package architecture inventory был пересчитан для объединённого дерева. После merge PR #743 финальная ветка снова пересобрана поверх актуального `main`; #743 меняет только Arthur lifecycle shell/scripts/tests и не меняет production Python или Telegram navigation inventory, поэтому generated package/navigation baselines остаются применимыми. Временный inventory-refresh workflow отсутствует на финальном head.
 
 ### PR и commit
 
-PR #742 `Add Telegram archive controls to Arthur` публикуется из `feat/arthur-archive-control` в `main`. Merge выполняется только после зелёного required CI на human-authored финальном head.
+PR #742 `Add Telegram archive controls to Arthur` публикуется из `feat/arthur-archive-control` в `main`. Merge выполняется только после зелёного required CI на финальном head.
 
 ### Незавершённое
 
