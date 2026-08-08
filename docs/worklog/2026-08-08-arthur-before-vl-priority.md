@@ -14,7 +14,7 @@
 
 Production evidence показал, что `velvet-librarian-text:v1` и `qwen3.5:9b` способны одновременно занять почти весь 8-vCPU VPS. Ручное разведение через `docker pause` уже признано небезопасным, а проверка только текущего CPU не решает задачу: bounded Storage Librarian full-archive делает паузу между циклами, хотя архивный backlog ещё не исчерпан.
 
-Owner decision: при явно включённом Storage Librarian full-archive Arthur получает фазовый приоритет над автоматической Qwen/VL image queue. Qwen начинает автоматический image analysis только после того, как Arthur исчерпал full-archive работу. Это не меняет отдельный приоритет explicit interactive owner requests из #630.
+Owner decision: при явно включённом Storage Librarian full-archive Arthur получает фазовый приоритет над автоматической Qwen/VL image queue. Qwen начинает automatic image analysis только после того, как Arthur исчерпал full-archive работу. Это не меняет отдельный приоритет explicit interactive owner requests из #630.
 
 ### Цель
 
@@ -39,7 +39,7 @@ Owner decision: при явно включённом Storage Librarian full-arch
 - residual eligible Storage backlog ставит максимум один следующий Arthur job и держит VL закрытым;
 - при Arthur priority `VisionBatchQueueConsumer` не вызывает `claim_next` VL queue;
 - после полного исчерпания Arthur queue и eligible archive backlog VL consumer автоматически начинает штатный claim/process;
-- invalid Librarian configuration блокирует автоматический VL fail-closed;
+- invalid Librarian configuration блокирует automatic VL fail-closed;
 - existing automatic/manual Storage eligibility, encryption и size boundaries не ослабляются;
 - protected CI зелёный на exact PR head;
 - перед merge PR head не отстаёт от `main`.
@@ -49,7 +49,7 @@ Owner decision: при явно включённом Storage Librarian full-arch
 - gate относится к явно включённой full-archive фазе (`AUTO_ENQUEUE=true` + `AUTO_BACKFILL=true`), а не ко всем ручным Arthur requests;
 - process-wide `asyncio.Lock` не является межконтейнерным lock; фазовый repository-backed gate является основным механизмом порядка Arthur full-archive → automatic VL;
 - bounded probe использует существующий `enqueue_pending` и поэтому может поставить один следующий Arthur job раньше очередного 60-секундного scheduler tick, но не создаёт массовую очередь;
-- новый Storage object, появившийся уже после открытия gate, относится к будущей arbitration hardening и не должен отменять уже начатый единичный VL inference;
+- новый Storage object, появившийся уже после открытия gate, не отменяет уже начатый единичный VL inference;
 - изменение не является разрешением mass VL backfill;
 - production rollout и feature-flag activation выполняются отдельно после merge, verified image provenance и single-image acceptance #630.
 
@@ -88,18 +88,23 @@ SQL migrations отсутствуют. Существующие Storage/VL rows,
 6. VL consumer при Arthur priority не вызывает `claim_next` и не запускает processor;
 7. после снятия priority consumer claim-ит и завершает ровно одну VL task.
 
-Первый PR head `ff29817ba083d3c82013b8934fb6d05944373e57` получил успешный `type check`; project-notes corrections были завершены на следующих heads. Exact head `175ed779cc54328850d577d7d642932a1543f150` прошёл worklog/type-check, но fast architecture preflight отклонил отдельный `velvet_bot/domains/local_inference_priority.py` за SQL/Database acquire вне persistence и package inventory drift. Реализация после этого перенесена в существующий worker с повторным использованием `StorageLibrarianRepository`, а отдельный production-модуль удаляется.
+Первый PR head `ff29817ba083d3c82013b8934fb6d05944373e57` получил успешный `type check`; project-notes corrections были завершены на следующих heads. Exact head `175ed779cc54328850d577d7d642932a1543f150` прошёл worklog/type-check, но fast architecture preflight отклонил отдельный `velvet_bot/domains/local_inference_priority.py` за SQL/Database acquire вне persistence и package inventory drift. Реализация после этого перенесена в существующий worker с повторным использованием `StorageLibrarianRepository`, а отдельный production-модуль удалён.
+
+После устранения новых architecture violations checker на `6e867f20258c37f161b332276550b77feb333aee` сообщал только stale generated inventory. Штатный одноразовый package-architecture preview был восстановлен из исторического governance flow, запущен с source head `2eb13884d1620491cc4435fb1ff27a1185aa5500` и успешно создал generated commit `8ea22c3754fe983eaf8299f0333f67ca574a0135`. В generated commit temporary workflow удалён из tree; generated inventory/exemptions созданы штатным scanner с label `p1-package-architecture-baseline`.
+
+Generated commit от `github-actions[bot]` не запускает обычную цепочку GitHub Actions повторно, поэтому текущий docs-only commit служит явным CI kick без изменения production source или generated architecture baseline.
 
 ### PR и commit
 
 - PR: `#741` — `Prioritize Arthur full-archive before automatic VL`.
 - Ветка: `fix/arthur-before-vl-priority-20260808`.
 - Базовый `main`: `9a3770db95ef820c0f36e2c07a7e7c9315279e0d`.
+- Generated architecture commit: `8ea22c3754fe983eaf8299f0333f67ca574a0135`.
 - Финальный exact head и squash merge commit фиксируются после terminal success protected CI.
 
 ### Незавершённое
 
-- protected CI ещё должен завершиться зелёным на exact head после architecture correction;
+- protected CI ещё должен завершиться зелёным на exact final head;
 - PR ещё не merged;
 - production application image с этим scheduler contract ещё не опубликован и не развёрнут;
 - канонический post-#738 single-image `512 / 1` LOCAL_MAIN acceptance ещё не завершён;
@@ -107,4 +112,4 @@ SQL migrations отсутствуют. Существующие Storage/VL rows,
 
 ### Следующий шаг
 
-Удалить первоначальный отдельный priority module, дождаться terminal success всех required checks на exact PR head, проверить актуальный `main` и `behind_by=0`, выполнить authorized squash merge #741 с expected head SHA. После merge зафиксировать решение в #630. Production rollout выполнять отдельно через verified application image; Arthur full-archive при этом может продолжать свою текущую фазу, а automatic Qwen activation остаётся после single-image acceptance.
+Дождаться terminal success всех required checks на exact PR head, проверить актуальный `main` и `behind_by=0`, выполнить authorized squash merge #741 с expected head SHA. После merge зафиксировать решение в #630. Production rollout выполнять отдельно через verified application image; Arthur full-archive при этом может продолжать свою текущую фазу, а automatic Qwen activation остаётся после single-image acceptance.
