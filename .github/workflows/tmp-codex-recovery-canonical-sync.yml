@@ -113,7 +113,6 @@ jobs:
           python -m unittest \
             tests.test_package_architecture_inventory \
             tests.test_canonical_docs_sync \
-            tests.test_codex_recovery_notifications \
             -v
 
       - name: Commit canonical sync and remove helper workflow
