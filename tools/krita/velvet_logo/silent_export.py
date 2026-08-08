@@ -5,6 +5,30 @@ from pathlib import Path
 from krita import InfoObject
 
 
+def _materialize_projection(document) -> None:
+    """Rasterize bridge-only overlays before exporting the final PNG."""
+
+    wait_for_done = getattr(document, "waitForDone", None)
+    refresh_projection = getattr(document, "refreshProjection", None)
+    flatten = getattr(document, "flatten", None)
+
+    if callable(refresh_projection):
+        refresh_projection()
+    if callable(wait_for_done):
+        wait_for_done()
+
+    # Bridge documents are disposable copies of Telegram images. Flattening here
+    # makes the final PNG independent from headless vector-layer export quirks and
+    # guarantees that the visible watermark is part of the raster projection.
+    if callable(flatten):
+        flatten()
+
+    if callable(refresh_projection):
+        refresh_projection()
+    if callable(wait_for_done):
+        wait_for_done()
+
+
 def silent_png_export(document, path: Path) -> None:
     """Export a PNG in batch mode without showing Krita's options dialog."""
 
@@ -26,8 +50,7 @@ def silent_png_export(document, path: Path) -> None:
     if callable(set_batchmode):
         set_batchmode(True)
     try:
-        if callable(wait_for_done):
-            wait_for_done()
+        _materialize_projection(document)
         exported = bool(document.exportImage(str(path), info))
         if callable(wait_for_done):
             wait_for_done()
@@ -46,4 +69,7 @@ def install_silent_export(extension_class) -> None:
     extension_class._export = staticmethod(silent_png_export)
 
 
-__all__ = ("install_silent_export", "silent_png_export")
+__all__ = (
+    "install_silent_export",
+    "silent_png_export",
+)
