@@ -108,7 +108,7 @@ class ServerSupervisorContractTests(unittest.TestCase):
         self.assertIn("Running image mismatch", self.deploy)
         self.assertIn("start_core_services()", self.deploy)
         self.assertIn(
-            '"${compose[@]}" up -d --remove-orphans postgres supervisor-proxy',
+            '"${compose[@]}" up -d postgres supervisor-proxy',
             self.deploy,
         )
         self.assertIn('"${compose[@]}" rm -sf bot', self.deploy)

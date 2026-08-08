@@ -116,7 +116,7 @@ class ServerDeploymentContractTests(unittest.TestCase):
         )
         preflight = source.index("scripts/server_preflight.py")
         compose_config = source.index("config --quiet")
-        compose_start = source.index("up -d --remove-orphans")
+        compose_start = source.index("up -d postgres supervisor-proxy bot")
         self.assertLess(preflight, compose_config)
         self.assertLess(compose_config, compose_start)
         self.assertIn("User=velvet", source)
