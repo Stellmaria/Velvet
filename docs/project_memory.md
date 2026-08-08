@@ -438,8 +438,8 @@ Repository implementation #457 завершена этим срезом, но li
 
 Воспроизводимый repository baseline после добавления persistent-deduplicated recovery notification:
 
-- package production modules: **658**;
-- package production LOC: **144910**;
+- package production modules: **661**;
+- package production LOC: **145308**;
 - Codex availability/routing authority и пятичасовой probe cadence не менялись;
 - Telegram transport использует существующий main Velvet bot/application path;
 - production rollout и live canary остаются отдельной эксплуатационной проверкой.

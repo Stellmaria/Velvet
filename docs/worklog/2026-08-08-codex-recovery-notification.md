@@ -91,4 +91,4 @@ SQL migrations отсутствуют. Формат `/opt/codex-runs/codex-avail
 Дождаться terminal success всех required checks на финальном head PR #719, проверить актуальный main drift/behind status и merge только exact tested head. Production rollout выполнять отдельно по canonical contract после merge.
 
 <!-- canonical-baseline-sync -->
-- Final canonical inventory sync: **658** production modules, **144910** production LOC; package label `p1-package-architecture-baseline`; Telegram navigation inventory refreshed.
+- Final canonical inventory sync: **661** production modules, **145308** production LOC; package label `p1-package-architecture-baseline`; Telegram navigation inventory refreshed.
