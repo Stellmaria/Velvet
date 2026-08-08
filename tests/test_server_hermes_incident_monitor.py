@@ -127,6 +127,45 @@ class ServerHermesIncidentMonitorTests(unittest.TestCase):
                 self.assertFalse(monitor._can_submit("same"))
                 self.assertTrue(monitor._can_submit("different"))
 
+    def test_open_incident_episode_blocks_follow_up_state_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = self.make_monitor(directory)
+            monitor._incident_episode_open = True
+            self.assertFalse(monitor._can_submit("container-unhealthy|same|2|running|unhealthy"))
+            self.assertFalse(monitor._can_submit("container-not-running|same|2|exited|none"))
+
+    def test_only_healthy_probe_closes_incident_episode(self) -> None:
+        healthy = monitor_mod.BotProbe(
+            container_id="same",
+            running=True,
+            status="running",
+            health="healthy",
+            restart_count=2,
+            exit_code=0,
+            error=None,
+        )
+        starting = monitor_mod.BotProbe(
+            container_id="same",
+            running=True,
+            status="running",
+            health="starting",
+            restart_count=2,
+            exit_code=0,
+            error=None,
+        )
+        stopped = monitor_mod.BotProbe(
+            container_id="same",
+            running=False,
+            status="exited",
+            health=None,
+            restart_count=2,
+            exit_code=1,
+            error=None,
+        )
+        self.assertTrue(monitor_mod.HermesIncidentMonitor._is_recovered(healthy))
+        self.assertFalse(monitor_mod.HermesIncidentMonitor._is_recovered(starting))
+        self.assertFalse(monitor_mod.HermesIncidentMonitor._is_recovered(stopped))
+
     def test_monitor_source_contains_only_read_only_docker_actions(self) -> None:
         source = MODULE_PATH.read_text(encoding="utf-8")
         self.assertIn('self._compose("ps", "-q", "bot")', source)
