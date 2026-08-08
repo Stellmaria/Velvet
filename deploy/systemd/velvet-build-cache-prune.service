@@ -8,6 +8,7 @@ ConditionPathExists=/srv/velvet/deploy/server/prune-build-cache.sh
 Type=oneshot
 User=velvet
 Group=velvet
+Environment=DOCKER_CONFIG=/srv/velvet/data/runtime/docker-config
 Environment=VELVET_DEPLOY_LOCK=/tmp/velvet-deploy.lock
 Environment=VELVET_BUILD_CACHE_PRUNE_AGE=168h
 ExecStart=/usr/bin/bash /srv/velvet/deploy/server/prune-build-cache.sh
@@ -16,4 +17,4 @@ IOSchedulingClass=idle
 NoNewPrivileges=true
 ProtectHome=true
 ProtectSystem=strict
-ReadWritePaths=/tmp
+ReadWritePaths=/srv/velvet/data/runtime/docker-config /tmp
