@@ -20,6 +20,7 @@ from velvet_bot.domains.vision_routing.cache import VisionAnalysisCacheRepositor
 from velvet_bot.domains.vision_routing.client import MeteredVisionClient
 from velvet_bot.domains.vision_routing.models import (
     VisionAnalysisContract,
+    VisionAnalysisMode,
     VisionRoute,
     VisionRouteConfig,
 )
@@ -36,6 +37,7 @@ def build_vision_cascade_router(
     analysis_type: str = "semantic-profile",
     prompt_version: int | None = None,
     include_sensitive: bool = True,
+    include_pro: bool = True,
 ) -> VisionCascadeRouter:
     executor: AIRequestExecutor = AIRequestExecutor(ai_usage_service)
     resolved_prompt_version = (
@@ -63,58 +65,71 @@ def build_vision_cascade_router(
         executor=executor,
         contract=contract,
     )
-
-    pro_model = (
-        os.getenv("AI_VISION_PRO_MODEL", "").strip()
-        or settings.ai_vision_compare_model
-        or ""
-    )
-    pro = (
+    main_sensitive = (
         MeteredVisionClient(
-            config=_route_config(
-                settings=settings,
-                route=VisionRoute.PRO,
-                default_model=pro_model,
-                prompt_version=resolved_prompt_version,
-                schema_version=schema_version,
-            ),
+            config=flash_config,
             executor=executor,
             contract=contract,
+            analysis_mode=VisionAnalysisMode.SENSITIVE,
         )
-        if pro_model
+        if include_sensitive
         else None
     )
 
-    sensitive_model = (
-        os.getenv("AI_VISION_SENSITIVE_MODEL", "").strip()
-        or settings.ai_vision_fallback_model
-        or ""
+    pro: MeteredVisionClient | None = None
+    if include_pro and _env_flag("AI_VISION_CLOUD_PRO_ENABLED", default=False):
+        pro_model = os.getenv("AI_VISION_PRO_MODEL", "").strip()
+        if not pro_model:
+            raise RuntimeError(
+                "AI_VISION_CLOUD_PRO_ENABLED=true требует AI_VISION_PRO_MODEL."
+            )
+        pro_config = _route_config(
+            settings=settings,
+            route=VisionRoute.PRO,
+            default_model=pro_model,
+            prompt_version=resolved_prompt_version,
+            schema_version=schema_version,
+        )
+        _validate_cloud_pro_provider(pro_config)
+        pro = MeteredVisionClient(
+            config=pro_config,
+            executor=executor,
+            contract=contract,
+        )
+
+    sensitive: MeteredVisionClient | None = None
+    uncensored_enabled = include_sensitive and _env_flag(
+        "AI_VISION_LOCAL_UNCENSORED_ENABLED",
+        default=False,
     )
-    sensitive_config = (
-        _route_config(
+    if uncensored_enabled:
+        sensitive_model = os.getenv("AI_VISION_SENSITIVE_MODEL", "").strip()
+        if not sensitive_model:
+            raise RuntimeError(
+                "AI_VISION_LOCAL_UNCENSORED_ENABLED=true требует "
+                "AI_VISION_SENSITIVE_MODEL."
+            )
+        if sensitive_model == flash.model:
+            raise RuntimeError(
+                "LOCAL_UNCENSORED должен быть отдельной моделью, а не alias LOCAL_MAIN."
+            )
+        sensitive_config = _route_config(
             settings=settings,
             route=VisionRoute.SENSITIVE,
             default_model=sensitive_model,
             prompt_version=resolved_prompt_version,
             schema_version=schema_version,
         )
-        if include_sensitive and sensitive_model
-        else None
-    )
-    if sensitive_config is not None:
         _validate_sensitive_provider(sensitive_config)
-    sensitive = (
-        MeteredVisionClient(
+        sensitive = MeteredVisionClient(
             config=sensitive_config,
             executor=executor,
             contract=contract,
         )
-        if sensitive_config is not None
-        else None
-    )
 
     return VisionCascadeRouter(
         flash=flash,
+        main_sensitive=main_sensitive,
         pro=pro,
         sensitive=sensitive,
         repository=VisionAnalysisCacheRepository(database),
@@ -195,14 +210,19 @@ def _route_config(
     )
 
 
-def _validate_sensitive_provider(config: VisionRouteConfig) -> None:
-    if config.provider != "openai_compatible":
-        return
-    if _env_flag("AI_VISION_ALLOW_CLOUD_SENSITIVE", default=False):
+def _validate_cloud_pro_provider(config: VisionRouteConfig) -> None:
+    if config.provider == "openai_compatible":
         return
     raise RuntimeError(
-        "Cloud sensitive VL выключен. Для отдельного закрытого smoke-test задайте "
-        "AI_VISION_ALLOW_CLOUD_SENSITIVE=true."
+        "CLOUD_PRO должен использовать отдельный openai_compatible cloud endpoint."
+    )
+
+
+def _validate_sensitive_provider(config: VisionRouteConfig) -> None:
+    if config.provider in {"ollama", LOCAL_OPENAI_COMPATIBLE_PROVIDER}:
+        return
+    raise RuntimeError(
+        "LOCAL_UNCENSORED должен оставаться локальным; cloud sensitive VL запрещён."
     )
 
 
@@ -235,5 +255,6 @@ __all__ = (
     "build_vision_cascade_router",
     "_env_flag",
     "_route_config",
+    "_validate_cloud_pro_provider",
     "_validate_sensitive_provider",
 )

@@ -40,16 +40,17 @@ class VisionSensitiveFactoryTests(unittest.TestCase):
 
     def test_cloud_sensitive_provider_is_rejected_by_default(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
-            with self.assertRaisesRegex(RuntimeError, "Cloud sensitive VL выключен"):
+            with self.assertRaisesRegex(RuntimeError, "cloud sensitive VL запрещён"):
                 _validate_sensitive_provider(_config("openai_compatible"))
 
-    def test_cloud_sensitive_provider_requires_explicit_flag(self) -> None:
+    def test_cloud_sensitive_provider_stays_rejected_with_legacy_flag(self) -> None:
         with patch.dict(
             os.environ,
             {"AI_VISION_ALLOW_CLOUD_SENSITIVE": "true"},
             clear=True,
         ):
-            _validate_sensitive_provider(_config("openai_compatible"))
+            with self.assertRaisesRegex(RuntimeError, "cloud sensitive VL запрещён"):
+                _validate_sensitive_provider(_config("openai_compatible"))
 
     def test_invalid_cloud_sensitive_flag_fails_closed(self) -> None:
         with patch.dict(

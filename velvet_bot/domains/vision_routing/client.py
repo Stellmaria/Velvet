@@ -52,6 +52,7 @@ class MeteredVisionClient(VisionClient):
         config: VisionRouteConfig,
         executor: AIRequestExecutor[VisionProviderAnalysis],
         contract: VisionAnalysisContract | None = None,
+        analysis_mode: VisionAnalysisMode | None = None,
     ) -> None:
         super().__init__(
             provider=config.provider,
@@ -61,7 +62,7 @@ class MeteredVisionClient(VisionClient):
             timeout_seconds=config.timeout_seconds,
         )
         self.route = config.route
-        self.mode = (
+        self.mode = analysis_mode or (
             VisionAnalysisMode.SENSITIVE
             if config.route is VisionRoute.SENSITIVE
             else VisionAnalysisMode.STANDARD
@@ -187,10 +188,7 @@ class MeteredVisionClient(VisionClient):
                 raise
             except VisionProviderUnavailable as error:
                 last_error = error
-                if (
-                    attempt >= attempt_limit
-                    or not is_full_image_retryable(error)
-                ):
+                if attempt >= attempt_limit or not is_full_image_retryable(error):
                     raise
                 await asyncio.sleep(min(2 ** (attempt - 1), 2))
         if last_error is not None:
@@ -199,8 +197,6 @@ class MeteredVisionClient(VisionClient):
 
     async def _request_once(self, prepared: bytes) -> VisionProviderAnalysis:
         image_base64 = base64.b64encode(prepared).decode("ascii")
-        # Structured-output parse failure is terminal for this image request. We do
-        # not resend the full image merely to change JSON formatting mode.
         payload = await post_vision_json(
             url=self._endpoint(),
             body=self._request_body(image_base64, use_schema=True),
