@@ -4,8 +4,8 @@
 - ID: `arthur-archive-vl-gate-integration-20260808`
 - Линия/фаза: VL / Arthur Storage Librarian scheduling integration
 - Статус: `частично`
-- Ветка: `fix/arthur-archive-vl-gate-20260808`
-- Базовый commit: `a392df96e1cd113ff5bbe6e6e22246984d6b50ec`
+- Ветка: `fix/arthur-archive-vl-gate-main-20260808`
+- Базовый commit: `66f0993780a1428b260336929f2050b424aebf1e`
 - Канонический VL источник: issue #630
 
 ## Перед началом
@@ -92,23 +92,25 @@ Regression coverage расширен так, чтобы проверять:
 - cooperative archive stop удерживает lease до фактического выхода task;
 - существующий consumer-before-claim contract остаётся покрыт.
 
+Generated package architecture и repository layout inventory пересчитаны штатными repo scripts. Package inventory теперь фиксирует `production_loc=146483`; новых production modules или repository modules интеграция не добавляет.
+
 ### PR и commit
 
-- Preflight PR: `#745` — `Integrate Arthur archive control with automatic VL priority`.
-- Ветка: `fix/arthur-archive-vl-gate-20260808`.
-- Исходный базовый commit ветки: `a392df96e1cd113ff5bbe6e6e22246984d6b50ec`.
-- Во время работы `main` продвинулся до `66f0993780a1428b260336929f2050b424aebf1e` через независимый #744, поэтому этот PR не будет merged, пока final tree не перенесён на актуальный `main` и `behind_by=0` не доказан.
+- Preflight PR `#745` использовался только для поиска contract/inventory findings и superseded после переноса final tree на актуальный `main`.
+- Финальный merge-кандидат: PR `#746` — `Integrate Arthur archive control with automatic VL priority`.
+- Финальная ветка: `fix/arthur-archive-vl-gate-main-20260808`.
+- Базовый commit финальной ветки: `66f0993780a1428b260336929f2050b424aebf1e`.
+- Перед открытием PR #746 compare к `main` показал `behind_by=0` и merge base exact `66f0993780a1428b260336929f2050b424aebf1e`.
 - Финальный exact head и squash merge commit фиксируются после terminal success required CI.
 
 ### Незавершённое
 
-- generated architecture/repository inventory должен быть синхронизирован, если protected preflight зафиксирует drift;
-- protected CI ещё не завершён на final exact head;
-- PR ещё не merged;
+- protected CI ещё не завершён на final exact head PR #746;
+- PR #746 ещё не merged;
 - production verified image с этой интеграцией ещё не опубликован и не развёрнут;
 - canonical LOCAL_MAIN single-image `512 / 1` acceptance ещё не выполнен;
 - automatic Qwen queue остаётся выключенной до acceptance.
 
 ### Следующий шаг
 
-Устранить только фактические CI findings на preflight PR #745. После стабилизации final tree перенести его на свежую ветку от актуального `main`, дождаться terminal success required checks на exact head, проверить `behind_by=0`, выполнить authorized squash merge и развернуть новый verified immutable application image. После production verification перейти к canonical `512 / 1` acceptance, не включая automatic Qwen queue заранее.
+Дождаться terminal success required checks на exact PR #746 head, повторно проверить актуальный `main` и `behind_by=0`, выполнить authorized squash merge и развернуть новый verified immutable application image в main bot и Arthur profile. После production verification перейти к canonical `512 / 1` acceptance, не включая automatic Qwen queue заранее.
