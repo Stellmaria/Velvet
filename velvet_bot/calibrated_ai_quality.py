@@ -74,7 +74,7 @@ class CalibratedAIQualityService(AIQualityService):
         self._background_enabled = background_enabled
 
     async def process_once(self) -> int:
-        if not self._background_enabled or not await self._provider_available():
+        if not getattr(self, "_background_enabled", True) or not await self._provider_available():
             return 0
         targets = await self._repository.claim_targets(
             provider=self._client.provider,
