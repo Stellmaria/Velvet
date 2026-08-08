@@ -94,13 +94,13 @@ class ArthurSettings:
         )
         report_chat_id = (
             _parse_optional_int("ARTHUR_REPORT_CHAT_ID")
-            or _parse_optional_int("TELEGRAM_STORAGE_CHAT_ID")
-            or -1004459280894
+            # Arthur is a separate bot; never inherit Velvet Storage chat.
+            # Reporting stays disabled until an explicit Arthur target is configured.
         )
         report_thread_id = (
             _parse_optional_int("ARTHUR_REPORT_THREAD_ID")
-            or _parse_optional_int("STORAGE_THREAD_ANALYSIS")
-            or 2478
+            if report_chat_id is not None
+            else None
         )
         return cls(
             bot_token=bot_token,

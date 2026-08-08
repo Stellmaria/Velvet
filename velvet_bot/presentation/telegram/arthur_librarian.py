@@ -136,11 +136,11 @@ def _render_archive_status(status: ArthurArchiveStatus) -> str:
         "",
         f"State: <code>{state}</code>",
         f"Analyzer: <code>{escape(status.analyzer_version)}</code>",
-        f"Queued: <code>{counts.get('queued', 0)}</code>",
-        f"Running: <code>{counts.get('running', 0)}</code>",
-        f"Completed: <code>{counts.get('completed', 0)}</code>",
-        f"Skipped: <code>{counts.get('skipped', 0)}</code>",
-        f"Failed: <code>{counts.get('failed', 0)}</code>",
+        f"Queued now (live backlog): <code>{counts.get('queued', 0)}</code>",
+        f"Running now: <code>{counts.get('running', 0)}</code>",
+        f"Completed total: <code>{counts.get('completed', 0)}</code>",
+        f"Skipped total: <code>{counts.get('skipped', 0)}</code>",
+        f"Failed total: <code>{counts.get('failed', 0)}</code>",
     ]
     if status.last_error:
         lines.extend(("", "Последняя ошибка: " + escape(status.last_error)))
