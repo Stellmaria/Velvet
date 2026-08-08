@@ -45,6 +45,7 @@ async def _start_background_workers(
 ) -> None:
     from velvet_bot.presentation.telegram.storage_librarian import start_storage_librarian
 
+    register_codex_recovery_worker(bot=bot, manager=worker_manager)
     await start_storage_librarian(bot, database)
     await worker_manager.start_all()
 
@@ -223,7 +224,6 @@ async def run_application() -> None:
             system_service=system_service,
             diagnostic_service=diagnostic_service,
         )
-        register_codex_recovery_worker(bot=bot, settings=settings, manager=worker_manager)
 
         bot_info = await bot.get_me()
         bot_username = bot_info.username or ""

@@ -4,7 +4,7 @@ import logging
 
 from aiogram import Bot
 
-from velvet_bot.core.config import Settings
+from velvet_bot.core.config import Settings, load_settings
 from velvet_bot.services.codex_recovery_notifications import (
     build_codex_recovery_notification_monitor,
 )
@@ -25,11 +25,13 @@ def _owner_chat_id(settings: Settings) -> int | None:
 def register_codex_recovery_worker(
     *,
     bot: Bot,
-    settings: Settings,
     manager: WorkerManager,
+    settings: Settings | None = None,
 ) -> None:
     if _WORKER_NAME in manager.registered_names():
         return
+
+    resolved_settings = settings or load_settings()
 
     async def send_notification(chat_id: int, text: str) -> None:
         await bot.send_message(
@@ -40,7 +42,7 @@ def register_codex_recovery_worker(
 
     monitor = build_codex_recovery_notification_monitor(
         send_notification=send_notification,
-        owner_chat_id=_owner_chat_id(settings),
+        owner_chat_id=_owner_chat_id(resolved_settings),
     )
     if monitor is None:
         return
