@@ -92,11 +92,11 @@ Regression coverage расширен так, чтобы проверять:
 - cooperative archive stop удерживает lease до фактического выхода task;
 - существующий consumer-before-claim contract остаётся покрыт.
 
-Generated package architecture и repository layout inventory пересчитаны штатными repo scripts. Package inventory теперь фиксирует `production_loc=146483`; новых production modules или repository modules интеграция не добавляет.
+Generated package architecture и repository layout inventory пересчитаны штатными repo scripts уже на финальной базе с #744. Package inventory фиксирует `production_loc=146483`; новых production modules или repository modules интеграция не добавляет. Self-cleaning refresh завершился commit `ff9ddaa85760d7c6453ef9d0e4867a8f0090e522`; временный workflow отсутствует в итоговом tree.
 
 ### PR и commit
 
-- Preflight PR `#745` использовался только для поиска contract/inventory findings и superseded после переноса final tree на актуальный `main`.
+- Preflight PR `#745` использовался только для поиска contract/inventory findings и закрыт без merge после переноса final tree на актуальный `main`.
 - Финальный merge-кандидат: PR `#746` — `Integrate Arthur archive control with automatic VL priority`.
 - Финальная ветка: `fix/arthur-archive-vl-gate-main-20260808`.
 - Базовый commit финальной ветки: `66f0993780a1428b260336929f2050b424aebf1e`.
