@@ -11,6 +11,7 @@ from velvet_bot.application.arthur_librarian import ArthurLibrarianApplication
 from velvet_bot.domains.telegram_storage.arthur_repository import (
     ArthurStorageLibrarianRepository,
 )
+from velvet_bot.domains.telegram_storage.librarian_models import StorageLibrarianError
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -43,6 +44,13 @@ class _FakeRepository:
             "failed": 0,
             "skipped": 0,
         }
+
+
+class _FailingPhaseRepository(_FakeRepository):
+    @asynccontextmanager
+    async def full_archive_phase(self):
+        raise StorageLibrarianError("archive lease unavailable")
+        yield  # pragma: no cover
 
 
 class _FakeService:
@@ -127,13 +135,31 @@ class ArthurArchiveControlTests(unittest.IsolatedAsyncioTestCase):
         app._service = lambda **_: service  # type: ignore[method-assign]
         return app, repository, service
 
+    async def test_start_holds_phase_before_reporting_success(self) -> None:
+        app, repository, _ = self._application()
+
+        self.assertTrue(await app.start_archive())
+        self.assertTrue(repository.phase_active)
+        self.assertEqual(1, repository.phase_entries)
+
+        await app.shutdown()
+        self.assertFalse(repository.phase_active)
+
+    async def test_start_fails_without_creating_task_when_phase_lease_unavailable(self) -> None:
+        app, _, _ = self._application()
+        app.repository = _FailingPhaseRepository()
+
+        with self.assertRaisesRegex(StorageLibrarianError, "archive lease unavailable"):
+            await app.start_archive()
+
+        self.assertIsNone(app._archive_task)
+
     async def test_start_is_idempotent_and_stop_is_cooperative(self) -> None:
         app, repository, service = self._application()
 
         self.assertTrue(await app.start_archive())
-        self.assertFalse(await app.start_archive())
-        await asyncio.sleep(0)
         self.assertTrue(repository.phase_active)
+        self.assertFalse(await app.start_archive())
 
         status = await app.archive_status()
         self.assertTrue(status.active)
@@ -196,7 +222,8 @@ class ArthurArchiveTelegramContractTests(unittest.TestCase):
         self.assertIn("await application.shutdown()", runtime)
         self.assertIn("await self.repository.enqueue_pending(", application)
         self.assertIn("self._analysis_lock = asyncio.Lock()", application)
-        self.assertIn("self.repository.full_archive_phase()", application)
+        self.assertIn("archive_phase = self.repository.full_archive_phase()", application)
+        self.assertIn("await archive_phase.__aenter__()", application)
         self.assertIn("stop_event.wait()", application)
 
 
