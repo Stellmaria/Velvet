@@ -199,7 +199,7 @@ def build_quality_operations_menu(
                     callback_data=quality_callback("quality_recent", item_id=25),
                 ),
                 InlineKeyboardButton(
-                    text="📦 План 100",
+                    text="▶️ План 100",
                     callback_data=quality_callback("quality_recent", item_id=100),
                 ),
             ],
