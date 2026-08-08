@@ -120,18 +120,38 @@ PY
 
 Для первого smoke используйте нейтральное изображение без приватных данных. Один и тот же файл используется для всех output-cap runs.
 
+Production workflow принимает только basename файла из закрытого каталога `<VELVET_DATA_DIR>/runtime/vision-benchmark/`. При стандартном `VELVET_DATA_DIR=/srv/velvet/data` подготовка выглядит так:
+
 ```bash
+install -d -m 700 /srv/velvet/data/runtime/vision-benchmark
 install -m 600 /path/to/test-image.jpg \
-  /srv/velvet/data/runtime/vision-benchmark.jpg
+  /srv/velvet/data/runtime/vision-benchmark/smoke-neutral.jpg
 ```
 
-Не добавляйте evaluation image в git и не отправляйте его в cloud.
+Не добавляйте evaluation image в git, GitHub artifact или cloud. Имя файла для manual workflow в этом примере: `smoke-neutral.jpg`.
 
 ## 6. Запустить benchmark с host resource evidence
 
 Harness запускается на host. HTTP-запрос к internal-only gateway проходит через `docker exec` в bot-контейнер, поэтому gateway port не открывается, а harness при этом видит host Docker stats, swap и runtime image identity.
 
-Сначала определите фактические container names:
+### Через manual production workflow
+
+После deployment exact `main` commit предпочтительный первый smoke запускается workflow `.github/workflows/production-vl-benchmark.yml` со значениями:
+
+- `confirmation=BENCHMARK`;
+- `source_commit=<exact deployed main SHA>`;
+- `image_name=smoke-neutral.jpg`;
+- `output_cap=512`;
+- `rounds=1`;
+- `cold_unload=false`.
+
+Workflow fail-closed проверяет exact clean checkout, policy flags, model/digest, concurrency и timeout. Он не выполняет `compose up`, `pull`, `restart` и не меняет queue. В artifact возвращается только `benchmark.json`.
+
+После успешного first smoke выполняются отдельные explicit runs для output caps `384`, `512`, `768`; cold run включается отдельным `cold_unload=true`, когда нужен cold-start evidence.
+
+### Прямой host harness
+
+Если benchmark запускается оператором напрямую на VPS, сначала определите фактические container names:
 
 ```bash
 docker compose \
@@ -140,14 +160,14 @@ docker compose \
   --profile vision ps --format json
 ```
 
-Затем выполните одинаковый benchmark для output caps `384`, `512`, `768`. Пример для `512`:
+Пример для cap `512`:
 
 ```bash
 python scripts/benchmark_vision_gateway.py \
   --endpoint http://vision-gateway:8080 \
   --request-container velvet-bot-1 \
   --docker-container velvet-vision-runtime-1 \
-  --image /srv/velvet/data/runtime/vision-benchmark.jpg \
+  --image /srv/velvet/data/runtime/vision-benchmark/smoke-neutral.jpg \
   --model qwen3.5:9b \
   --expected-digest 6488c96fa5fa \
   --max-output-tokens 512 \
