@@ -1,0 +1,75 @@
+name: VL typed module move
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/vl-typed-module-move.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vl-typed-module-move-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  move:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Rewire typed VL imports
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              "from velvet_bot.vision_failures import": "from velvet_bot.domains.vision_routing.failures import",
+              "from velvet_bot.vision_http import": "from velvet_bot.domains.vision_routing.http import",
+              "from velvet_bot.typed_quality_vision import": "from velvet_bot.services.typed_quality_vision import",
+          }
+          roots = [Path("velvet_bot"), Path("tests")]
+          for root in roots:
+              for path in root.rglob("*.py"):
+                  if path in {
+                      Path("velvet_bot/vision_failures.py"),
+                      Path("velvet_bot/vision_http.py"),
+                      Path("velvet_bot/typed_quality_vision.py"),
+                  }:
+                      continue
+                  text = path.read_text(encoding="utf-8")
+                  updated = text
+                  for old, new in replacements.items():
+                      updated = updated.replace(old, new)
+                  if updated != text:
+                      path.write_text(updated, encoding="utf-8")
+          PY
+          rm velvet_bot/vision_failures.py
+          rm velvet_bot/vision_http.py
+          rm velvet_bot/typed_quality_vision.py
+
+      - name: Commit package move and remove helper workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_head="$(git ls-remote --heads origin "refs/heads/${HEAD_BRANCH}" | awk '{print $1}')"
+          if [[ "$remote_head" != "$EXPECTED_HEAD_SHA" ]]; then
+            echo "PR head moved: expected $EXPECTED_HEAD_SHA, actual $remote_head"
+            exit 1
+          fi
+          rm .github/workflows/vl-typed-module-move.yml
+          git add -A
+          git diff --cached --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Move typed VL modules into package layers"
+          git push origin "HEAD:refs/heads/${HEAD_BRANCH}"
