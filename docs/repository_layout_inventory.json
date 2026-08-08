@@ -597,14 +597,15 @@
       "path": "velvet_bot/domains/telegram_storage/librarian_repository.py",
       "layout": "domain",
       "domain": "telegram_storage",
-      "production_consumer_count": 5,
+      "production_consumer_count": 6,
       "test_consumer_count": 1,
       "package_export_count": 0,
-      "reference_count": 6,
+      "reference_count": 7,
       "production_consumers": [
         "velvet_bot/application/storage_librarian.py",
         "velvet_bot/domains/telegram_storage/arthur_repository.py",
         "velvet_bot/domains/telegram_storage/librarian_afk_repository.py",
+        "velvet_bot/domains/vision_batches/worker.py",
         "velvet_bot/infrastructure/telegram/arthur_storage_gateway_server.py",
         "velvet_bot/presentation/telegram/storage_librarian.py"
       ],
