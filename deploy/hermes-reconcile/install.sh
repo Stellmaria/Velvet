@@ -188,6 +188,9 @@ fi
 # for the s6-overlay Hermes image. Verify the mounted reconcile client as the
 # actual owner of the Hermes data volume instead of mistaking exec uid=0 for a
 # failed runtime privilege drop.
+# Expansion of EXPECTED_UID/EXPECTED_GID is intentionally deferred to the shell
+# running inside Hermes.
+# shellcheck disable=SC2016
 runuser -u "$SERVICE_USER" -- \
   docker compose --env-file "$VELVET_ENV_FILE" -f "$VELVET_COMPOSE_FILE" \
     --profile agent exec -T \
