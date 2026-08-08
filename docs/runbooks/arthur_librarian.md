@@ -22,6 +22,11 @@ the Arthur Telegram bot.
   `/analyze` request.
 - Archive and manual `/analyze` inference share one application lock, so Arthur
   does not intentionally run two local Storage analyses in parallel.
+- While `/archive start` owns the explicit full-archive phase, automatic VL uses
+  the same repository-backed priority contract as the legacy full-archive mode:
+  existing queued/running Storage work blocks VL before claim, then a bounded
+  `enqueue_pending(limit=1)` probe checks for residual eligible archive work.
+  Automatic VL opens only when counts are empty and that probe returns zero.
 
 ## Required secrets
 
@@ -78,10 +83,20 @@ not reprocessed. A deliberate full rescan therefore still uses a new analyzer
 version, preserving previous results until each object is replaced by the new
 analysis.
 
+The archive loop may remain active after the current backlog is exhausted so it
+can notice later eligible Storage objects. This does not keep automatic VL closed
+forever: the VL gate opens when Storage counts are empty and the bounded residual
+probe returns zero. If new Storage work appears later, the next VL gate iteration
+closes again before another claim. A VL inference that already started is not
+preempted.
+
 `/archive stop` is cooperative. It does not cancel Ollama in the middle of an
 object and does not mutate Docker state. If an object is currently running,
 Arthur finishes that object and then exits the archive loop. Queue rows and
-stored analyses remain in PostgreSQL, so `/archive start` can resume later.
+stored analyses remain in PostgreSQL, so `/archive start` can resume later. The
+Arthur archive phase signal remains set until that task actually exits, so an
+automatic VL claim cannot be released merely because stop was requested while
+Ollama is still processing the current object.
 
 `/archive status` shows whether the loop is running, stopping or stopped,
 current queue counters, analyzer version and the last loop-level error if one
@@ -97,6 +112,12 @@ Confirm that Telegram `/archive status` initially reports `stopped`. Run
 then run `/archive stop` and confirm the state becomes `stopping` or `stopped`
 without Docker pause/restart activity. After the current object boundary, status
 must settle on `stopped` while Arthur itself remains healthy.
+
+Before enabling automatic Qwen/VL, verify the integrated priority contract with
+env background scheduling still disabled: while Arthur has queued/running or
+residual eligible full-archive work, the VL consumer must not claim a queued
+vision task. After Storage counts reach zero and the bounded archive probe finds
+nothing, the next VL iteration may claim normally.
 
 Also verify one loaded Ollama model, no host binding for `11434`, and
 `STORAGE_LIBRARIAN_AUTO_ENQUEUE=false`.
