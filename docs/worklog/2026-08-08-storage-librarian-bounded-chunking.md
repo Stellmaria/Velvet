@@ -95,11 +95,13 @@ Arthur configuration и scheduler ownership не меняются. В частн
 - final synthesis с worst-case bounded chunk summaries проверен на размер не больше `18944` chars;
 - project-notes contract после заполнения worklog прошёл;
 - type check на implementation head прошёл;
-- GitHub Python 3.13 runner сгенерировал canonical package architecture inventory: `production_loc=145919`, `violation_count=523`;
-- новые `storage_librarian.py`, `librarian_content.py` и `librarian_models.py` не добавляют architecture violations; максимальная функция в `librarian_models.py` после refactor — 160 строк при лимите 180;
+- GitHub Python 3.13 runner сгенерировал canonical package architecture inventory для первоначальной ветки и не выявил новых architecture violations;
 - все четыре full test shards на inventory probe head прошли успешно;
-- временные CI probe/helper workflow-файлы удалены из результирующего PR diff; generated inventory и contract expectation сохранены;
-- полный required GitHub CI должен пройти ещё раз на чистом финальном PR head до merge.
+- после продвижения `main` до `3a08f99ab725a0190a0ef980cb013f577495a0c4` изменения PR #735 были влиты в feature branch обычным merge commit без force-push;
+- combined canonical package architecture inventory после sync с `main`: `production_loc=145945`, `violation_count=523`;
+- PR снова mergeable и синхронизирован с `main`; generated inventory и package architecture contract соответствуют объединённому дереву;
+- временные CI probe/sync-helper workflow-файлы удалены; итоговый PR diff содержит только восемь ожидаемых production/test/docs/inventory файлов;
+- полный required GitHub CI должен пройти на точном финальном head после этой записи до squash merge.
 
 ### PR и commit
 
@@ -107,12 +109,11 @@ PR: `#736 Add bounded hierarchical Storage Librarian chunking`.
 
 Ветка: `fix/storage-librarian-bounded-chunking`.
 
-Первый implementation commit: `a13df7b994dc2e223abe9a3711c27dad39d2a961` (`Add bounded Storage Librarian chunking`). Canonical architecture inventory сгенерирован GitHub runner и сохранён commit `d6ed9043b6fb01855d47ce618f5bcc6ecc15e3c9`. Финальный PR head и squash merge SHA фиксируются после required CI.
+Первый implementation commit: `a13df7b994dc2e223abe9a3711c27dad39d2a961` (`Add bounded Storage Librarian chunking`). Main sync merge commit: `2ba551787b47073899c130b99eaeb9c819be09d3`, второй родитель `3a08f99ab725a0190a0ef980cb013f577495a0c4`. Combined canonical architecture inventory после sync сохранён GitHub runner commit `29413322dd5d870f6ee79ca3f1ab4de977cefb40`. Финальный PR head и squash merge SHA фиксируются после required CI.
 
 ### Незавершённое
 
-- дождаться всех required GitHub CI checks на чистом финальном PR head;
-- перевести PR из draft только после зелёных required checks;
+- дождаться всех required GitHub CI checks на точном финальном PR head;
 - выполнить squash merge обычным protected workflow без bypass/force-push;
 - после merge отдельно зафиксировать canonical source SHA, immutable GHCR image digest и OCI revision;
 - выполнить production acceptance на oversized object, не переименовывая historical failure в success задним числом;
@@ -120,4 +121,4 @@ PR: `#736 Add bounded hierarchical Storage Librarian chunking`.
 
 ### Следующий шаг
 
-Прогнать required CI на чистом PR head, исправить только доказанные проверки, затем squash-merge PR #736 в protected `main`. Production state и historical failed objects не считать исправленными до exact-image rollout и runtime acceptance.
+Прогнать required CI на финальном PR head, исправить только доказанные проверки, затем squash-merge PR #736 в protected `main`. Production state и historical failed objects не считать исправленными до exact-image rollout и runtime acceptance.
