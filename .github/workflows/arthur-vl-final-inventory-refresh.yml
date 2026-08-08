@@ -1,0 +1,64 @@
+name: arthur vl final inventory refresh
+
+on:
+  push:
+    branches:
+      - fix/arthur-archive-vl-gate-main-20260808
+    paths:
+      - .github/workflows/arthur-vl-final-inventory-refresh.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout final branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: fix/arthur-archive-vl-gate-main-20260808
+          fetch-depth: 0
+
+      - name: Regenerate reviewed inventories on final main base
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/inventory_repository_layout.py --write --label p3e-repository-layout-complete
+          python scripts/inventory_package_architecture.py --write --label p1-package-architecture-baseline
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          inventory = json.loads(Path("docs/package_architecture_inventory.json").read_text(encoding="utf-8"))
+          path = Path("tests/test_package_architecture_inventory.py")
+          text = path.read_text(encoding="utf-8")
+          replacement = f'self.assertEqual({int(inventory["production_loc"])}, self.inventory["production_loc"])'
+          updated, count = re.subn(
+              r'self\.assertEqual\(\d+, self\.inventory\["production_loc"\]\)',
+              replacement,
+              text,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f"expected one production_loc assertion, found {count}")
+          path.write_text(updated, encoding="utf-8")
+          PY
+
+      - name: Commit generated outputs and remove workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/arthur-vl-final-inventory-refresh.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            docs/repository_layout_inventory.json \
+            docs/repository_layout_inventory.md \
+            tests/test_package_architecture_inventory.py \
+            .github/workflows/arthur-vl-final-inventory-refresh.yml
+          git commit -m "Refresh final Arthur VL inventories"
+          git push origin HEAD:fix/arthur-archive-vl-gate-main-20260808
