@@ -26,6 +26,7 @@ Production verified deploy `a392df96e1cd113ff5bbe6e6e22246984d6b50ec` не вк�
 
 - использовать PostgreSQL session advisory lock как cross-process Arthur archive lease без новой таблицы и миграции;
 - держать lease на одной выделенной DB connection весь lifetime `/archive start` task;
+- получать lease синхронно внутри `start_archive()` до успешного ответа владельцу и до запуска archive loop, чтобы убрать окно для VL claim;
 - полагаться на автоматическое освобождение PostgreSQL advisory lock при crash/disconnect Arthur process;
 - main bot должен проверять тот же lease до automatic VL claim;
 - при active lease повторно использовать существующие repository counts и `enqueue_pending(limit=1)` probe;
@@ -36,6 +37,8 @@ Production verified deploy `a392df96e1cd113ff5bbe6e6e22246984d6b50ec` не вк�
 ### Критерии готовности
 
 - env scheduler остаётся выключенным (`AUTO_ENQUEUE=false`, `AUTO_BACKFILL=false`), но active Arthur advisory lease всё равно включает VL priority gate;
+- успешный `start_archive()` возвращается только после фактического acquire cross-container lease;
+- недоступный lease не создаёт ложный active archive task;
 - lease probe не оставляет advisory lock в main bot connection pool, когда Arthur archive не активен;
 - чужой active lease распознаётся без попытки его unlock;
 - Arthur archive task держит lease до фактического выхода, включая cooperative stop текущего object inference;
@@ -61,12 +64,12 @@ Production verified deploy `a392df96e1cd113ff5bbe6e6e22246984d6b50ec` не вк�
 
 `ArthurStorageLibrarianRepository` получил единый PostgreSQL advisory-lock key и два bounded coordination API:
 
-- `full_archive_phase()` удерживает session advisory lock на выделенной DB connection весь lifetime explicit Arthur archive task и освобождает его в `finally`;
+- `full_archive_phase()` удерживает session advisory lock на выделенной DB connection и освобождает его в `finally`;
 - `full_archive_phase_active()` пробует тот же lock из main bot, немедленно освобождает временно полученный lock при inactive Arthur и возвращает active, если lock уже удерживает другой process.
 
-`ArthurLibrarianApplication._archive_loop()` выполняет весь cooperative `/archive start` lifecycle внутри `full_archive_phase()`. Поэтому `/archive stop` не освобождает lease раньше завершения текущего object boundary; crash/disconnect Arthur container освобождает PostgreSQL session lock автоматически.
+`ArthurLibrarianApplication.start_archive()` теперь сначала входит в `full_archive_phase()` и только после успешного acquire создаёт archive task и возвращает `True`. Поэтому нет окна между успешным `/archive start` и публикацией cross-container lease. Если lease занят или acquire не удался, task не создаётся. Archive task получает уже удерживаемый context и освобождает его только в своём `finally`, после текущего object boundary и cooperative stop.
 
-`storage_librarian_full_archive_has_priority()` теперь активируется двумя совместимыми путями:
+`storage_librarian_full_archive_has_priority()` активируется двумя совместимыми путями:
 
 1. explicit Arthur `/archive start` PostgreSQL lease;
 2. legacy env full-archive mode для обратной совместимости.
@@ -86,13 +89,15 @@ Regression coverage расширен так, чтобы проверять:
 - inactive advisory probe берёт и сразу освобождает временный lock;
 - active foreign lease определяется без `pg_advisory_unlock` чужой сессии;
 - archive phase context берёт и освобождает ровно один session lock;
+- успешный archive start уже держит lease в момент возврата;
+- failure acquire не оставляет `_archive_task`;
 - active Arthur lease при env scheduler `false/false` блокирует VL;
 - residual backlog и empty-backlog semantics сохраняют bounded #741 probe;
 - lease probe failure блокирует VL fail-closed;
 - cooperative archive stop удерживает lease до фактического выхода task;
 - существующий consumer-before-claim contract остаётся покрыт.
 
-Generated package architecture и repository layout inventory пересчитаны штатными repo scripts уже на финальной базе с #744. Package inventory фиксирует `production_loc=146483`; новых production modules или repository modules интеграция не добавляет. Self-cleaning refresh завершился commit `ff9ddaa85760d7c6453ef9d0e4867a8f0090e522`; временный workflow отсутствует в итоговом tree.
+Generated package architecture и repository layout inventory пересчитаны штатными repo scripts на Python `3.13`, то есть той же major/minor версией, которую использует CI preflight. До push отдельно прошли full package `--check`, fast package `--check` и repository-layout `--check`. Package inventory фиксирует `production_loc=146496`; новых production modules или repository modules интеграция не добавляет. Проверенный generated refresh завершился commit `4424baeb35b383b5cc153605499e74a16d49a1b8`.
 
 ### PR и commit
 
