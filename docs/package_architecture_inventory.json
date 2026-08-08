@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
-  "production_module_count": 659,
-  "production_loc": 144881,
+  "production_module_count": 661,
+  "production_loc": 145339,
   "layer_counts": {
     "application": 22,
-    "composition": 61,
+    "composition": 62,
     "core": 8,
     "domain": 189,
     "infrastructure": 33,
     "other": 1,
     "presentation": 218,
     "root": 114,
-    "service": 9,
+    "service": 10,
     "worker": 4
   },
   "root_module_count": 113,
@@ -10692,7 +10692,7 @@
       "module": "velvet_bot.app.bootstrap",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 340,
+      "loc": 342,
       "function_count": 7,
       "class_count": 0,
       "handler_count": 0,
@@ -10700,6 +10700,7 @@
       "branch_count": 19,
       "internal_imports": [
         "velvet_bot.app.ai_usage",
+        "velvet_bot.app.codex_recovery_worker",
         "velvet_bot.app.commands",
         "velvet_bot.app.dispatcher",
         "velvet_bot.app.save_sessions",
@@ -10737,7 +10738,7 @@
       "install_definitions": [],
       "install_calls": [
         {
-          "line": 280,
+          "line": 282,
           "call": "install_command_menus"
         }
       ],
@@ -10749,30 +10750,35 @@
         {
           "line": 48,
           "owner": "_start_background_workers",
+          "call": "register_codex_recovery_worker"
+        },
+        {
+          "line": 50,
+          "owner": "_start_background_workers",
           "call": "worker_manager.start_all"
         },
         {
-          "line": 55,
+          "line": 57,
           "owner": "_stop_background_workers",
           "call": "worker_manager.stop_all"
         },
         {
-          "line": 213,
+          "line": 215,
           "owner": "run_application",
           "call": "build_worker_manager"
         },
         {
-          "line": 313,
+          "line": 315,
           "owner": "run_application",
           "call": "_start_background_workers"
         },
         {
-          "line": 107,
+          "line": 109,
           "owner": "_close_application_resources",
           "call": "_stop_background_workers"
         },
         {
-          "line": 300,
+          "line": 302,
           "owner": "run_application",
           "call": "worker_manager.registered_names"
         }
@@ -10878,6 +10884,49 @@
           }
         }
       ]
+    },
+    {
+      "path": "velvet_bot/app/codex_recovery_worker.py",
+      "module": "velvet_bot.app.codex_recovery_worker",
+      "layer": "composition",
+      "target_package": "composition",
+      "loc": 60,
+      "function_count": 3,
+      "class_count": 0,
+      "handler_count": 0,
+      "max_function_length": 33,
+      "branch_count": 4,
+      "internal_imports": [
+        "velvet_bot.core.config",
+        "velvet_bot.services.codex_recovery_notifications",
+        "velvet_bot.workers"
+      ],
+      "external_import_count": 3,
+      "aiogram_imports": [
+        "aiogram"
+      ],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [
+        {
+          "line": 50,
+          "owner": "register_codex_recovery_worker",
+          "call": "PeriodicWorkerSpec"
+        }
+      ],
+      "violations": []
     },
     {
       "path": "velvet_bot/app/commands.py",
@@ -40229,6 +40278,48 @@
       "installed_sentinel_count": 0,
       "package_getattr": false,
       "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/services/codex_recovery_notifications.py",
+      "module": "velvet_bot.services.codex_recovery_notifications",
+      "layer": "service",
+      "target_package": "service",
+      "loc": 396,
+      "function_count": 18,
+      "class_count": 4,
+      "handler_count": 0,
+      "max_function_length": 55,
+      "branch_count": 32,
+      "internal_imports": [],
+      "external_import_count": 14,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 1,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [
+        {
+          "line": 370,
+          "owner": "build_codex_recovery_notification_monitor",
+          "call": "os.getenv"
+        },
+        {
+          "line": 371,
+          "owner": "build_codex_recovery_notification_monitor",
+          "call": "os.getenv"
+        }
+      ],
       "polling_values": [],
       "worker_registrations": [],
       "violations": []
