@@ -1,208 +1,186 @@
 # Глубокий ИИ-анализ изображений
 
+Канонический источник архитектуры VL/VLM: issue #630 `VL: 3-model local-first vision-контур Velvet и Arthur Archive`.
+
 ## Текущая архитектура
 
-Velvet использует provider-neutral Vision Router. Production provider
-`ollama` по-прежнему запрещён: bot/domain не обращаются к vendor endpoint и не
-зависят от Ollama API. Для локального inference добавлен отдельный trusted
-provider:
+Velvet использует provider-neutral Vision Router и внутренний `vision-gateway`. Bot/domain не обращаются напрямую к Ollama API и не знают о lifecycle runtime.
+
+```text
+Telegram / Storage / Workspace
+        ↓
+vision-gateway
+  validation / preprocessing / policy / schema / cache / metrics
+        ↓
+model router
+        ├─ LOCAL_MAIN
+        ├─ LOCAL_UNCENSORED   optional, local sensitive fallback
+        └─ CLOUD_PRO          optional, standard escalation
+```
+
+Local-first является default. Sensitive/private изображения не уходят в cloud по умолчанию.
+
+## Три роли #630
+
+### LOCAL_MAIN
+
+Текущий production baseline:
 
 ```dotenv
 AI_VISION_PROVIDER=local_openai_compatible
 AI_VISION_BASE_URL=http://vision-gateway:8080/v1
+AI_VISION_MODEL=qwen3.5:9b
+AI_VISION_FLASH_MODEL=qwen3.5:9b
+VISION_MODEL=qwen3.5:9b
+VISION_MODEL_EXPECTED_DIGEST=6488c96fa5fa
 ```
 
-`vision-gateway` предоставляет ограниченный OpenAI-compatible контракт, а
-`vision-runtime` остаётся изолированной реализацией внутри Compose. Bot не видит
-vendor runtime напрямую. Cloud provider `openai_compatible` сохраняется для
-опционального Pro fallback.
+`FLASH` остаётся compatibility/config name для application route, но архитектурная роль называется `LOCAL_MAIN`.
 
-До завершения server benchmark и sensitive calibration production-флаги остаются
-выключенными:
+LOCAL_MAIN первым обрабатывает обычные standard-запросы и adult-confirmed sensitive-запросы. Он должен возвращать versioned structured profile, а не свободный рассказ.
+
+### LOCAL_UNCENSORED
+
+Отдельная локальная модель для разрешённого sensitive fallback. Она не является default и не должна использоваться для обычного архива.
+
+```dotenv
+AI_VISION_LOCAL_UNCENSORED_ENABLED=false
+```
+
+Route остаётся fail-closed до отдельного model benchmark и безопасного runtime switching. Sensitive route никогда не использует `CLOUD_PRO`.
+
+### CLOUD_PRO
+
+Сильный optional cloud route только для standard escalation по typed reason и privacy/budget policy.
+
+```dotenv
+AI_VISION_CLOUD_PRO_ENABLED=false
+```
+
+Сам факт низкой скорости локальной модели, большой archive queue или sensitive content не разрешает cloud escalation.
+
+## Production safety flags
+
+После production incident global quality и массовый archive processing отделены от возможности использовать VL вообще.
 
 ```dotenv
 AI_VISION_ENABLED=false
 AI_VISION_QUEUE_ENABLED=false
+AI_QUALITY_ENABLED=false
+AI_VISION_CLOUD_PRO_ENABLED=false
+AI_VISION_LOCAL_UNCENSORED_ENABLED=false
 ```
 
-Архив, visual fingerprint и безопасные fallback-эвристики продолжают работать.
+`AI_QUALITY_ENABLED` является отдельным fail-closed gate. Обычный worker больше не должен автоматически засевать весь `media_files` global quality rows. Controlled quality batches используют owner-controlled `plan -> explicit start` и лимиты `10 -> 25 -> 100`.
+
+Mass backfill не является нормальным side effect включения Vision.
 
 ## Server VL profile
 
 Compose содержит три сервиса с разными границами:
 
-- `vision-model-loader` — одноразовая установка модели с интернет-доступом;
-- `vision-runtime` — CPU inference без опубликованного порта и без egress-сети;
-- `vision-gateway` — единственная точка доступа bot к локальному VL.
+- `vision-model-loader` — one-shot установка pinned модели; единственный vision service с egress;
+- `vision-runtime` — CPU inference без опубликованного порта и без internet-facing network;
+- `vision-gateway` — единственная VL boundary, видимая bot.
 
-Сначала собирается runtime и один раз загружается выбранная модель:
+Runtime ограничен одним одновременно загруженным/исполняемым local inference path. Production budget остаётся `VISION_MAX_CONCURRENCY=1`, runtime CPU limit `6.0`, RAM limit `12g`.
 
-```bash
-cd /srv/velvet
+## Model identity contract
 
-docker compose \
-  --env-file .env.server \
-  -f docker-compose.server.yml \
-  --profile vision-bootstrap \
-  build vision-model-loader
+Production evidence 2026-08-07 подтвердил:
 
-docker compose \
-  --env-file .env.server \
-  -f docker-compose.server.yml \
-  --profile vision-bootstrap \
-  run --rm vision-model-loader
-```
+- model `qwen3.5:9b`;
+- digest prefix `6488c96fa5fa`;
+- CPU-only execution;
+- около 1.8–2.2 output tokens/sec на текущем VPS;
+- около 6 CPU под одним inference;
+- около 10.4 GB runtime RAM;
+- длинные outputs могут упираться в 300-second timeout.
 
-После фиксации model digest запускается inference profile:
+`vision-model-loader` и `vision-gateway` проверяют `VISION_MODEL_EXPECTED_DIGEST` как prefix и fail-closed при drift.
 
-```bash
-docker compose \
-  --env-file .env.server \
-  -f docker-compose.server.yml \
-  --profile vision \
-  up -d --build vision-runtime vision-gateway
-```
-
-`vision-runtime` не скачивает модель при старте. Если persistent model volume
-пуст либо digest не совпадает, контейнер завершается с ошибкой. Это отделяет
-сетевую установку весов от обработки приватных изображений.
-
-## Модель и benchmark
-
-Кандидаты issue #505:
-
-- `qwen3-vl:8b-instruct-q4_K_M` — performance baseline;
-- `qwen3-vl:8b-instruct-q8_0` — quality candidate.
-
-В production одновременно используется только одна модель. Выбор выполняется по
-живому CPU benchmark на VPS, а не только по тому, помещаются ли веса в RAM.
-Проверяются cold/warm latency, memory, CPU, polling bot, отсутствие OOM и качество
-на контрольной выборке.
-
-Benchmark gateway:
-
-```bash
-python scripts/benchmark_vision_gateway.py \
-  --endpoint http://127.0.0.1:8080 \
-  --image /path/to/non-private-test-image.jpg \
-  --rounds 3 \
-  --output /tmp/vision-benchmark.json
-```
-
-Gateway не публикуется на host в production Compose. Для benchmark команду нужно
-запускать из bot-контейнера/внутренней сети либо временного диагностического
-контейнера без изменения production port contract.
-
-## Локальный trusted provider
-
-Минимальная конфигурация находится в `.env.vision-local.example`:
-
-```dotenv
-AI_VISION_ENABLED=false
-AI_VISION_QUEUE_ENABLED=false
-AI_VISION_PROVIDER=local_openai_compatible
-AI_VISION_BASE_URL=http://vision-gateway:8080/v1
-AI_VISION_MODEL=qwen3-vl:8b-instruct-q4_K_M
-AI_VISION_FLASH_MODEL=qwen3-vl:8b-instruct-q4_K_M
-AI_VISION_SENSITIVE_MODEL=qwen3-vl:8b-instruct-q4_K_M
-AI_VISION_FLASH_INPUT_RUB_PER_1M=0
-AI_VISION_FLASH_OUTPUT_RUB_PER_1M=0
-AI_VISION_SENSITIVE_INPUT_RUB_PER_1M=0
-AI_VISION_SENSITIVE_OUTPUT_RUB_PER_1M=0
-```
-
-Local provider:
-
-- не требует API key;
-- разрешает только allowlisted Compose hostname `vision-gateway`;
-- запрещает public/loopback endpoints, URL credentials, query и fragment;
-- имеет monetary cost `0`, но сохраняет usage, latency, model, route и outcome;
-- не делает cloud fallback для sensitive-контента по умолчанию.
-
-Cloud routes по-прежнему требуют API key и положительную input/output pricing.
-При смене provider на уровне route нужен отдельный route base URL.
+Compose fallback также закреплён на canonical LOCAL_MAIN, чтобы отсутствие env-переменной не вернуло старый 8B default.
 
 ## Gateway security contract
 
 `vision-gateway`:
 
-- не принимает remote image URLs;
 - принимает только base64 data URI JPEG/PNG/WebP;
+- не принимает remote image URLs;
 - ограничивает request size, decoded image size и число изображений;
-- исправляет EXIF orientation и повторно кодирует изображение без EXIF/ICC;
-- уменьшает длинную сторону максимум до `VISION_MAX_IMAGE_SIDE`;
-- разрешает только configured model ID;
+- исправляет EXIF orientation и перекодирует изображение без EXIF/ICC;
+- уменьшает длинную сторону до configured limit;
+- принимает только configured model ID;
+- проверяет configured model digest через runtime tags;
 - запрещает streaming;
 - сериализует inference через `VISION_MAX_CONCURRENCY=1`;
-- не пишет image/base64/prompt в обычные логи;
-- не хранит временные файлы на диске.
+- не должен писать image bytes/base64 в обычные логи.
 
-## VL-каскад
+## Structured profile и output budget
 
-Vision Router поддерживает роли:
+Quality/analysis contract должен оставаться bounded. Global quality output cap сейчас ограничен 512 tokens; более длинный output не является бесплатным качеством на CPU runtime и раньше регулярно превращался в 300-second timeout.
 
-- `FLASH` — основной локальный анализ;
-- `PRO` — опциональный cloud fallback для standard low-confidence/error;
-- `SENSITIVE` — отдельная локальная политика для подтверждённого взрослого
-  материала.
+Для benchmark LOCAL_MAIN обязательна matrix output caps:
 
-Sensitive classifier, `adult_confirmed` gate и отдельная versioned schema ещё
-реализуются следующим срезом #505. До их завершения локальный runtime не считается
-готовым для автоматического +18 маршрута.
+- 384;
+- 512;
+- 768.
 
-Порог перехода standard анализа к Pro задаётся через
-`AI_VISION_CASCADE_CONFIDENCE_THRESHOLD`. Версия промта фиксируется в
-`AI_VISION_PROMPT_VERSION`.
+Timeout сначала не увеличивается. Сначала измеряются schema validity, omissions/hallucinations и latency на одном evaluation set.
 
-## Структурированный профиль
+## Benchmark contract
 
-Целевой результат локального VL является versioned JSON-профилем, а не только
-свободным описанием. Он должен содержать факты о subject, composition, pose,
-camera, visibility, covering, environment, lighting, palette, mood,
-uncertainties, generation risks и confidence.
+`scripts/benchmark_vision_gateway.py` сохраняет reproducible scorecard:
 
-Malformed output не должен сохраняться как успешный профиль. Cache key должен
-учитывать fingerprint изображения, model digest, schema version, prompt version и
-route.
+- model tag и digest;
+- runtime image ref/image ID/registry digests, когда доступны;
+- cold latency;
+- warm p50/p95;
+- completion-token throughput estimate;
+- peak runtime memory/CPU;
+- peak host swap;
+- schema validity;
+- success/failure rate;
+- per-sample outcomes;
+- applied output cap;
+- manual fields для omissions, hallucinations, visual-quality/OCR/pose/composition accuracy и owner quality score.
 
-## Изображение → промт
+Production gateway не публикует host port. Для полного host resource scorecard harness может выполнять HTTP через `docker exec` в bot-контейнер (`--request-container`) и одновременно с host собирать Docker/runtime evidence.
 
-Image-to-Prompt формирует редакционный формат `Vᴇʟᴠᴇᴛ Sɪɢɴᴀᴛᴜʀᴇ` поверх
-утверждённого visual profile:
+Подробная процедура находится в `docs/LOCAL_VISION_RUNBOOK.md`.
 
-- `ВАЖНО` и `СТРОГО`;
-- технический блок;
-- композиция и поза;
-- лицо, взгляд, руки, тело и волосы;
-- локация, фон и свет;
-- палитра и Negative prompts.
+## Queue и archive policy
 
-Formatter не должен придумывать имена, татуировки, личные референсы, одежду,
-наготу или формат `9:16`. Калибровка standard/sensitive Image-to-Prompt и Pose
-Extractor отслеживается issue #414.
+Global quality processing не является implicit archive discovery.
 
-## Очередь и хранение
+После single-image acceptance rollout выполняется только в порядке:
 
-- исходник уменьшается максимум до 1280 px до inference;
-- профиль сохраняется в PostgreSQL;
-- повторный fingerprint/model/schema/prompt/route использует cache;
-- локальный cache hit не создаёт новый monetary usage event;
-- очередь включается только после одиночного server smoke-test и resource gate.
+1. single-image smoke;
+2. controlled batch 10;
+3. controlled batch 25;
+4. controlled batch 100;
+5. mass backfill только отдельным owner decision.
 
-```dotenv
-AI_VISION_QUEUE_ENABLED=true
-AI_VISION_BATCH_PLAN_TTL_SECONDS=900
-```
+Существующие legacy rows не удаляются ради benchmark. Automatic mass backfill запрещён.
 
-## Legacy Ollama
+## Cache и reuse
 
-Следующие элементы остаются устаревшими и не возвращаются:
+Canonical visual profile должен сохранять model/digest/schema/prompt/route provenance. Повторный fingerprint/model/schema/prompt/route может использовать cache.
 
-- `AI_VISION_PROVIDER=ollama` и `AI_TEXT_PROVIDER=ollama` в production env;
-- прямой bot/domain вызов `/api/chat`, `/api/tags` или `127.0.0.1:11434`;
-- Windows Ollama recovery и Supervisor UI;
-- Qwen/Ollama-specific названия в пользовательском интерфейсе.
+Specialized quality, Image-to-Prompt и Pose Extractor должны по возможности использовать уже сохранённый canonical profile вместо второго полного image inference.
 
-Использование Ollama внутри изолированного `vision-runtime` является
-infrastructure implementation detail за `vision-gateway`, а не production
-provider contract Velvet.
+## Image-to-Prompt
+
+Image-to-Prompt формирует редакционный формат поверх утверждённого visual profile. Formatter не должен придумывать имена, татуировки, личные референсы, одежду, наготу или формат кадра, отсутствующие в profile.
+
+## Legacy contracts
+
+Не возвращаются как production architecture:
+
+- прямой `AI_VISION_PROVIDER=ollama` из bot/domain;
+- прямой bot/domain вызов `/api/chat`, `/api/tags` или localhost Ollama;
+- старый #505 Q4-vs-Q8 план как source of truth;
+- automatic global image backfill;
+- cloud sensitive fallback по умолчанию.
+
+Ollama внутри изолированного `vision-runtime` остаётся infrastructure implementation detail за `vision-gateway`.
