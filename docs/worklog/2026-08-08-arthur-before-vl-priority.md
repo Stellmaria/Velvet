@@ -16,6 +16,10 @@ Production evidence показал, что `velvet-librarian-text:v1` и `qwen3.
 
 Owner decision: при явно включённом Storage Librarian full-archive Arthur получает фазовый приоритет над автоматической Qwen/VL image queue. Qwen начинает автоматический image analysis только после того, как Arthur исчерпал full-archive работу. Это не меняет отдельный приоритет explicit interactive owner requests из #630.
 
+### Цель
+
+Закрепить автоматический порядок тяжёлой локальной обработки `Arthur full-archive → automatic Qwen/VL image queue`, чтобы Arthur мог полностью завершить текущую архивную фазу без конкуренции за CPU, а Qwen начинал автоматический анализ изображений только после доказанного исчерпания Arthur backlog.
+
 ### Планируемый объём
 
 - добавить DB-backed predicate незавершённой Arthur full-archive фазы;
@@ -76,7 +80,7 @@ SQL migrations отсутствуют. Существующие Storage/VL rows,
 5. VL consumer при Arthur priority не вызывает `claim_next` и не запускает processor;
 6. после снятия priority consumer claim-ит и завершает ровно одну VL task.
 
-Первый PR head `ff29817ba083d3c82013b8934fb6d05944373e57` уже получил успешный `type check`; `project notes contract` выявил только несоответствие обязательной структуре этого worklog, исправленное текущим commit. Полный protected CI должен быть повторно подтверждён на новом exact head.
+Первый PR head `ff29817ba083d3c82013b8934fb6d05944373e57` уже получил успешный `type check`; `project notes contract` выявил только несоответствие обязательной структуре этого worklog. Следующий head `b43359454fac6cef3783d9e700897687dc55facb` подтвердил, что оставалась только обязательная секция `### Цель`, добавленная текущим commit. Полный protected CI должен быть повторно подтверждён на новом exact head.
 
 ### PR и commit
 
