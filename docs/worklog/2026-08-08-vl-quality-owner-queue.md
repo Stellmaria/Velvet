@@ -66,7 +66,7 @@ PR #709 добавил fail-closed `AI_QUALITY_ENABLED=false`, а PR #712 огр
 
 ### Фактически сделано
 
-- добавлен `QualityQueuePlan` и repository lifecycle `plan_recent`, `plan_errors`, `get_plan`, `start_plan`;
+- добавлен `QualityQueuePlan` и repository lifecycle `plan_recent`, `plan_errors`, `start_plan`;
 - plan сохраняет owner, exact media IDs, requested limit, breakdown `new / legacy_pending / failed`, 15-minute expiry, `started_at` и `started_count`;
 - planning является dry-run для quality queue и не вставляет/не обновляет `media_ai_quality_checks`;
 - `start_plan()` использует только persisted `media_ids`, требует того же owner, блокирует expired/already-started plan и пишет `queue_plan_id`;
@@ -75,7 +75,8 @@ PR #709 добавил fail-closed `AI_QUALITY_ENABLED=false`, а PR #712 огр
 - старые callback action names `quality_recent` и `quality_retry_errors` сохранены, но их semantics стали plan-only;
 - добавлен отдельный `quality_plan_start` callback для явного запуска;
 - `quality_run` остался отдельным действием и запускает только один worker cycle;
-- semantic `media_ai_profiles` больше не изменяются из global quality retry control.
+- semantic `media_ai_profiles` больше не изменяются из global quality retry control;
+- Telegram navigation contract сохранён: row с 10/25/100 остаётся допустимой navigation row и generated inventory показывает zero violations.
 
 ### Миграции и совместимость
 
@@ -83,18 +84,23 @@ PR #709 добавил fail-closed `AI_QUALITY_ENABLED=false`, а PR #712 огр
 
 ### Проверки
 
-- добавлен `tests/test_vl_quality_owner_queue.py`: dry-run planning, exact persisted ids, wrong-owner failure и migration quarantine contract;
+- добавлен `tests/test_vl_quality_owner_queue.py`: dry-run planning, exact persisted ids, wrong-owner/stale failure и migration quarantine contract;
 - `tests/test_qwen_duplicate_retry_controls.py` обновлён под quality-only plan и проверяет отсутствие semantic mutation;
-- `tests/test_quality_retry_postgres.py` теперь проверяет PostgreSQL isolation: quality row переводится в controlled pending, semantic error/profile остаётся без изменений;
+- `tests/test_quality_retry_postgres.py` проверяет PostgreSQL isolation: quality row переводится в controlled pending, semantic error/profile остаётся без изменений;
 - `tests/test_p2b_quality_callback_ack.py` обновлён для plan/render/start acknowledgement ordering;
-- initial type check на PR #718 прошёл;
-- initial project notes contract выявил неверный формат worklog; этот commit приводит worklog к canonical project-notes template;
-- остальные required CI должны пройти на финальном head до merge.
+- `tests/test_ai_menu_callback_coverage.py` обновлён под controlled queue UI;
+- package architecture baseline пересобран на изменённом root persistence slice без добавления новой debt category;
+- generated Telegram navigation inventory пересобран после новых plan/start кнопок;
+- generated P2 stability inventory пересобран после нового callback handler;
+- backup restore drill уже проходил на migration slice до финального docs-only refresh;
+- required CI должен быть зелёным на финальном owner-authored head до merge.
 
 ### PR и commit
 
 - PR: #718 `Gate VL quality backfill behind owner plans`;
 - branch: `feat/vl-quality-owner-queue`;
+- generated inventory refresh source head: `2b6968730391c896fa8b6a5542e75095fa8934d1`;
+- generated inventory commit: `deb15fe800957825abbfedeb3005cf6aebdd1505`;
 - merge SHA будет добавлен GitHub после зелёного CI/merge.
 
 ### Незавершённое
@@ -107,4 +113,4 @@ PR #709 добавил fail-closed `AI_QUALITY_ENABLED=false`, а PR #712 огр
 
 ### Следующий шаг
 
-Дождаться required CI на исправленном head, исправить любые реальные regressions и слить PR #718 только при зелёных проверках. После merge не запускать mass backfill: первый production enable остаётся single-target smoke, затем controlled evidence `10 -> 25 -> 100`.
+Дождаться required CI на финальном owner-authored head, исправить только реальные regressions и слить PR #718 при зелёных проверках. После merge не запускать mass backfill: первый production enable остаётся single-target smoke, затем controlled evidence `10 -> 25 -> 100`.
