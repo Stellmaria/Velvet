@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 661,
-  "production_loc": 145919,
+  "production_loc": 145945,
   "layer_counts": {
     "application": 22,
     "composition": 62,
@@ -26072,16 +26072,16 @@
       "module": "velvet_bot.krita_supervisor",
       "layer": "root",
       "target_package": "workers/<runtime>",
-      "loc": 56,
-      "function_count": 6,
+      "loc": 82,
+      "function_count": 7,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 10,
-      "branch_count": 3,
+      "max_function_length": 16,
+      "branch_count": 4,
       "internal_imports": [
         "velvet_bot.supervisor_client"
       ],
-      "external_import_count": 3,
+      "external_import_count": 4,
       "aiogram_imports": [],
       "sql_literal_count": 0,
       "database_acquire_count": 0,
@@ -26095,9 +26095,31 @@
       "install_calls": [],
       "installed_sentinel_count": 0,
       "package_getattr": false,
-      "env_reads": [],
+      "env_reads": [
+        {
+          "line": 27,
+          "owner": "_uses_local_server_worker",
+          "call": "os.getenv"
+        },
+        {
+          "line": 20,
+          "owner": "_uses_local_server_worker",
+          "call": "os.getenv"
+        },
+        {
+          "line": 24,
+          "owner": "_uses_local_server_worker",
+          "call": "os.getenv"
+        }
+      ],
       "polling_values": [],
-      "worker_registrations": [],
+      "worker_registrations": [
+        {
+          "line": 61,
+          "owner": "wake_krita",
+          "call": "_uses_local_server_worker"
+        }
+      ],
       "violations": [
         {
           "id": "typing-any-usage:velvet_bot/krita_supervisor.py:7b70b55ee50a4d58",
