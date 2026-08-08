@@ -75,24 +75,27 @@ Production `qwen3.5:9b` уже демонстрировал 300-second timeout �
 - OOM/provider/schema/refusal не replay-ятся;
 - structured-output failure больше не включает второй image request с другим JSON mode;
 - добавлен `TypedQualityVisionClient` для global/manual quality;
+- global quality worker и manual quality controller уже переключены на `TypedQualityVisionClient` commit `6273dfdccca7300f1a74bff788b450fd27796ab9`;
+- temporary wiring workflow удалён тем же generated commit;
 - calibrated quality persistence использует typed permanent classification;
-- wiring global/manual quality выполняется отдельным deterministic helper commit в этом PR;
 - unit coverage добавлена для timeout/OOM/transport/schema/cancellation и retry bounds.
 
 ### Проверки
 
 - targeted typed-failure tests добавлены;
 - существующие metered client/refusal contracts сохраняются через subclass compatibility;
+- generated wiring commit был GitHub Actions-authored, поэтому его стандартные PR runs получили `action_required`; этот owner-authored worklog commit запускает обычный required CI на том же code tree;
 - required project CI должен быть зелёным на финальном head до merge.
 
 ### PR и commit
 
-- PR будет создан из `fix/vl-typed-failures` в `main`;
+- PR: #724 `Type VL failures and bound image retries`;
+- branch: `fix/vl-typed-failures`;
+- wiring commit: `6273dfdccca7300f1a74bff788b450fd27796ab9`;
 - merge SHA будет добавлен после зелёного CI.
 
 ### Незавершённое
 
-- получить automatic wiring commit из temporary PR workflow и удалить helper workflow;
 - исправить реальные CI regressions;
 - слить PR только после required green checks;
 - production `AI_QUALITY_ENABLED=false` не менять этим PR;
@@ -100,4 +103,4 @@ Production `qwen3.5:9b` уже демонстрировал 300-second timeout �
 
 ### Следующий шаг
 
-Создать PR, дождаться deterministic wiring global/manual quality client, затем прогнать required CI. После зелёного merge перейти к runtime model routing без возврата к массовым retries.
+Прогнать required CI на owner-authored финальном head. После зелёного merge перейти к runtime model routing без возврата к массовым retries.
