@@ -167,7 +167,7 @@ wait_for_service_health() {
 }
 
 start_core_services() {
-  "${compose[@]}" up -d --remove-orphans postgres supervisor-proxy || return
+  "${compose[@]}" up -d postgres supervisor-proxy || return
   wait_for_service_health postgres || return
   wait_for_service_health supervisor-proxy
 }
