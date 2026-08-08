@@ -6,6 +6,10 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from velvet_bot.application.arthur_librarian import ArthurLibrarianApplication
+from velvet_bot.local_ai_runtime import (
+    set_storage_librarian_archive_phase_enabled,
+    storage_librarian_archive_phase_enabled,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,6 +43,12 @@ class _FakeService:
 
 
 class ArthurArchiveControlTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self) -> None:
+        set_storage_librarian_archive_phase_enabled(False)
+
+    def tearDown(self) -> None:
+        set_storage_librarian_archive_phase_enabled(False)
+
     def _application(self) -> tuple[ArthurLibrarianApplication, _FakeRepository, _FakeService]:
         app = ArthurLibrarianApplication.__new__(ArthurLibrarianApplication)
         repository = _FakeRepository()
@@ -61,6 +71,7 @@ class ArthurArchiveControlTests(unittest.IsolatedAsyncioTestCase):
         app, repository, service = self._application()
 
         self.assertTrue(await app.start_archive())
+        self.assertTrue(storage_librarian_archive_phase_enabled())
         self.assertFalse(await app.start_archive())
         await asyncio.sleep(0)
 
@@ -70,6 +81,7 @@ class ArthurArchiveControlTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("test-archive:v1", status.analyzer_version)
 
         self.assertTrue(await app.stop_archive())
+        self.assertTrue(storage_librarian_archive_phase_enabled())
         stopping = await app.archive_status()
         self.assertTrue(stopping.active)
         self.assertTrue(stopping.stopping)
@@ -77,12 +89,14 @@ class ArthurArchiveControlTests(unittest.IsolatedAsyncioTestCase):
         await app.shutdown()
         stopped = await app.archive_status()
         self.assertFalse(stopped.active)
+        self.assertFalse(storage_librarian_archive_phase_enabled())
         self.assertGreaterEqual(repository.enqueue_calls, 1)
         self.assertGreaterEqual(service.processed, 0)
 
     async def test_stop_when_idle_is_noop(self) -> None:
         app, _, _ = self._application()
         self.assertFalse(await app.stop_archive())
+        self.assertFalse(storage_librarian_archive_phase_enabled())
 
 
 class ArthurArchiveTelegramContractTests(unittest.TestCase):
@@ -121,6 +135,8 @@ class ArthurArchiveTelegramContractTests(unittest.TestCase):
         self.assertIn("await application.shutdown()", runtime)
         self.assertIn("await self.repository.enqueue_pending(", application)
         self.assertIn("self._analysis_lock = asyncio.Lock()", application)
+        self.assertIn("set_storage_librarian_archive_phase_enabled(True)", application)
+        self.assertIn("set_storage_librarian_archive_phase_enabled(False)", application)
         self.assertIn("stop_event.wait()", application)
 
 
