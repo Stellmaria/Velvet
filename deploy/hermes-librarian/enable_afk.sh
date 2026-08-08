@@ -103,8 +103,10 @@ path.write_text("\n".join(result).rstrip() + "\n", encoding="utf-8")
 os.chmod(path, 0o600)
 PY
 
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" \
-  up -d --force-recreate bot
+VELVET_APP_DIR="$APP_DIR" \
+VELVET_ENV_FILE="$ENV_FILE" \
+VELVET_COMPOSE_FILE="$COMPOSE_FILE" \
+  bash deploy/hermes-librarian/recreate_bot_preserving_image.sh
 
 printf '%s\n' \
   "Storage Librarian AFK new-only enabled." \
