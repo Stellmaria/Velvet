@@ -37,6 +37,7 @@
         "velvet_bot/quality_set_ai_dashboard.py",
         "velvet_bot/quality_ui.py",
         "velvet_bot/resilient_ai_quality.py",
+        "velvet_bot/services/typed_quality_vision.py",
         "velvet_bot/velvet_ai_ui.py"
       ],
       "replacement": "Canonical boundary tracked by #463.",
@@ -66,6 +67,7 @@
         "velvet_bot/domains/vision_batches/store.py",
         "velvet_bot/domains/vision_batches/worker.py",
         "velvet_bot/domains/vision_routing/client.py",
+        "velvet_bot/domains/vision_routing/failures.py",
         "velvet_bot/domains/vision_routing/integration.py",
         "velvet_bot/domains/vision_routing/profile_contract.py",
         "velvet_bot/domains/vision_routing/service.py",
@@ -82,6 +84,7 @@
         "velvet_bot/reference_comparison.py",
         "velvet_bot/resilient_ai_quality.py",
         "velvet_bot/resilient_ai_vision.py",
+        "velvet_bot/services/typed_quality_vision.py",
         "velvet_bot/services/workspace_qwen_quality.py",
         "velvet_bot/set_consistency.py",
         "velvet_bot/velvet_formatting.py"
@@ -3969,6 +3972,7 @@
         "velvet_bot/quality_set_ai_dashboard.py",
         "velvet_bot/quality_ui.py",
         "velvet_bot/resilient_ai_quality.py",
+        "velvet_bot/services/typed_quality_vision.py",
         "velvet_bot/velvet_ai_ui.py"
       ],
       "replacement": "Canonical boundary tracked by #463.",
@@ -3998,6 +4002,7 @@
         "velvet_bot/domains/vision_batches/store.py",
         "velvet_bot/domains/vision_batches/worker.py",
         "velvet_bot/domains/vision_routing/client.py",
+        "velvet_bot/domains/vision_routing/failures.py",
         "velvet_bot/domains/vision_routing/integration.py",
         "velvet_bot/domains/vision_routing/profile_contract.py",
         "velvet_bot/domains/vision_routing/service.py",
@@ -4014,6 +4019,7 @@
         "velvet_bot/reference_comparison.py",
         "velvet_bot/resilient_ai_quality.py",
         "velvet_bot/resilient_ai_vision.py",
+        "velvet_bot/services/typed_quality_vision.py",
         "velvet_bot/services/workspace_qwen_quality.py",
         "velvet_bot/set_consistency.py",
         "velvet_bot/velvet_formatting.py"
@@ -5492,6 +5498,7 @@
         "velvet_bot/quality_set_ai_dashboard.py",
         "velvet_bot/quality_ui.py",
         "velvet_bot/resilient_ai_quality.py",
+        "velvet_bot/services/typed_quality_vision.py",
         "velvet_bot/velvet_ai_ui.py"
       ],
       "replacement": "Canonical boundary tracked by #463.",
@@ -5697,6 +5704,7 @@
         "velvet_bot/quality_set_ai_dashboard.py",
         "velvet_bot/quality_ui.py",
         "velvet_bot/resilient_ai_quality.py",
+        "velvet_bot/services/typed_quality_vision.py",
         "velvet_bot/velvet_ai_ui.py"
       ],
       "replacement": "Canonical boundary tracked by #463.",
@@ -5726,6 +5734,7 @@
         "velvet_bot/domains/vision_batches/store.py",
         "velvet_bot/domains/vision_batches/worker.py",
         "velvet_bot/domains/vision_routing/client.py",
+        "velvet_bot/domains/vision_routing/failures.py",
         "velvet_bot/domains/vision_routing/integration.py",
         "velvet_bot/domains/vision_routing/profile_contract.py",
         "velvet_bot/domains/vision_routing/service.py",
@@ -5742,6 +5751,7 @@
         "velvet_bot/reference_comparison.py",
         "velvet_bot/resilient_ai_quality.py",
         "velvet_bot/resilient_ai_vision.py",
+        "velvet_bot/services/typed_quality_vision.py",
         "velvet_bot/services/workspace_qwen_quality.py",
         "velvet_bot/set_consistency.py",
         "velvet_bot/velvet_formatting.py"
