@@ -1,0 +1,43 @@
+name: pr722 generate package inventory
+
+on:
+  push:
+    branches:
+      - fix/storage-librarian-scheduler-lifecycle
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Generate package inventory
+        run: |
+          set -euo pipefail
+          mkdir -p generated
+          cp docs/package_architecture_exemptions.json generated/
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --label p1-package-architecture-baseline \
+            --output-dir generated
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('generated/package_architecture_inventory.json').read_text())
+          print('production_loc=', data['production_loc'])
+          print('violation_count=', data['violation_count'])
+          PY
+      - name: Upload generated inventory
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: pr722-package-inventory
+          path: |
+            generated/package_architecture_inventory.json
+            generated/package_architecture_inventory.md
+          if-no-files-found: error
+          retention-days: 1
