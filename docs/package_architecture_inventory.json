@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 661,
-  "production_loc": 145339,
+  "production_loc": 145572,
   "layer_counts": {
     "application": 22,
     "composition": 62,
@@ -3633,13 +3633,13 @@
       }
     },
     {
-      "id": "monolithic-function:velvet_bot/app/workers.py:85726d0fcd082e22",
+      "id": "monolithic-function:velvet_bot/app/workers.py:324c0a44449d4e5f",
       "category": "monolithic-function",
       "path": "velvet_bot/app/workers.py",
-      "fingerprint": "85726d0fcd082e22732e8da267cdef4062fd8722089e33c2115958d1b889204f",
-      "summary": "max function 257 lines exceeds 180",
+      "fingerprint": "324c0a44449d4e5f83ae07eb5a3843f97d6227972a7b77b1a9baaefea7bfdc4e",
+      "summary": "max function 259 lines exceeds 180",
       "details": {
-        "max_function_length": 257,
+        "max_function_length": 259,
         "limit": 180
       }
     },
@@ -12267,11 +12267,11 @@
       "module": "velvet_bot.app.workers",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 352,
+      "loc": 354,
       "function_count": 5,
       "class_count": 0,
       "handler_count": 0,
-      "max_function_length": 257,
+      "max_function_length": 259,
       "branch_count": 13,
       "internal_imports": [
         "velvet_bot.ai_quality",
@@ -12365,7 +12365,7 @@
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 345,
+          "line": 347,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
@@ -12380,22 +12380,22 @@
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 302,
+          "line": 304,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 310,
+          "line": 312,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 323,
+          "line": 325,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 332,
+          "line": 334,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
@@ -12405,25 +12405,25 @@
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 275,
+          "line": 277,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 287,
+          "line": 289,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         }
       ],
       "violations": [
         {
-          "id": "monolithic-function:velvet_bot/app/workers.py:85726d0fcd082e22",
+          "id": "monolithic-function:velvet_bot/app/workers.py:324c0a44449d4e5f",
           "category": "monolithic-function",
           "path": "velvet_bot/app/workers.py",
-          "fingerprint": "85726d0fcd082e22732e8da267cdef4062fd8722089e33c2115958d1b889204f",
-          "summary": "max function 257 lines exceeds 180",
+          "fingerprint": "324c0a44449d4e5f83ae07eb5a3843f97d6227972a7b77b1a9baaefea7bfdc4e",
+          "summary": "max function 259 lines exceeds 180",
           "details": {
-            "max_function_length": 257,
+            "max_function_length": 259,
             "limit": 180
           }
         }
@@ -22324,7 +22324,7 @@
       "module": "velvet_bot.domains.vision_routing.client",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 408,
+      "loc": 404,
       "function_count": 13,
       "class_count": 1,
       "handler_count": 0,
@@ -22356,7 +22356,7 @@
       "env_reads": [],
       "polling_values": [
         {
-          "line": 195,
+          "line": 193,
           "owner": "_analyze_with_attempts",
           "call": "asyncio.sleep",
           "values": [
@@ -22374,12 +22374,12 @@
       "module": "velvet_bot.domains.vision_routing.factory",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 239,
-      "function_count": 5,
+      "loc": 260,
+      "function_count": 6,
       "class_count": 0,
       "handler_count": 0,
-      "max_function_length": 101,
-      "branch_count": 8,
+      "max_function_length": 115,
+      "branch_count": 12,
       "internal_imports": [
         "velvet_bot.core.config",
         "velvet_bot.core.config.settings",
@@ -22407,57 +22407,57 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 45,
+          "line": 47,
           "owner": "build_vision_cascade_router",
           "call": "os.getenv"
         },
         {
-          "line": 68,
+          "line": 81,
           "owner": "build_vision_cascade_router",
           "call": "os.getenv"
         },
         {
-          "line": 89,
+          "line": 106,
           "owner": "build_vision_cascade_router",
           "call": "os.getenv"
         },
         {
-          "line": 122,
+          "line": 137,
           "owner": "build_vision_cascade_router",
           "call": "os.getenv"
         },
         {
-          "line": 160,
+          "line": 175,
+          "owner": "_route_config",
+          "call": "os.getenv"
+        },
+        {
+          "line": 177,
+          "owner": "_route_config",
+          "call": "os.getenv"
+        },
+        {
+          "line": 196,
+          "owner": "_route_config",
+          "call": "os.getenv"
+        },
+        {
+          "line": 202,
+          "owner": "_route_config",
+          "call": "os.getenv"
+        },
+        {
+          "line": 230,
+          "owner": "_env_flag",
+          "call": "os.getenv"
+        },
+        {
+          "line": 158,
           "owner": "_route_config",
           "call": "os.getenv"
         },
         {
           "line": 162,
-          "owner": "_route_config",
-          "call": "os.getenv"
-        },
-        {
-          "line": 181,
-          "owner": "_route_config",
-          "call": "os.getenv"
-        },
-        {
-          "line": 187,
-          "owner": "_route_config",
-          "call": "os.getenv"
-        },
-        {
-          "line": 210,
-          "owner": "_env_flag",
-          "call": "os.getenv"
-        },
-        {
-          "line": 143,
-          "owner": "_route_config",
-          "call": "os.getenv"
-        },
-        {
-          "line": 147,
           "owner": "_route_config",
           "call": "os.getenv"
         }
@@ -22685,16 +22685,17 @@
       "module": "velvet_bot.domains.vision_routing.service",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 350,
-      "function_count": 13,
+      "loc": 564,
+      "function_count": 16,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 170,
-      "branch_count": 15,
+      "max_function_length": 131,
+      "branch_count": 30,
       "internal_imports": [
         "velvet_bot.ai_vision",
         "velvet_bot.domains.vision_routing.cache",
         "velvet_bot.domains.vision_routing.client",
+        "velvet_bot.domains.vision_routing.failures",
         "velvet_bot.domains.vision_routing.models",
         "velvet_bot.domains.vision_routing.profile_contract"
       ],

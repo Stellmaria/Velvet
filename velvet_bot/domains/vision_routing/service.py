@@ -7,6 +7,7 @@ from typing import Mapping
 from velvet_bot.ai_vision import VisionAnalysisError, _prepare_image
 from velvet_bot.domains.vision_routing.cache import VisionAnalysisCacheRepository
 from velvet_bot.domains.vision_routing.client import MeteredVisionClient
+from velvet_bot.domains.vision_routing.failures import VisionRefusalError
 from velvet_bot.domains.vision_routing.models import (
     CachedVisionAnalysis,
     VisionAnalysisMode,
@@ -37,6 +38,7 @@ class VisionCascadeRouter:
         repository: VisionAnalysisCacheRepository,
         pro: MeteredVisionClient | None = None,
         sensitive: MeteredVisionClient | None = None,
+        main_sensitive: MeteredVisionClient | None = None,
         confidence_threshold: int = 70,
         prompt_version: int = 1,
         analysis_type: str = "semantic-profile",
@@ -45,6 +47,11 @@ class VisionCascadeRouter:
         self._flash = flash
         self._pro = pro
         self._sensitive = sensitive
+        self._main_sensitive = main_sensitive
+        if main_sensitive is not None and main_sensitive.model != flash.model:
+            raise ValueError(
+                "Sensitive LOCAL_MAIN client должен использовать ту же модель, что и standard LOCAL_MAIN."
+            )
         self._repository = repository
         self.confidence_threshold = max(1, min(int(confidence_threshold), 100))
         self.prompt_version = max(1, int(prompt_version))
@@ -63,7 +70,7 @@ class VisionCascadeRouter:
 
     @property
     def configured_models(self) -> tuple[str, ...]:
-        clients = (self._flash, self._pro, self._sensitive)
+        clients = (self._flash, self._main_sensitive, self._pro, self._sensitive)
         return tuple(
             dict.fromkeys(client.model for client in clients if client is not None)
         )
@@ -77,23 +84,35 @@ class VisionCascadeRouter:
         *,
         sensitive: bool = False,
         adult_confirmed: bool = False,
+        force_pro: bool = False,
+        force_uncensored: bool = False,
         user_id: int | None = None,
         chat_id: int | None = None,
         metadata: Mapping[str, object] | None = None,
     ) -> VisionCascadeResult:
         mode = VisionAnalysisMode.SENSITIVE if sensitive else VisionAnalysisMode.STANDARD
-        if mode is VisionAnalysisMode.SENSITIVE and not adult_confirmed:
-            raise VisionAnalysisError(
-                "Sensitive VL route требует явного adult_confirmed=true."
-            )
+        self._validate_route_request(
+            mode=mode,
+            adult_confirmed=adult_confirmed,
+            force_pro=force_pro,
+            force_uncensored=force_uncensored,
+        )
 
         content_hash = hashlib.sha256(source).hexdigest()
-        analysis_type = self._analysis_type(mode)
+        analysis_type = self._analysis_type(
+            mode,
+            force_pro=force_pro,
+            force_uncensored=force_uncensored,
+        )
         cached = await self._repository.find(
             content_hash=content_hash,
             analysis_type=analysis_type,
             prompt_version=self.prompt_version,
-            models=self._cache_models(mode=mode),
+            models=self._cache_models(
+                mode=mode,
+                force_pro=force_pro,
+                force_uncensored=force_uncensored,
+            ),
         )
         if cached is not None:
             return _cached_result(
@@ -112,45 +131,50 @@ class VisionCascadeRouter:
             "schema_version": self.schema_version,
             "prompt_version": self.prompt_version,
             "adult_confirmed": mode is VisionAnalysisMode.SENSITIVE,
+            "force_pro": force_pro,
+            "force_uncensored": force_uncensored,
         }
         attempts: list[VisionRoute] = []
 
         if mode is VisionAnalysisMode.SENSITIVE:
-            if self._sensitive is None:
-                raise VisionAnalysisError("Sensitive VL route не настроен.")
-            analysis = await self._call(
-                self._sensitive,
+            return await self._analyze_sensitive(
                 prepared,
-                analysis_type=analysis_type,
-                attempts=attempts,
-                user_id=user_id,
-                chat_id=chat_id,
-                metadata=common_metadata,
-            )
-            confidence = _confidence(analysis.profile)
-            return await self._accept(
-                analysis,
                 content_hash=content_hash,
                 analysis_type=analysis_type,
                 attempts=attempts,
-                metadata={
-                    "analysis_mode": mode.value,
-                    "schema_version": self.schema_version,
-                    "prompt_version": self.prompt_version,
-                    "adult_confirmed": True,
-                    "manual_review_required": confidence < self.confidence_threshold,
-                    "manual_review_reason": (
-                        "low_sensitive_confidence"
-                        if confidence < self.confidence_threshold
-                        else None
-                    ),
-                },
+                common_metadata=common_metadata,
+                force_uncensored=force_uncensored,
+                user_id=user_id,
+                chat_id=chat_id,
             )
 
-        flash_error: VisionAnalysisError | None = None
-        flash_analysis: VisionProviderAnalysis | None = None
+        return await self._analyze_standard(
+            prepared,
+            content_hash=content_hash,
+            analysis_type=analysis_type,
+            attempts=attempts,
+            common_metadata=common_metadata,
+            force_pro=force_pro,
+            user_id=user_id,
+            chat_id=chat_id,
+        )
+
+    async def _analyze_standard(
+        self,
+        prepared: bytes,
+        *,
+        content_hash: str,
+        analysis_type: str,
+        attempts: list[VisionRoute],
+        common_metadata: Mapping[str, object],
+        force_pro: bool,
+        user_id: int | None,
+        chat_id: int | None,
+    ) -> VisionCascadeResult:
+        main_error: VisionAnalysisError | None = None
+        main_analysis: VisionProviderAnalysis | None = None
         try:
-            flash_analysis = await self._call(
+            main_analysis = await self._call(
                 self._flash,
                 prepared,
                 analysis_type=analysis_type,
@@ -160,20 +184,23 @@ class VisionCascadeRouter:
                 metadata=common_metadata,
             )
         except VisionAnalysisError as error:
-            flash_error = error
+            main_error = error
             if self._pro is None:
                 raise
 
-        if flash_analysis is not None:
-            confidence = _confidence(flash_analysis.profile)
-            if confidence >= self.confidence_threshold or self._pro is None:
+        if main_analysis is not None:
+            confidence = _confidence(main_analysis.profile)
+            if (
+                not force_pro
+                and (confidence >= self.confidence_threshold or self._pro is None)
+            ):
                 return await self._accept(
-                    flash_analysis,
+                    main_analysis,
                     content_hash=content_hash,
                     analysis_type=analysis_type,
                     attempts=attempts,
                     metadata={
-                        "analysis_mode": mode.value,
+                        "analysis_mode": VisionAnalysisMode.STANDARD.value,
                         "schema_version": self.schema_version,
                         "prompt_version": self.prompt_version,
                         "confidence_threshold": self.confidence_threshold,
@@ -182,15 +209,17 @@ class VisionCascadeRouter:
                 )
 
         if self._pro is None:
-            if flash_error is not None:
-                raise flash_error
-            raise VisionAnalysisError("Pro VL route не настроен.")
+            if main_error is not None:
+                raise main_error
+            raise VisionAnalysisError("CLOUD_PRO VL route выключен или не настроен.")
 
         fallback_reason = (
-            "flash_refusal"
-            if flash_error is not None and _is_refusal(flash_error)
-            else "flash_error"
-            if flash_error is not None
+            "owner_force_pro"
+            if force_pro
+            else "main_refusal"
+            if main_error is not None and _is_refusal(main_error)
+            else "main_error"
+            if main_error is not None
             else "low_confidence"
         )
         try:
@@ -202,27 +231,27 @@ class VisionCascadeRouter:
                 user_id=user_id,
                 chat_id=chat_id,
                 metadata={
-                    **common_metadata,
+                    **dict(common_metadata),
                     "fallback_reason": fallback_reason,
-                    "flash_confidence": (
-                        _confidence(flash_analysis.profile)
-                        if flash_analysis is not None
+                    "main_confidence": (
+                        _confidence(main_analysis.profile)
+                        if main_analysis is not None
                         else None
                     ),
                 },
             )
         except VisionAnalysisError as error:
-            if flash_analysis is not None:
+            if main_analysis is not None:
                 return await self._accept(
-                    flash_analysis,
+                    main_analysis,
                     content_hash=content_hash,
                     analysis_type=analysis_type,
                     attempts=attempts,
                     metadata={
-                        "analysis_mode": mode.value,
+                        "analysis_mode": VisionAnalysisMode.STANDARD.value,
                         "schema_version": self.schema_version,
                         "prompt_version": self.prompt_version,
-                        "fallback_reason": "pro_error_use_flash",
+                        "fallback_reason": "pro_error_use_main",
                         "pro_error": str(error)[:500],
                     },
                 )
@@ -234,13 +263,170 @@ class VisionCascadeRouter:
             analysis_type=analysis_type,
             attempts=attempts,
             metadata={
-                "analysis_mode": mode.value,
+                "analysis_mode": VisionAnalysisMode.STANDARD.value,
                 "schema_version": self.schema_version,
                 "prompt_version": self.prompt_version,
                 "fallback_reason": fallback_reason,
                 "confidence_threshold": self.confidence_threshold,
             },
         )
+
+    async def _analyze_sensitive(
+        self,
+        prepared: bytes,
+        *,
+        content_hash: str,
+        analysis_type: str,
+        attempts: list[VisionRoute],
+        common_metadata: Mapping[str, object],
+        force_uncensored: bool,
+        user_id: int | None,
+        chat_id: int | None,
+    ) -> VisionCascadeResult:
+        main_client = self._main_sensitive or self._flash
+        main_error: VisionAnalysisError | None = None
+        main_analysis: VisionProviderAnalysis | None = None
+        try:
+            main_analysis = await self._call(
+                main_client,
+                prepared,
+                analysis_type=analysis_type,
+                attempts=attempts,
+                user_id=user_id,
+                chat_id=chat_id,
+                metadata=common_metadata,
+            )
+        except VisionAnalysisError as error:
+            main_error = error
+            if self._sensitive is None:
+                raise
+
+        if main_analysis is not None:
+            confidence = _confidence(main_analysis.profile)
+            if (
+                not force_uncensored
+                and (confidence >= self.confidence_threshold or self._sensitive is None)
+            ):
+                return await self._accept(
+                    main_analysis,
+                    content_hash=content_hash,
+                    analysis_type=analysis_type,
+                    attempts=attempts,
+                    metadata={
+                        "analysis_mode": VisionAnalysisMode.SENSITIVE.value,
+                        "schema_version": self.schema_version,
+                        "prompt_version": self.prompt_version,
+                        "adult_confirmed": True,
+                        "uncensored_required": False,
+                        "manual_review_required": confidence < self.confidence_threshold,
+                        "manual_review_reason": (
+                            "low_sensitive_confidence"
+                            if confidence < self.confidence_threshold
+                            else None
+                        ),
+                    },
+                )
+
+        if self._sensitive is None:
+            if main_error is not None:
+                raise main_error
+            raise VisionAnalysisError(
+                "LOCAL_UNCENSORED VL route выключен или не настроен."
+            )
+
+        fallback_reason = (
+            "owner_force_uncensored"
+            if force_uncensored
+            else "main_refusal"
+            if main_error is not None and _is_refusal(main_error)
+            else "main_error"
+            if main_error is not None
+            else "low_sensitive_confidence"
+        )
+        try:
+            uncensored_analysis = await self._call(
+                self._sensitive,
+                prepared,
+                analysis_type=analysis_type,
+                attempts=attempts,
+                user_id=user_id,
+                chat_id=chat_id,
+                metadata={
+                    **dict(common_metadata),
+                    "fallback_reason": fallback_reason,
+                    "main_confidence": (
+                        _confidence(main_analysis.profile)
+                        if main_analysis is not None
+                        else None
+                    ),
+                },
+            )
+        except VisionAnalysisError as error:
+            if main_analysis is not None:
+                return await self._accept(
+                    main_analysis,
+                    content_hash=content_hash,
+                    analysis_type=analysis_type,
+                    attempts=attempts,
+                    metadata={
+                        "analysis_mode": VisionAnalysisMode.SENSITIVE.value,
+                        "schema_version": self.schema_version,
+                        "prompt_version": self.prompt_version,
+                        "adult_confirmed": True,
+                        "fallback_reason": "uncensored_error_use_main",
+                        "uncensored_error": str(error)[:500],
+                        "manual_review_required": True,
+                        "manual_review_reason": "uncensored_fallback_failed",
+                    },
+                )
+            raise
+
+        confidence = _confidence(uncensored_analysis.profile)
+        return await self._accept(
+            uncensored_analysis,
+            content_hash=content_hash,
+            analysis_type=analysis_type,
+            attempts=attempts,
+            metadata={
+                "analysis_mode": VisionAnalysisMode.SENSITIVE.value,
+                "schema_version": self.schema_version,
+                "prompt_version": self.prompt_version,
+                "adult_confirmed": True,
+                "fallback_reason": fallback_reason,
+                "confidence_threshold": self.confidence_threshold,
+                "manual_review_required": confidence < self.confidence_threshold,
+                "manual_review_reason": (
+                    "low_uncensored_confidence"
+                    if confidence < self.confidence_threshold
+                    else None
+                ),
+            },
+        )
+
+    def _validate_route_request(
+        self,
+        *,
+        mode: VisionAnalysisMode,
+        adult_confirmed: bool,
+        force_pro: bool,
+        force_uncensored: bool,
+    ) -> None:
+        if mode is VisionAnalysisMode.SENSITIVE and not adult_confirmed:
+            raise VisionAnalysisError(
+                "Sensitive VL route требует явного adult_confirmed=true."
+            )
+        if mode is VisionAnalysisMode.SENSITIVE and force_pro:
+            raise VisionAnalysisError("Sensitive VL никогда не отправляется в CLOUD_PRO.")
+        if mode is VisionAnalysisMode.STANDARD and force_uncensored:
+            raise VisionAnalysisError(
+                "LOCAL_UNCENSORED доступен только для adult-confirmed sensitive route."
+            )
+        if force_pro and self._pro is None:
+            raise VisionAnalysisError("CLOUD_PRO VL route выключен или не настроен.")
+        if force_uncensored and self._sensitive is None:
+            raise VisionAnalysisError(
+                "LOCAL_UNCENSORED VL route выключен или не настроен."
+            )
 
     async def _call(
         self,
@@ -295,13 +481,39 @@ class VisionCascadeRouter:
         )
         return result
 
-    def _analysis_type(self, mode: VisionAnalysisMode) -> str:
-        return f"{self.analysis_type}:schema-{self.schema_version}:{mode.value}"
+    def _analysis_type(
+        self,
+        mode: VisionAnalysisMode,
+        *,
+        force_pro: bool = False,
+        force_uncensored: bool = False,
+    ) -> str:
+        suffix = (
+            ":force-pro"
+            if force_pro
+            else ":force-uncensored"
+            if force_uncensored
+            else ""
+        )
+        return (
+            f"{self.analysis_type}:schema-{self.schema_version}:{mode.value}{suffix}"
+        )
 
-    def _cache_models(self, *, mode: VisionAnalysisMode) -> tuple[str, ...]:
-        if mode is VisionAnalysisMode.SENSITIVE:
+    def _cache_models(
+        self,
+        *,
+        mode: VisionAnalysisMode,
+        force_pro: bool = False,
+        force_uncensored: bool = False,
+    ) -> tuple[str, ...]:
+        if force_pro:
+            return (self._pro.model,) if self._pro is not None else ()
+        if force_uncensored:
             return (self._sensitive.model,) if self._sensitive is not None else ()
-        clients = (self._flash, self._pro)
+        if mode is VisionAnalysisMode.SENSITIVE:
+            clients = (self._main_sensitive or self._flash, self._sensitive)
+        else:
+            clients = (self._flash, self._pro)
         return tuple(
             dict.fromkeys(client.model for client in clients if client is not None)
         )
@@ -343,6 +555,8 @@ def _confidence(profile: Mapping[str, object]) -> int:
 
 
 def _is_refusal(error: BaseException) -> bool:
+    if isinstance(error, VisionRefusalError):
+        return True
     text = str(error).casefold()
     return any(marker in text for marker in _REFUSAL_MARKERS)
 
