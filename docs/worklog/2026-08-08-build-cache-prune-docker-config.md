@@ -5,6 +5,7 @@
 - Линия/фаза: server operations / housekeeping follow-up
 - Статус: `завершено`
 - Ветка: `fix/build-cache-prune-docker-config`
+- Базовый commit: `a7435f702ebdc6b6506459e71487bf46aeba0659`
 
 ## Перед началом
 
