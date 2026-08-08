@@ -56,6 +56,55 @@ class ServerPreflightTests(unittest.TestCase):
             )
         self.assertTrue(report.ok, report.errors)
 
+    def test_local_krita_server_mode_passes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            values = _valid_values(directory)
+            values.update(
+                {
+                    "KRITA_WATERMARK_ENABLED": "true",
+                    "KRITA_REMOTE_WORKER_ENABLED": "false",
+                    "KRITA_BRIDGE_DIR": "/app/runtime/krita",
+                }
+            )
+            report = validate_server_environment(values, check_permissions=False)
+        self.assertTrue(report.ok, report.errors)
+        self.assertTrue(
+            any("локальный server bridge" in item for item in report.checks),
+            report.checks,
+        )
+
+    def test_local_krita_server_mode_rejects_bridge_outside_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            values = _valid_values(directory)
+            values.update(
+                {
+                    "KRITA_WATERMARK_ENABLED": "true",
+                    "KRITA_REMOTE_WORKER_ENABLED": "false",
+                    "KRITA_BRIDGE_DIR": "/tmp/krita",
+                }
+            )
+            report = validate_server_environment(values, check_permissions=False)
+        self.assertTrue(any("KRITA_BRIDGE_DIR" in item for item in report.errors))
+
+    def test_remote_krita_requires_watermark_feature(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            values = _valid_values(directory)
+            values.update(
+                {
+                    "KRITA_WATERMARK_ENABLED": "false",
+                    "KRITA_REMOTE_WORKER_ENABLED": "true",
+                    "KRITA_REMOTE_WORKER_TOKEN": "x" * 32,
+                }
+            )
+            report = validate_server_environment(values, check_permissions=False)
+        self.assertTrue(
+            any(
+                "KRITA_REMOTE_WORKER_ENABLED требует KRITA_WATERMARK_ENABLED=true"
+                in item
+                for item in report.errors
+            )
+        )
+
     def test_database_must_use_internal_postgres_host(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             values = _valid_values(directory)
