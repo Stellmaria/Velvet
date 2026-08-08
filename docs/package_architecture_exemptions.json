@@ -3090,7 +3090,7 @@
       "issue": "#455"
     },
     {
-      "id": "monolithic-function:velvet_bot/app/workers.py:85726d0fcd082e22",
+      "id": "monolithic-function:velvet_bot/app/workers.py:324c0a44449d4e5f",
       "owner": "application-composition",
       "reason": "Existing monolithic-function debt captured by the reviewed baseline.",
       "consumers": [
