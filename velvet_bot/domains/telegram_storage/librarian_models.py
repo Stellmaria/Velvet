@@ -94,6 +94,38 @@ def storage_librarian_text_source_char_limit(
     return source_limit
 
 
+def _chunk_limits(max_text_chars: int) -> tuple[int, int, int]:
+    max_chunk_count = _int_env(
+        "STORAGE_LIBRARIAN_MAX_CHUNKS",
+        12,
+        minimum=2,
+        maximum=32,
+    )
+    theoretical_chunk_capacity = max(
+        1,
+        max_text_chars - TEXT_CHUNK_WRAPPER_RESERVED_CHARS,
+    ) * max_chunk_count
+    max_chunk_source_chars = min(
+        _int_env(
+            "STORAGE_LIBRARIAN_MAX_CHUNK_SOURCE_CHARS",
+            220_000,
+            minimum=4000,
+            maximum=2_000_000,
+        ),
+        theoretical_chunk_capacity,
+    )
+    max_inference_calls = min(
+        _int_env(
+            "STORAGE_LIBRARIAN_MAX_INFERENCE_CALLS",
+            max_chunk_count + 1,
+            minimum=2,
+            maximum=64,
+        ),
+        max_chunk_count + 1,
+    )
+    return max_chunk_count, max_chunk_source_chars, max_inference_calls
+
+
 @dataclass(frozen=True, slots=True)
 class StorageLibrarianSettings:
     enabled: bool
@@ -185,33 +217,8 @@ class StorageLibrarianSettings:
             ),
             max_text_chars_limit,
         )
-        max_chunk_count = _int_env(
-            "STORAGE_LIBRARIAN_MAX_CHUNKS",
-            12,
-            minimum=2,
-            maximum=32,
-        )
-        theoretical_chunk_capacity = max(
-            1,
-            max_text_chars - TEXT_CHUNK_WRAPPER_RESERVED_CHARS,
-        ) * max_chunk_count
-        max_chunk_source_chars = min(
-            _int_env(
-                "STORAGE_LIBRARIAN_MAX_CHUNK_SOURCE_CHARS",
-                220_000,
-                minimum=4000,
-                maximum=2_000_000,
-            ),
-            theoretical_chunk_capacity,
-        )
-        max_inference_calls = min(
-            _int_env(
-                "STORAGE_LIBRARIAN_MAX_INFERENCE_CALLS",
-                max_chunk_count + 1,
-                minimum=2,
-                maximum=64,
-            ),
-            max_chunk_count + 1,
+        max_chunk_count, max_chunk_source_chars, max_inference_calls = _chunk_limits(
+            max_text_chars
         )
 
         return cls(
