@@ -131,20 +131,16 @@ def _render_outcome(outcome: ArthurAnalysisOutcome) -> str:
 def _render_archive_status(status: ArthurArchiveStatus) -> str:
     state = "stopping" if status.stopping else "running" if status.active else "stopped"
     counts = status.counts
-    processed = counts.get("completed", 0) + counts.get("skipped", 0)
     lines = [
         "<b>Arthur · archive</b>",
         "",
         f"State: <code>{state}</code>",
         f"Analyzer: <code>{escape(status.analyzer_version)}</code>",
-        f"Processed jobs: <code>{processed}</code>",
-        f"Queued now: <code>{counts.get('queued', 0)}</code>",
+        f"Queued now (live backlog): <code>{counts.get('queued', 0)}</code>",
         f"Running now: <code>{counts.get('running', 0)}</code>",
-        f"Completed: <code>{counts.get('completed', 0)}</code>",
-        f"Skipped: <code>{counts.get('skipped', 0)}</code>",
-        f"Failed: <code>{counts.get('failed', 0)}</code>",
-        "",
-        "Queued now — живой backlog: число может не уменьшаться, пока Arthur обнаруживает новые объекты.",
+        f"Completed total: <code>{counts.get('completed', 0)}</code>",
+        f"Skipped total: <code>{counts.get('skipped', 0)}</code>",
+        f"Failed total: <code>{counts.get('failed', 0)}</code>",
     ]
     if status.last_error:
         lines.extend(("", "Последняя ошибка: " + escape(status.last_error)))
