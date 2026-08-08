@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
@@ -26,25 +27,50 @@ class _AsyncContext:
 
 
 class QwenDuplicateRetryControlTests(unittest.IsolatedAsyncioTestCase):
-    async def test_qwen_retry_resets_quality_and_semantic_queues(self) -> None:
+    async def test_qwen_retry_builds_quality_only_plan_without_semantic_mutation(self) -> None:
+        now = datetime.now(timezone.utc)
+        candidates = [
+            {"media_id": 31, "candidate_kind": "failed"},
+            {"media_id": 29, "candidate_kind": "failed"},
+        ]
+        plan_row = {
+            "id": 8,
+            "requested_by": 42,
+            "kind": "errors",
+            "requested_limit": 10,
+            "media_ids": [31, 29],
+            "new_count": 0,
+            "legacy_pending_count": 0,
+            "failed_count": 2,
+            "created_at": now,
+            "expires_at": now + timedelta(minutes=15),
+            "started_at": None,
+            "started_count": None,
+        }
         connection = SimpleNamespace(
-            execute=AsyncMock(side_effect=["UPDATE 3", "UPDATE 4"]),
+            execute=AsyncMock(return_value="DELETE 0"),
+            fetch=AsyncMock(return_value=candidates),
+            fetchrow=AsyncMock(return_value=plan_row),
             transaction=Mock(return_value=_AsyncContext(None)),
         )
         database = SimpleNamespace(acquire=Mock(return_value=_AsyncContext(connection)))
 
-        count = await QualityOperationsRepository(database).retry_errors()
+        plan = await QualityOperationsRepository(database).plan_errors(
+            requested_by=42,
+            limit=10,
+        )
 
-        self.assertEqual(count, 7)
-        self.assertEqual(connection.execute.await_count, 2)
-        quality_sql = connection.execute.await_args_list[0].args[0]
-        semantic_sql = connection.execute.await_args_list[1].args[0]
-        self.assertIn("media_ai_quality_checks", quality_sql)
-        self.assertIn("media_ai_profiles", semantic_sql)
-        self.assertIn("status IN ('error', 'skipped')", quality_sql)
-        self.assertIn("status IN ('error', 'skipped')", semantic_sql)
-        self.assertIn("analysis = '{}'::JSONB", semantic_sql)
-        self.assertNotIn("analysis = NULL", semantic_sql)
+        self.assertEqual(plan.media_ids, (31, 29))
+        self.assertEqual(plan.failed_count, 2)
+        candidate_sql = connection.fetch.await_args.args[0]
+        self.assertIn("media_ai_quality_checks", candidate_sql)
+        self.assertNotIn("media_ai_profiles", candidate_sql)
+        self.assertIn("status IN ('error', 'skipped')", candidate_sql)
+        executed_sql = "\n".join(
+            str(call.args[0]) for call in connection.execute.await_args_list
+        )
+        self.assertNotIn("media_ai_profiles", executed_sql)
+        self.assertNotIn("UPDATE media_ai_quality_checks", executed_sql)
 
     async def test_duplicate_reset_clears_results_and_requeues_available_media(self) -> None:
         connection = SimpleNamespace(
