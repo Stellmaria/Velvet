@@ -6,12 +6,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "production-vl-benchmark.yml"
+RUNBOOK = ROOT / "docs" / "LOCAL_VISION_RUNBOOK.md"
 
 
 class ProductionVLBenchmarkWorkflowTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.text = WORKFLOW.read_text(encoding="utf-8")
+        cls.runbook = RUNBOOK.read_text(encoding="utf-8")
 
     def test_workflow_is_manual_only_and_serialized_with_production(self) -> None:
         self.assertIn("workflow_dispatch:", self.text)
@@ -69,6 +71,15 @@ class ProductionVLBenchmarkWorkflowTests(unittest.TestCase):
         self.assertIn("path: benchmark.json", self.text)
         self.assertNotIn("path: ${{ inputs.image_name }}", self.text)
         self.assertIn("actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a", self.text)
+
+    def test_runbook_uses_same_closed_set_directory_and_first_smoke_inputs(self) -> None:
+        self.assertIn("runtime/vision-benchmark/smoke-neutral.jpg", self.runbook)
+        self.assertNotIn("runtime/vision-benchmark.jpg", self.runbook)
+        self.assertIn("confirmation=BENCHMARK", self.runbook)
+        self.assertIn("output_cap=512", self.runbook)
+        self.assertIn("rounds=1", self.runbook)
+        self.assertIn("cold_unload=false", self.runbook)
+        self.assertIn("production-vl-benchmark.yml", self.runbook)
 
 
 if __name__ == "__main__":
