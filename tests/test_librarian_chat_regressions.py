@@ -67,7 +67,7 @@ class ArthurReportTargetRegressionTests(unittest.TestCase):
 
 
 class ArthurArchiveStatusRegressionTests(unittest.TestCase):
-    def test_archive_status_explains_live_backlog(self) -> None:
+    def test_archive_status_labels_live_backlog_and_totals(self) -> None:
         presentation = (
             ROOT
             / "velvet_bot"
@@ -76,9 +76,11 @@ class ArthurArchiveStatusRegressionTests(unittest.TestCase):
             / "arthur_librarian.py"
         ).read_text(encoding="utf-8")
 
-        self.assertIn("Processed jobs:", presentation)
-        self.assertIn("Queued now:", presentation)
-        self.assertIn("живой backlog", presentation)
+        self.assertIn("Queued now (live backlog):", presentation)
+        self.assertIn("Running now:", presentation)
+        self.assertIn("Completed total:", presentation)
+        self.assertIn("Skipped total:", presentation)
+        self.assertIn("Failed total:", presentation)
 
 
 if __name__ == "__main__":
