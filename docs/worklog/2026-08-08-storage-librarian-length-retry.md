@@ -62,22 +62,28 @@ Retry output budget также не может отбирать место у in
 - один `asyncio.timeout` ограничивает суммарную длительность обеих попыток текущего logical call;
 - usage суммирует prompt/completion tokens первой truncated completion и успешного retry;
 - final session добавляет `actual_inference_calls` и `object_length_retries` для object-level observability;
+- HTTP response/decode вынесен в отдельный helper, чтобы `run()` оставался внутри architecture function-size contract;
 - hard input guard больше не сообщает устаревшее `Chunking is not implemented`, поскольку chunking уже находится в `main`.
 
 ### Проверки
 
-- изменённый Ollama client и новый regression test прошли локальный Python syntax compile;
-- локально на isolated fake Ollama session проверено: `length -> stop` выполняет 2 calls, увеличивает default `num_predict` `384 -> 768` и суммирует usage;
-- near-limit prompt проверен: retry сохраняет `num_predict=384`, если `768` уменьшил бы input budget ниже полного prompt;
-- hierarchical plan `2 chunks + synthesis`, `max_inference_calls=4` проверен с одним shared retry: final `actual_inference_calls=4`, `object_length_retries=1`;
-- полный hierarchical plan без свободного slot проверен: `done_reason=length` остаётся terminal после одного call;
-- GitHub runner validation, canonical inventory regeneration и required CI ещё должны пройти.
+- GitHub runner: CPython `3.13.14`, зависимости установлены из `requirements.lock` с `--require-hashes`;
+- `python -m compileall -q velvet_bot tests` прошёл;
+- `tests.test_storage_librarian_length_retry` и `tests.test_storage_librarian_ollama`: `Ran 22 tests`, `OK`;
+- подтверждён single-shot `length -> stop`: ровно 2 calls, default `num_predict` увеличивается `384 -> 768`, usage суммируется;
+- near-limit prompt сохраняет `num_predict=384`, если `768` уменьшил бы input budget ниже полного prompt;
+- hierarchical plan `2 chunks + synthesis`, `max_inference_calls=4` использует один shared retry и сообщает `actual_inference_calls=4`, `object_length_retries=1`;
+- полный hierarchical plan без свободного slot оставляет `done_reason=length` terminal после одного call;
+- canonical package architecture inventory пересобран штатным generator;
+- pinned `production_loc` обновлён до `146144`;
+- `tests.test_package_architecture_inventory`: `Ran 6 tests`, `OK`;
+- validation scope guard подтвердил ровно четыре runner-generated изменения: Ollama client, два architecture inventory файла и pinned LOC contract;
+- временный validation workflow удалён из feature-ветки после успешной проверки.
 
 ### Незавершённое
 
-- прогнать targeted regression tests и canonical package architecture generator на GitHub runner;
-- обновить pinned package LOC contract по generated inventory;
-- удалить временный validation workflow из итоговой ветки;
-- открыть отдельный PR после проверки состава diff;
-- после merge отдельно выполнить production rollout и повторную acceptance-проверку реальных failed Storage jobs;
+- создать отдельный PR после финальной проверки состава diff;
+- дождаться required PR CI и review/merge gate;
+- после отдельного разрешения выполнить production rollout;
+- повторно проверить реальные Storage Librarian jobs, включая сценарии, ранее падавшие на `done_reason=length`;
 - historical failed jobs не пере-enqueue автоматически в рамках этого изменения.
