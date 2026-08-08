@@ -3,7 +3,7 @@
 - Дата: 2026-08-08
 - ID: codex-recovery-notification
 - Линия/фаза: Hermes Codex availability production UX
-- Статус: `завершено в repo`
+- Статус: `завершено`
 - Ветка: `feat/codex-recovery-notification`
 - Базовый commit: `8b160db820592c36f51da491b0525754f6954bdf`
 
@@ -15,7 +15,7 @@
 
 ### Исходный контекст
 
-Dynamic Codex availability gate уже является единственным routing authority для Velvet coder, Max coder и GPT Image 2. Coder runtime выполняет startup probe, обязательный пятичасовой watcher и дополнительный reset-time probe, а `GET /v1/capabilities` публикует безопасный persisted `routing.codex_availability` без дополнительного quota request.
+Dynamic Codex availability gate уже является единственным routing authority для Velvet coder, Max coder и GPT Image 2. Coder runtime выполняѵт startup probe, обязательный пятичасовой watcher и дополнительный reset-time probe, а `GET /v1/capabilities` публикует безопасный persisted `routing.codex_availability` без дополнительного quota request.
 
 Main bot уже получает `CODEX_LIMITS_BASE_URL` и `CODEX_LIMITS_API_KEY`, а `bootstrap.py` создаёт один основной `ProtectedMediaBot` и передаёт его в централизованный `WorkerManager`. Поэтому recovery notification должна использовать этот bot/application path и не создавать отдельный Telegram token, process или quota watcher.
 
