@@ -4,10 +4,10 @@ import unittest
 from typing import cast
 
 from velvet_bot.database import Database
-from velvet_bot.presentation.telegram.storage_librarian import (
-    _STALE_RUNNING_SECONDS,
-    _recover_stale_running_jobs,
+from velvet_bot.domains.telegram_storage.librarian_afk_repository import (
+    recover_stale_running_jobs,
 )
+from velvet_bot.presentation.telegram.storage_librarian import _STALE_RUNNING_SECONDS
 
 
 class _FakeConnection:
@@ -52,7 +52,10 @@ class StorageLibrarianStaleRecoveryTests(unittest.IsolatedAsyncioTestCase):
         )
         database = cast(Database, _FakeDatabase(connection))
 
-        recovered = await _recover_stale_running_jobs(database)
+        recovered = await recover_stale_running_jobs(
+            database,
+            stale_after_seconds=_STALE_RUNNING_SECONDS,
+        )
 
         self.assertEqual(recovered, (2, 1))
         self.assertEqual(connection.args, (_STALE_RUNNING_SECONDS,))
@@ -69,9 +72,19 @@ class StorageLibrarianStaleRecoveryTests(unittest.IsolatedAsyncioTestCase):
         connection = _FakeConnection([])
         database = cast(Database, _FakeDatabase(connection))
 
-        recovered = await _recover_stale_running_jobs(database)
+        recovered = await recover_stale_running_jobs(
+            database,
+            stale_after_seconds=_STALE_RUNNING_SECONDS,
+        )
 
         self.assertEqual(recovered, (0, 0))
+
+    async def test_recovery_rejects_nonpositive_stale_window(self) -> None:
+        connection = _FakeConnection([])
+        database = cast(Database, _FakeDatabase(connection))
+
+        with self.assertRaises(ValueError):
+            await recover_stale_running_jobs(database, stale_after_seconds=0)
 
     def test_stale_window_is_longer_than_normal_inference_timeout(self) -> None:
         self.assertEqual(_STALE_RUNNING_SECONDS, 15 * 60)
