@@ -29,10 +29,6 @@ class _AsyncContext:
 class QwenDuplicateRetryControlTests(unittest.IsolatedAsyncioTestCase):
     async def test_qwen_retry_builds_quality_only_plan_without_semantic_mutation(self) -> None:
         now = datetime.now(timezone.utc)
-        candidates = [
-            {"media_id": 31, "candidate_kind": "failed"},
-            {"media_id": 29, "candidate_kind": "failed"},
-        ]
         plan_row = {
             "id": 8,
             "requested_by": 42,
@@ -47,12 +43,7 @@ class QwenDuplicateRetryControlTests(unittest.IsolatedAsyncioTestCase):
             "started_at": None,
             "started_count": None,
         }
-        connection = SimpleNamespace(
-            execute=AsyncMock(return_value="DELETE 0"),
-            fetch=AsyncMock(return_value=candidates),
-            fetchrow=AsyncMock(return_value=plan_row),
-            transaction=Mock(return_value=_AsyncContext(None)),
-        )
+        connection = SimpleNamespace(fetchrow=AsyncMock(return_value=plan_row))
         database = SimpleNamespace(acquire=Mock(return_value=_AsyncContext(connection)))
 
         plan = await QualityOperationsRepository(database).plan_errors(
@@ -62,15 +53,12 @@ class QwenDuplicateRetryControlTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(plan.media_ids, (31, 29))
         self.assertEqual(plan.failed_count, 2)
-        candidate_sql = connection.fetch.await_args.args[0]
-        self.assertIn("media_ai_quality_checks", candidate_sql)
-        self.assertNotIn("media_ai_profiles", candidate_sql)
-        self.assertIn("status IN ('error', 'skipped')", candidate_sql)
-        executed_sql = "\n".join(
-            str(call.args[0]) for call in connection.execute.await_args_list
-        )
-        self.assertNotIn("media_ai_profiles", executed_sql)
-        self.assertNotIn("UPDATE media_ai_quality_checks", executed_sql)
+        plan_sql, requested_by, kind, limit = connection.fetchrow.await_args.args
+        self.assertIn("media_ai_quality_checks", plan_sql)
+        self.assertNotIn("media_ai_profiles", plan_sql)
+        self.assertIn("q.status IN ('error', 'skipped')", plan_sql)
+        self.assertNotIn("UPDATE media_ai_quality_checks", plan_sql)
+        self.assertEqual((requested_by, kind, limit), (42, "errors", 10))
 
     async def test_duplicate_reset_clears_results_and_requeues_available_media(self) -> None:
         connection = SimpleNamespace(
