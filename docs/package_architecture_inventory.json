@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 656,
-  "production_loc": 144454,
+  "production_loc": 144455,
   "layer_counts": {
     "application": 22,
     "composition": 61,
@@ -31568,7 +31568,7 @@
       "module": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_operations",
       "layer": "presentation",
       "target_package": "presentation",
-      "loc": 464,
+      "loc": 465,
       "function_count": 16,
       "class_count": 1,
       "handler_count": 7,
@@ -31622,7 +31622,7 @@
           "call": "worker_manager.snapshot"
         },
         {
-          "line": 440,
+          "line": 441,
           "owner": "handle_quality_run",
           "call": "worker_manager.run_now"
         },
