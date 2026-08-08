@@ -3,7 +3,7 @@
 - Дата: 2026-08-08
 - ID: `2026-08-08-storage-librarian-bounded-chunking`
 - Линия/фаза: Storage Librarian / production oversized-text hardening
-- Статус: `в работе`
+- Статус: `частично`
 - Ветка: `fix/storage-librarian-bounded-chunking`
 - Базовый commit: `c01c5d697200edc308061ed3744dfefd99808b60`
 - PR: `#736 Add bounded hierarchical Storage Librarian chunking`
@@ -64,4 +64,55 @@ Arthur остаётся manual-first; этот PR не меняет `STORAGE_LIB
 
 ## После завершения
 
-Заполняется после required CI, squash merge и production acceptance. До этого статусы oversized historical objects нельзя считать исправленными в production только потому, что код PR существует.
+### Фактически сделано
+
+- существующий single-shot analysis path сохранён для source, который помещается в `max_text_chars`;
+- oversized source получает deterministic contiguous chunk plan без silent truncation исходного текста;
+- ZIP extraction больше не режет поддерживаемый текст по single-shot char limit: превышение entry/uncompressed bounds становится явной terminal ошибкой вместо тихого пропуска;
+- введены bounded defaults: максимум 12 chunks, 220000 source chars и 13 inference calls с final synthesis;
+- chunk analysis выполняется строго последовательно через существующий analysis client;
+- перед каждым analysis result проверяется `analyzer == "ollama"`; иной analyzer приводит к terminal failure без fallback;
+- final synthesis строится из ordered bounded chunk summaries и также помещается в текущий source envelope;
+- hierarchical run агрегирует prompt/completion usage, число chunks и число inference calls;
+- analyzer version намеренно оставлен прежним, чтобы этот PR сам по себе не инициировал historical replay;
+- добавлены regression tests для slightly-oversized Codex ZIP, большого diagnostics source, hard-cap rejection, deterministic lossless ordering, inference budget и local-Ollama-only contract.
+
+### Миграции и совместимость
+
+SQL migration не требуется. Схема `telegram_storage_analysis_jobs` и `telegram_storage_analysis` не меняется, attempts/history не сбрасываются и persistence semantics остаются прежними.
+
+Historical jobs со status `failed` автоматически не пере-enqueue. Повторный запуск таких объектов после production acceptance требует отдельной явной retry/migration policy.
+
+Arthur configuration и scheduler ownership не меняются. В частности, этот PR не включает Arthur auto-enqueue и не меняет требование `STORAGE_LIBRARIAN_AUTO_ENQUEUE=false` для Arthur.
+
+Новые chunk limits имеют безопасные defaults и могут быть ограничены env-переменными; existing single-shot env contract остаётся совместимым.
+
+### Проверки
+
+- Python syntax compile изменённых production modules и нового regression test пройден локально;
+- production prompt-envelope arithmetic проверена для `12288/768`: chunk prompt с wrapper остаётся ниже Ollama hard guard;
+- source порядка `202467` chars раскладывается в 11 ordered chunks и требует 12 inference calls включая synthesis, то есть укладывается в defaults;
+- final synthesis с worst-case bounded chunk summaries проверен на размер не больше `18944` chars;
+- первый PR head подтвердил ожидаемый project-notes requirement;
+- второй PR head прошёл `type check`; остальные required GitHub checks и исправленный notes contract ещё должны завершиться на актуальном head.
+
+### PR и commit
+
+PR: `#736 Add bounded hierarchical Storage Librarian chunking`.
+
+Ветка: `fix/storage-librarian-bounded-chunking`.
+
+Первый implementation commit: `a13df7b994dc2e223abe9a3711c27dad39d2a961` (`Add bounded Storage Librarian chunking`). Worklog добавлен отдельным follow-up commit. Финальный PR head и squash merge SHA фиксируются после required CI.
+
+### Незавершённое
+
+- дождаться и исправить все required GitHub CI failures на актуальном PR head;
+- перевести PR из draft только после зелёных required checks;
+- выполнить squash merge обычным protected workflow без bypass/force-push;
+- после merge отдельно зафиксировать canonical source SHA, immutable GHCR image digest и OCI revision;
+- выполнить production acceptance на oversized object, не переименовывая historical failure в success задним числом;
+- `done_reason=length`, deploy/full-archive config drift и manual `/storage_analyze ID` target-claim race остаются отдельными follow-up defects.
+
+### Следующий шаг
+
+Прогнать required CI на обновлённом PR head, исправить только доказанные проверки, затем squash-merge PR #736 в protected `main`. Production state и historical failed objects не считать исправленными до exact-image rollout и runtime acceptance.
