@@ -11,6 +11,7 @@ from velvet_bot.domains.vision_batches.worker import (
     VisionBatchQueueConsumer,
     storage_librarian_full_archive_has_priority,
 )
+from velvet_bot.local_ai_runtime import set_storage_librarian_archive_phase_enabled
 from velvet_bot.workers.adaptive import WorkerIterationOutcome
 
 
@@ -46,6 +47,12 @@ class _FakeProcessor:
 
 
 class LocalInferencePriorityTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self) -> None:
+        set_storage_librarian_archive_phase_enabled(False)
+
+    def tearDown(self) -> None:
+        set_storage_librarian_archive_phase_enabled(False)
+
     async def test_gate_is_open_when_full_archive_mode_is_not_enabled(self) -> None:
         repository = SimpleNamespace(
             counts=AsyncMock(return_value={"queued": 1, "running": 0}),
@@ -61,6 +68,33 @@ class LocalInferencePriorityTests(unittest.IsolatedAsyncioTestCase):
             blocked = await storage_librarian_full_archive_has_priority(object())  # type: ignore[arg-type]
         self.assertFalse(blocked)
         repository.counts.assert_not_awaited()
+        repository.enqueue_pending.assert_not_awaited()
+
+    async def test_arthur_managed_archive_blocks_with_env_scheduler_disabled(self) -> None:
+        settings = SimpleNamespace(enabled=True, allowed_kinds=("diagnostics",))
+        repository = SimpleNamespace(
+            counts=AsyncMock(return_value={"queued": 1, "running": 0}),
+            enqueue_pending=AsyncMock(return_value=0),
+        )
+        env = {
+            "STORAGE_LIBRARIAN_AUTO_ENQUEUE": "false",
+            "STORAGE_LIBRARIAN_AUTO_BACKFILL": "false",
+        }
+        set_storage_librarian_archive_phase_enabled(True)
+        with (
+            patch.dict(os.environ, env, clear=True),
+            patch(
+                "velvet_bot.domains.vision_batches.worker.StorageLibrarianSettings.from_env",
+                return_value=settings,
+            ),
+            patch(
+                "velvet_bot.domains.vision_batches.worker.StorageLibrarianRepository",
+                return_value=repository,
+            ),
+        ):
+            blocked = await storage_librarian_full_archive_has_priority(object())  # type: ignore[arg-type]
+        self.assertTrue(blocked)
+        repository.counts.assert_awaited_once_with()
         repository.enqueue_pending.assert_not_awaited()
 
     async def test_existing_arthur_job_blocks_without_enqueuing_more(self) -> None:
