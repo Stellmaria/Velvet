@@ -239,7 +239,7 @@ class StorageLibrarianSettings:
             ),
             run_timeout_seconds=_int_env(
                 "STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS",
-                180,
+                720,
                 minimum=30,
                 maximum=1800,
             ),
